@@ -174,7 +174,28 @@ Each new adapter must:
 
 ---
 
-## 7. Non‑Goals (Reconfirmed)
+## 7. Planned Engine Pipelines (Future, Non‑Sequential)
+
+The Evolution Engine is explicitly designed to support **multiple independent truth‑source pipelines**.
+The following engine pipelines are part of the intended system scope, but are **not implemented yet** unless stated otherwise.
+Their inclusion here does **not** change execution order or near‑term priorities.
+
+- **Git Repository Evolution** ✅ (reference implementation)
+- **CI / Build Pipeline** 🚧 (next priority)
+- **Test Execution Topology** (planned)
+- **Dependency Graph / SBOM Evolution** (planned)
+- **Schema / API Evolution** (planned)
+- **Configuration / IaC Drift** (planned)
+
+Each pipeline:
+- implements the Adapter Contract
+- reuses the shared Phase 1 Engine
+- produces independent Phase 2 signals
+- benefits from Phase 3 explanation and Phase 4 pattern learning without special‑case logic
+
+---
+
+## 8. Non‑Goals (Reconfirmed)
 
 This plan explicitly excludes:
 - Runtime telemetry
