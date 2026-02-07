@@ -2,7 +2,7 @@
 Git Source Adapter (Reference)
 
 Emits canonical SourceEvent payloads for Git commits.
-Adds only factual data derivable from git objects (no metrics).
+Conforms strictly to Adapter Contract.
 """
 
 from pathlib import Path
@@ -24,7 +24,6 @@ class GitSourceAdapter:
         commits.reverse()  # oldest → newest
 
         for commit in commits:
-            # factual file paths changed in this commit
             files = list(commit.stats.files.keys())
             payload = {
                 "commit_hash": commit.hexsha,
@@ -53,6 +52,6 @@ class GitSourceAdapter:
                     "commit_hash": commit.hexsha,
                     "trust_tier": self.attestation_tier,
                 },
+                "predecessor_refs": payload["parent_commits"],
                 "payload": payload,
-                "predecessor_commits": payload["parent_commits"],
             }

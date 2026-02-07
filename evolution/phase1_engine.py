@@ -10,6 +10,8 @@ import json
 import hashlib
 from datetime import datetime
 
+REQUIRED_FIELDS = {"source_type", "source_id", "ordering_mode", "attestation", "payload"}
+
 class Phase1Engine:
     def __init__(self, evo_dir: Path):
         self.evo_dir = evo_dir
@@ -27,8 +29,14 @@ class Phase1Engine:
         encoded = json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()
 
+    def _validate(self, event: dict):
+        missing = REQUIRED_FIELDS - event.keys()
+        if missing:
+            raise ValueError(f"Adapter emitted invalid SourceEvent, missing fields: {missing}")
+
     def ingest(self, adapter):
         for raw_event in adapter.iter_events():
+            self._validate(raw_event)
             key = raw_event["attestation"]["commit_hash"]
             if key in self.index:
                 continue
