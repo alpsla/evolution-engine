@@ -1,0 +1,38 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Evolution Engine data (per-repo, not tracked)
+.evolution/
+.evo/
+.evo_*/
+
+# Calibration data (cloned repos, pipeline outputs — large, not tracked)
+.calibration/repos/
+.calibration/runs/
+.calibration/repo_candidates/
+.calibration/validation_results_*.txt
+
+# Test outputs
+tests/test_evo/
+tests/test_walker/
