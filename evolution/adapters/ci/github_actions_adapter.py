@@ -6,19 +6,19 @@ Conforms to:
   - docs/ADAPTER_CONTRACT.md (universal)
   - docs/adapters/ci/FAMILY_CONTRACT.md (CI family)
 
-Requires:
-  - GITHUB_TOKEN environment variable (or gh CLI authentication)
-  - Repository owner/name
+Supports:
+  - API mode: Fetches runs from GitHub API (requires token)
+  - Fixture mode: Pre-parsed run dicts (for testing)
+
+Uses shared GitHubClient for rate limiting and caching.
 """
 
-import os
+import hashlib
 import json
+import os
 from datetime import datetime
 
-try:
-    import requests
-except ImportError:
-    requests = None
+from evolution.adapters.github_client import GitHubClient
 
 
 class GitHubActionsAdapter:
@@ -27,74 +27,53 @@ class GitHubActionsAdapter:
     ordering_mode = "temporal"
     attestation_tier = "medium"
 
-    def __init__(self, owner: str, repo: str, token: str = None):
-        self.owner = owner
-        self.repo = repo
-        self.token = token or os.getenv("GITHUB_TOKEN")
-        self.source_id = f"github_actions:{owner}/{repo}"
-        self.base_url = f"https://api.github.com/repos/{owner}/{repo}"
+    def __init__(self, owner: str = None, repo: str = None,
+                 token: str = None, client: GitHubClient = None,
+                 runs: list = None, source_id: str = None,
+                 max_runs: int = 500, fetch_jobs: bool = False):
+        """
+        Args:
+            owner: GitHub repo owner (API mode)
+            repo: GitHub repo name (API mode)
+            token: GitHub token (API mode)
+            client: Shared GitHubClient instance (reuses rate limiting/cache)
+            runs: Pre-parsed list of run dicts (fixture mode)
+            source_id: Unique identifier
+            max_runs: Maximum workflow runs to fetch (default 500)
+            fetch_jobs: Whether to fetch per-run job details (slower, N+1 calls)
+        """
+        self._fixture_runs = runs
+        self.source_id = source_id or (
+            f"github_actions:{owner}/{repo}" if owner else "github_actions:fixture"
+        )
+        self.max_runs = max_runs
+        self.fetch_jobs = fetch_jobs
 
-        if not self.token:
-            raise RuntimeError(
-                "GitHub token required. Set GITHUB_TOKEN environment variable "
-                "or pass token= to the adapter."
-            )
-
-        if requests is None:
-            raise RuntimeError("requests library is required. Install with: pip install requests")
-
-    def _headers(self):
-        return {
-            "Authorization": f"Bearer {self.token}",
-            "Accept": "application/vnd.github.v3+json",
-        }
-
-    def _fetch_runs(self, per_page: int = 100):
-        """Fetch workflow runs from GitHub API, oldest first."""
-        all_runs = []
-        page = 1
-
-        while True:
-            url = f"{self.base_url}/actions/runs"
-            params = {"per_page": per_page, "page": page}
-            resp = requests.get(url, headers=self._headers(), params=params, timeout=30)
-            resp.raise_for_status()
-
-            data = resp.json()
-            runs = data.get("workflow_runs", [])
-            if not runs:
-                break
-
-            all_runs.extend(runs)
-            page += 1
-
-            # Stop if we've fetched all runs
-            if len(all_runs) >= data.get("total_count", 0):
-                break
-
-        # Oldest first (temporal ordering)
-        all_runs.sort(key=lambda r: r["created_at"])
-        return all_runs
-
-    def _fetch_jobs(self, run_id: int):
-        """Fetch jobs for a specific workflow run."""
-        url = f"{self.base_url}/actions/runs/{run_id}/jobs"
-        resp = requests.get(url, headers=self._headers(), timeout=30)
-        resp.raise_for_status()
-        return resp.json().get("jobs", [])
+        if runs is None:
+            if client:
+                self._client = client
+            elif owner and repo:
+                self._client = GitHubClient(owner, repo, token)
+            else:
+                raise RuntimeError("Provide owner+repo, client, or runs for fixture mode.")
+        else:
+            self._client = None
 
     def _parse_duration(self, run: dict) -> float:
         """Calculate duration in seconds from run timestamps."""
-        if not run.get("run_started_at") or not run.get("updated_at"):
+        started = run.get("run_started_at") or run.get("created_at")
+        completed = run.get("updated_at")
+        if not started or not completed:
+            return 0.0
+        try:
+            s = datetime.fromisoformat(started.replace("Z", "+00:00"))
+            c = datetime.fromisoformat(completed.replace("Z", "+00:00"))
+            return max(0.0, (c - s).total_seconds())
+        except (ValueError, TypeError):
             return 0.0
 
-        started = datetime.fromisoformat(run["run_started_at"].replace("Z", "+00:00"))
-        completed = datetime.fromisoformat(run["updated_at"].replace("Z", "+00:00"))
-        return max(0.0, (completed - started).total_seconds())
-
-    def _normalize_status(self, run: dict) -> str:
+    def _normalize_status(self, conclusion: str) -> str:
         """Normalize GitHub's conclusion to contract-defined status."""
-        conclusion = run.get("conclusion")
         status_map = {
             "success": "success",
             "failure": "failure",
@@ -106,47 +85,73 @@ class GitHubActionsAdapter:
         }
         return status_map.get(conclusion, "failure") if conclusion else "cancelled"
 
+    def _fetch_runs(self) -> list:
+        """Fetch completed workflow runs from GitHub API."""
+        all_runs = self._client.get_paginated(
+            "/actions/runs",
+            list_key="workflow_runs",
+            per_page=100,
+        )
+
+        # Filter to completed runs, cap at max_runs
+        completed = [r for r in all_runs if r.get("status") == "completed"]
+        completed.sort(key=lambda r: r.get("created_at", ""))
+        return completed[:self.max_runs]
+
+    def _fetch_jobs_for_run(self, run_id: int) -> list:
+        """Fetch jobs for a specific workflow run (optional, slower)."""
+        data = self._client.get(f"/actions/runs/{run_id}/jobs")
+        return data.get("jobs", [])
+
     def iter_events(self):
-        runs = self._fetch_runs()
+        if self._fixture_runs is not None:
+            runs = self._fixture_runs
+        else:
+            runs = self._fetch_runs()
 
         for run in runs:
-            # Only emit completed runs
-            if run.get("status") != "completed":
-                continue
+            run_id = str(run.get("id", run.get("run_id", "")))
+            conclusion = run.get("conclusion", "")
 
-            # Fetch job details
-            raw_jobs = self._fetch_jobs(run["id"])
+            # Build job list
             jobs = []
-            for job in raw_jobs:
-                job_started = job.get("started_at")
-                job_completed = job.get("completed_at")
-                job_duration = 0.0
-                if job_started and job_completed:
-                    s = datetime.fromisoformat(job_started.replace("Z", "+00:00"))
-                    c = datetime.fromisoformat(job_completed.replace("Z", "+00:00"))
-                    job_duration = max(0.0, (c - s).total_seconds())
-
-                jobs.append({
-                    "name": job["name"],
-                    "status": self._normalize_status({"conclusion": job.get("conclusion")}),
-                    "duration_seconds": job_duration,
-                })
+            if self.fetch_jobs and self._client and "id" in run:
+                raw_jobs = self._fetch_jobs_for_run(run["id"])
+                for job in raw_jobs:
+                    job_started = job.get("started_at")
+                    job_completed = job.get("completed_at")
+                    job_duration = 0.0
+                    if job_started and job_completed:
+                        try:
+                            s = datetime.fromisoformat(job_started.replace("Z", "+00:00"))
+                            c = datetime.fromisoformat(job_completed.replace("Z", "+00:00"))
+                            job_duration = max(0.0, (c - s).total_seconds())
+                        except (ValueError, TypeError):
+                            pass
+                    jobs.append({
+                        "name": job["name"],
+                        "status": self._normalize_status(job.get("conclusion")),
+                        "duration_seconds": job_duration,
+                    })
+            elif run.get("jobs"):
+                # Fixture mode may include jobs directly
+                jobs = run["jobs"]
 
             payload = {
-                "run_id": str(run["id"]),
-                "workflow_name": run.get("name", "unknown"),
-                "trigger": {
+                "run_id": run_id,
+                "workflow_name": run.get("name", run.get("workflow_name", "unknown")),
+                "trigger": run.get("trigger", {
                     "type": run.get("event", "unknown"),
                     "ref": run.get("head_branch", ""),
                     "commit_sha": run.get("head_sha", ""),
-                },
-                "status": self._normalize_status(run),
-                "timing": {
+                }),
+                "status": self._normalize_status(conclusion),
+                "timing": run.get("timing", {
                     "created_at": run.get("created_at", ""),
                     "started_at": run.get("run_started_at", ""),
                     "completed_at": run.get("updated_at", ""),
                     "duration_seconds": self._parse_duration(run),
-                },
+                }),
                 "jobs": jobs,
             }
 
@@ -157,8 +162,8 @@ class GitHubActionsAdapter:
                 "ordering_mode": self.ordering_mode,
                 "attestation": {
                     "type": "ci_run",
-                    "run_id": str(run["id"]),
-                    "commit_sha": run.get("head_sha", ""),
+                    "run_id": run_id,
+                    "commit_sha": payload["trigger"].get("commit_sha", ""),
                     "trust_tier": self.attestation_tier,
                 },
                 "predecessor_refs": None,

@@ -1,14 +1,17 @@
 """
-GitHub Releases/Deployments Source Adapter (Deployment Reference)
+GitHub Releases Source Adapter (Deployment Reference)
 
-Emits canonical SourceEvent payloads for GitHub deployment events.
+Emits canonical SourceEvent payloads for GitHub Releases.
 Conforms to:
   - docs/ADAPTER_CONTRACT.md (universal)
   - docs/adapters/deployment/FAMILY_CONTRACT.md (deployment family)
 
-Accepts:
-  - GitHub owner/repo + token (API mode), or
-  - A list of pre-parsed deployment dicts (for testing / fixtures)
+Supports:
+  - API mode: Fetches releases from GitHub API (requires token)
+  - Fixture mode: Pre-parsed deployment dicts (for testing)
+
+Uses the Releases API (/releases) which is widely available on public repos,
+rather than the Deployments API (/deployments) which requires specific CI setup.
 """
 
 import hashlib
@@ -16,10 +19,7 @@ import json
 import os
 from datetime import datetime
 
-try:
-    import requests
-except ImportError:
-    requests = None
+from evolution.adapters.github_client import GitHubClient
 
 
 class GitHubReleasesAdapter:
@@ -29,110 +29,71 @@ class GitHubReleasesAdapter:
     attestation_tier = "medium"
 
     def __init__(self, *, owner: str = None, repo: str = None,
-                 token: str = None, deployments: list = None,
-                 source_id: str = None):
+                 token: str = None, client: GitHubClient = None,
+                 deployments: list = None, source_id: str = None):
         """
         Args:
             owner: GitHub repo owner (API mode)
             repo: GitHub repo name (API mode)
             token: GitHub token (API mode)
-            deployments: Pre-parsed list of deployment dicts (for fixtures)
-            source_id: Unique identifier for this adapter instance
+            client: Shared GitHubClient instance
+            deployments: Pre-parsed list of deployment dicts (fixture mode)
+            source_id: Unique identifier
         """
-        self.owner = owner
-        self.repo = repo
-        self.token = token or os.getenv("GITHUB_TOKEN")
         self._fixture_deployments = deployments
-        self.source_id = source_id or f"github_releases:{owner}/{repo}" if owner else "github_releases:fixture"
+        self.source_id = source_id or (
+            f"github_releases:{owner}/{repo}" if owner else "github_releases:fixture"
+        )
 
-        if owner and not self.token:
-            raise RuntimeError("GitHub token required for API mode.")
+        if deployments is None:
+            if client:
+                self._client = client
+            elif owner and repo:
+                self._client = GitHubClient(owner, repo, token)
+            else:
+                raise RuntimeError("Provide owner+repo, client, or deployments.")
+        else:
+            self._client = None
 
     def _hash(self, data: str) -> str:
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
-    def _headers(self):
+    def _fetch_releases(self) -> list:
+        """Fetch releases from GitHub API (oldest first)."""
+        releases = self._client.get_paginated("/releases", per_page=100)
+        releases.sort(key=lambda r: r.get("published_at") or r.get("created_at", ""))
+        return releases
+
+    def _release_to_deployment(self, release: dict) -> dict:
+        """Convert a GitHub Release to our deployment event format."""
+        created = release.get("published_at") or release.get("created_at", "")
+        tag = release.get("tag_name", "")
+        is_prerelease = release.get("prerelease", False)
+
         return {
-            "Authorization": f"Bearer {self.token}",
-            "Accept": "application/vnd.github.v3+json",
+            "deployment_id": str(release.get("id", "")),
+            "environment": "prerelease" if is_prerelease else "production",
+            "trigger": {
+                "type": "release",
+                "commit_sha": release.get("target_commitish", ""),
+                "ref": tag,
+            },
+            "status": "success",  # Published releases are successful
+            "timing": {
+                "initiated_at": created,
+                "completed_at": created,
+                "duration_seconds": 0.0,
+            },
+            "version": tag,
+            "is_rollback": False,
         }
-
-    def _fetch_deployments(self):
-        """Fetch deployments from GitHub API."""
-        if requests is None:
-            raise RuntimeError("requests library required. pip install requests")
-
-        url = f"https://api.github.com/repos/{self.owner}/{self.repo}/deployments"
-        all_deploys = []
-        page = 1
-
-        while True:
-            resp = requests.get(url, headers=self._headers(),
-                                params={"per_page": 100, "page": page}, timeout=30)
-            resp.raise_for_status()
-            deploys = resp.json()
-            if not deploys:
-                break
-            all_deploys.extend(deploys)
-            page += 1
-
-        # Fetch statuses for each deployment
-        results = []
-        for deploy in all_deploys:
-            status_url = deploy["statuses_url"]
-            resp = requests.get(status_url, headers=self._headers(), timeout=30)
-            resp.raise_for_status()
-            statuses = resp.json()
-
-            latest_status = statuses[0] if statuses else {}
-            state = latest_status.get("state", "unknown")
-
-            status_map = {
-                "success": "success", "failure": "failure",
-                "error": "failure", "inactive": "success",
-                "in_progress": "in_progress", "queued": "in_progress",
-                "pending": "in_progress",
-            }
-
-            created = deploy.get("created_at", "")
-            updated = latest_status.get("created_at", created)
-
-            duration = 0.0
-            if created and updated:
-                try:
-                    s = datetime.fromisoformat(created.replace("Z", "+00:00"))
-                    c = datetime.fromisoformat(updated.replace("Z", "+00:00"))
-                    duration = max(0.0, (c - s).total_seconds())
-                except (ValueError, TypeError):
-                    pass
-
-            results.append({
-                "deployment_id": str(deploy["id"]),
-                "environment": deploy.get("environment", "unknown"),
-                "trigger": {
-                    "type": "automated" if deploy.get("transient_environment") else "manual",
-                    "commit_sha": deploy.get("sha", ""),
-                    "ref": deploy.get("ref", ""),
-                },
-                "status": status_map.get(state, "failure"),
-                "timing": {
-                    "initiated_at": created,
-                    "completed_at": updated,
-                    "duration_seconds": duration,
-                },
-                "version": deploy.get("ref", ""),
-            })
-
-        results.sort(key=lambda d: d["timing"]["initiated_at"])
-        return results
 
     def iter_events(self):
         if self._fixture_deployments is not None:
             deployments = self._fixture_deployments
-        elif self.owner and self.repo:
-            deployments = self._fetch_deployments()
         else:
-            return
+            raw_releases = self._fetch_releases()
+            deployments = [self._release_to_deployment(r) for r in raw_releases]
 
         for deploy in deployments:
             content_hash = self._hash(json.dumps(deploy, sort_keys=True))
@@ -144,6 +105,7 @@ class GitHubReleasesAdapter:
                 "status": deploy.get("status", "unknown"),
                 "timing": deploy.get("timing", {}),
                 "version": deploy.get("version", ""),
+                "is_rollback": deploy.get("is_rollback", False),
             }
 
             yield {

@@ -536,6 +536,262 @@ class Phase5Engine:
 
         return prompt
 
+    # ─────────────────── 5. Fix Verification (Advisory Diff) ───────────────────
+
+    def _load_previous_advisory(self, advisory_path: Path) -> dict:
+        """Load a previous advisory JSON for comparison."""
+        with open(advisory_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def _diff_advisories(self, before: dict, after: dict) -> dict:
+        """
+        Compare two advisories and classify each change.
+
+        Returns a verification report with:
+          - resolved: changes that returned to normal
+          - persisting: changes still flagged
+          - new: changes not present in the original advisory
+          - regression: metrics that were normal before but now deviate
+        """
+        # Index "before" changes by family:metric
+        before_changes = {}
+        for c in before.get("changes", []):
+            key = f"{c['family']}:{c['metric']}"
+            before_changes[key] = c
+
+        # Index "after" changes by family:metric
+        after_changes = {}
+        for c in after.get("changes", []):
+            key = f"{c['family']}:{c['metric']}"
+            after_changes[key] = c
+
+        resolved = []
+        persisting = []
+        new_changes = []
+        regressions = []
+
+        # Check what was flagged before
+        for key, before_change in before_changes.items():
+            if key in after_changes:
+                after_change = after_changes[key]
+                # Still flagged — check if it improved
+                before_dev = abs(before_change["deviation_stddev"])
+                after_dev = abs(after_change["deviation_stddev"])
+                improvement = before_dev - after_dev
+
+                persisting.append({
+                    **after_change,
+                    "was_deviation": before_change["deviation_stddev"],
+                    "now_deviation": after_change["deviation_stddev"],
+                    "improvement": round(improvement, 2),
+                    "improved": improvement > 0,
+                })
+            else:
+                # No longer flagged — resolved!
+                resolved.append({
+                    **before_change,
+                    "was_deviation": before_change["deviation_stddev"],
+                    "resolution": "returned_to_normal",
+                })
+
+        # Check for new changes not in the original
+        for key, after_change in after_changes.items():
+            if key not in before_changes:
+                new_changes.append({
+                    **after_change,
+                    "classification": "new_observation",
+                })
+
+        # Detect regressions: metrics that were normal before but
+        # now deviate in the opposite direction or newly appear
+        for nc in new_changes:
+            # If this metric existed in the before advisory's period
+            # but was within normal range, it's a regression
+            nc["classification"] = "regression" if any(
+                nc["family"] == bc["family"] for bc in before.get("changes", [])
+            ) else "new_observation"
+            if nc["classification"] == "regression":
+                regressions.append(nc)
+
+        return {
+            "resolved": resolved,
+            "persisting": persisting,
+            "new": [n for n in new_changes if n["classification"] != "regression"],
+            "regressions": regressions,
+        }
+
+    def _format_verification_summary(self, before: dict, after: dict,
+                                      diff: dict) -> str:
+        """Format a human-readable verification report."""
+        lines = []
+        lines.append(f"Fix Verification Report — {after.get('scope', 'unknown')}")
+        lines.append(f"Comparing: {before.get('advisory_id', '?')[:8]} → "
+                      f"{after.get('advisory_id', '?')[:8]}")
+        lines.append("")
+
+        total_before = len(before.get("changes", []))
+        resolved_count = len(diff["resolved"])
+        persisting_count = len(diff["persisting"])
+        new_count = len(diff["new"])
+        regression_count = len(diff["regressions"])
+
+        # Summary line
+        if resolved_count == total_before and new_count == 0:
+            lines.append("ALL ISSUES RESOLVED. No new issues detected.")
+        elif resolved_count > 0:
+            lines.append(f"{resolved_count} of {total_before} flagged changes resolved.")
+        else:
+            lines.append(f"No changes resolved ({total_before} still active).")
+
+        lines.append("")
+
+        # Resolved
+        if diff["resolved"]:
+            lines.append("RESOLVED:")
+            for r in diff["resolved"]:
+                family = FAMILY_LABELS.get(r["family"], r["family"])
+                metric = METRIC_LABELS.get(r["metric"], r["metric"])
+                lines.append(f"  ✅ {family} / {metric} — was {abs(r['was_deviation']):.1f}x "
+                             f"stddev, now within normal range")
+            lines.append("")
+
+        # Persisting
+        if diff["persisting"]:
+            lines.append("PERSISTING:")
+            for p in diff["persisting"]:
+                family = FAMILY_LABELS.get(p["family"], p["family"])
+                metric = METRIC_LABELS.get(p["metric"], p["metric"])
+                direction = "improved" if p["improved"] else "unchanged/worsened"
+                lines.append(f"  ⚠️  {family} / {metric} — was {abs(p['was_deviation']):.1f}x, "
+                             f"now {abs(p['now_deviation']):.1f}x stddev ({direction})")
+            lines.append("")
+
+        # New
+        if diff["new"]:
+            lines.append("NEW OBSERVATIONS:")
+            for n in diff["new"]:
+                family = FAMILY_LABELS.get(n["family"], n["family"])
+                metric = METRIC_LABELS.get(n["metric"], n["metric"])
+                lines.append(f"  🔵 {family} / {metric} — "
+                             f"{abs(n['deviation_stddev']):.1f}x stddev "
+                             f"(not present in previous advisory)")
+            lines.append("")
+
+        # Regressions
+        if diff["regressions"]:
+            lines.append("REGRESSIONS:")
+            for r in diff["regressions"]:
+                family = FAMILY_LABELS.get(r["family"], r["family"])
+                metric = METRIC_LABELS.get(r["metric"], r["metric"])
+                lines.append(f"  🔴 {family} / {metric} — "
+                             f"{abs(r['deviation_stddev']):.1f}x stddev "
+                             f"(was normal before, now deviating)")
+            lines.append("")
+
+        # Score
+        if total_before > 0:
+            resolution_rate = resolved_count / total_before * 100
+            lines.append(f"Resolution rate: {resolution_rate:.0f}% "
+                         f"({resolved_count}/{total_before})")
+
+        return "\n".join(lines)
+
+    def verify(self, scope: str, previous_advisory_path: str) -> dict:
+        """
+        Run Phase 5 and compare against a previous advisory.
+
+        This is the Fix Verification Loop:
+        1. Re-run the full pipeline to get current state
+        2. Load the previous advisory
+        3. Diff: resolved / persisting / new / regression
+        4. Generate verification report
+
+        Args:
+            scope: Repository scope name
+            previous_advisory_path: Path to the previous advisory.json
+
+        Returns:
+            dict with verification report, current advisory, and diff
+        """
+        # Step 1: Run current advisory
+        current_result = self.run(scope=scope)
+        if current_result["status"] != "complete":
+            return {
+                "status": "no_current_data",
+                "message": "Current pipeline produced no significant changes.",
+                "verification": {
+                    "resolved": [],
+                    "persisting": [],
+                    "new": [],
+                    "regressions": [],
+                },
+            }
+
+        current_advisory = current_result["advisory"]
+
+        # Step 2: Load previous advisory
+        prev_path = Path(previous_advisory_path)
+        if not prev_path.exists():
+            return {
+                "status": "no_previous_advisory",
+                "message": f"Previous advisory not found: {previous_advisory_path}",
+                "advisory": current_advisory,
+            }
+
+        previous_advisory = self._load_previous_advisory(prev_path)
+
+        # Step 3: Diff
+        diff = self._diff_advisories(previous_advisory, current_advisory)
+
+        # Step 4: Format verification report
+        verification_text = self._format_verification_summary(
+            previous_advisory, current_advisory, diff
+        )
+
+        # Step 5: Save verification outputs
+        verification_data = {
+            "verification_id": _content_hash({
+                "before": previous_advisory.get("advisory_id"),
+                "after": current_advisory.get("advisory_id"),
+            }),
+            "before_advisory_id": previous_advisory.get("advisory_id"),
+            "after_advisory_id": current_advisory.get("advisory_id"),
+            "scope": scope,
+            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "summary": {
+                "total_before": len(previous_advisory.get("changes", [])),
+                "resolved": len(diff["resolved"]),
+                "persisting": len(diff["persisting"]),
+                "new": len(diff["new"]),
+                "regressions": len(diff["regressions"]),
+                "resolution_rate": (
+                    len(diff["resolved"]) / len(previous_advisory.get("changes", []))
+                    if previous_advisory.get("changes") else 0
+                ),
+            },
+            "resolved": diff["resolved"],
+            "persisting": diff["persisting"],
+            "new": diff["new"],
+            "regressions": diff["regressions"],
+        }
+
+        with open(self.output_path / "verification.json", "w", encoding="utf-8") as f:
+            json.dump(verification_data, f, indent=2)
+        with open(self.output_path / "verification.txt", "w", encoding="utf-8") as f:
+            f.write(verification_text)
+
+        return {
+            "status": "verified",
+            "advisory": current_advisory,
+            "verification": verification_data,
+            "verification_text": verification_text,
+            "formats": {
+                **current_result.get("formats", {}),
+                "verification_json": str(self.output_path / "verification.json"),
+                "verification_text": str(self.output_path / "verification.txt"),
+            },
+        }
+
     # ─────────────────── Main Execution ───────────────────
 
     def run(self, scope: str = "evolution-engine") -> dict:
