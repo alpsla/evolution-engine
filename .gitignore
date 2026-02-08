@@ -36,3 +36,6 @@ venv/
 # Test outputs
 tests/test_evo/
 tests/test_walker/
+
+# Auto Claude data directory
+.auto-claude/
