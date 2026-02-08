@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeQual Evolution Advisory — fastapi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* CodeQual Brand Colors */
+      --color-primary: #0A4D4A;        /* Deep teal */
+      --color-primary-light: #0F6B67;
+      --color-secondary: #2CA58D;      /* Bright teal */
+      --color-accent: #FF6B6B;         /* Coral */
+      
+      /* Neutrals */
+      --color-text: #1f2937;
+      --color-text-muted: #64748B;
+      --color-border: #E2E8F0;
+      --color-bg: #FFFFFF;
+      --color-bg-subtle: #F8FAFC;
+      
+      /* Semantic */
+      --color-success: #2CA58D;
+      --color-warning: #F59E0B;
+      --color-danger: #EF4444;
+      --color-info: #06B6D4;
+      
+      /* Chart colors */
+      --color-normal: #94a3b8;
+      --color-current: #2CA58D;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 11pt;
+      line-height: 1.6;
+      color: var(--color-text);
+      background: var(--color-bg);
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2em;
+    }
+
+    h1, h2, h3 {
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+
+    h1 {
+      font-size: 28pt;
+      margin-bottom: 0.5em;
+    }
+
+    h2 {
+      font-size: 18pt;
+      margin-top: 1.5em;
+      margin-bottom: 0.75em;
+      border-bottom: 2px solid var(--color-border);
+      padding-bottom: 0.5em;
+    }
+
+    h3 {
+      font-size: 14pt;
+      margin-top: 1em;
+      margin-bottom: 0.5em;
+    }
+
+    code, pre {
+      font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+      font-size: 10pt;
+    }
+
+    code {
+      background: var(--color-bg-subtle);
+      padding: 0.2em 0.4em;
+      border-radius: 4px;
+    }
+
+    pre {
+      background: var(--color-bg-subtle);
+      padding: 1em;
+      border-radius: 8px;
+      overflow-x: auto;
+      border: 1px solid var(--color-border);
+    }
+
+    /* Logo SVG inline */
+    .logo {
+      width: 48px;
+      height: 56px;
+      margin-bottom: 1em;
+    }
+
+    /* Cover Page */
+    .cover-page {
+      min-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .cover-page h1 {
+      font-size: 42pt;
+      margin-bottom: 0.5em;
+      color: var(--color-primary);
+    }
+
+    .cover-brand {
+      font-size: 18pt;
+      color: var(--color-secondary);
+      font-weight: 600;
+      margin-bottom: 2em;
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+
+    .cover-metadata {
+      font-size: 12pt;
+      color: var(--color-text-muted);
+      line-height: 2;
+    }
+
+    .cover-metadata p {
+      margin: 0.5em 0;
+    }
+
+    .cover-metadata strong {
+      color: var(--color-text);
+      margin-right: 0.5em;
+    }
+
+    /* Executive Summary */
+    .executive-summary {
+      margin-top: 2em;
+    }
+
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5em;
+      margin: 1.5em 0;
+    }
+
+    .summary-card {
+      background: var(--color-bg-subtle);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 1.5em;
+      text-align: center;
+      transition: all 250ms ease-out;
+    }
+
+    .summary-card:hover {
+      box-shadow: 0 4px 6px rgba(10, 77, 74, 0.12);
+      transform: translateY(-2px);
+    }
+
+    .summary-value {
+      font-size: 32pt;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 0.25em;
+    }
+
+    .summary-label {
+      font-size: 11pt;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .summary-families {
+      margin-top: 1em;
+      padding: 1em;
+      background: var(--color-bg-subtle);
+      border-radius: 8px;
+      border-left: 4px solid var(--color-secondary);
+    }
+
+    /* Change Cards */
+    .change-card {
+      border: 1px solid var(--color-border);
+      border-left: 4px solid var(--color-secondary);
+      padding: 1.5em;
+      margin-bottom: 1.5em;
+      background: var(--color-bg-subtle);
+      border-radius: 8px;
+      page-break-inside: avoid;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .change-card.deviation-high {
+      border-left-color: var(--color-danger);
+    }
+
+    .change-card.deviation-medium {
+      border-left-color: var(--color-warning);
+    }
+
+    .change-card.deviation-low {
+      border-left-color: var(--color-success);
+    }
+
+    .change-card-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1em;
+    }
+
+    .family-icon {
+      font-size: 24pt;
+      margin-right: 0.5em;
+    }
+
+    .metric-name {
+      font-size: 14pt;
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+
+    .family-label {
+      font-size: 10pt;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* User-friendly explanation */
+    .user-friendly-summary {
+      background: #fff;
+      padding: 1em;
+      border-radius: 6px;
+      margin-bottom: 1em;
+      border: 1px solid var(--color-border);
+    }
+
+    .user-friendly-summary strong {
+      color: var(--color-primary);
+    }
+
+    /* Bar Chart */
+    .bar-chart {
+      margin: 1em 0;
+    }
+
+    .bar-chart-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.5em;
+    }
+
+    .bar-label {
+      width: 100px;
+      font-size: 10pt;
+      color: var(--color-text-muted);
+      text-align: right;
+      padding-right: 1em;
+    }
+
+    .bar-container {
+      flex: 1;
+      height: 24px;
+      background: var(--color-border);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: var(--color-current);
+      border-radius: 4px 0 0 4px;
+    }
+
+    .bar-fill.normal {
+      background: var(--color-normal);
+    }
+
+    .bar-value {
+      margin-left: 1em;
+      font-weight: 600;
+      white-space: nowrap;
+      min-width: 80px;
+    }
+
+    .deviation-badge {
+      display: inline-block;
+      background: var(--color-secondary);
+      color: white;
+      padding: 0.25em 0.75em;
+      border-radius: 4px;
+      font-size: 9pt;
+      font-weight: 600;
+      margin-top: 0.5em;
+    }
+
+    .technical-detail {
+      margin-top: 0.5em;
+      padding-top: 0.5em;
+      border-top: 1px dashed var(--color-border);
+      font-size: 9pt;
+      color: var(--color-text-muted);
+      font-style: italic;
+    }
+
+    .technical-detail summary {
+      cursor: pointer;
+      color: var(--color-secondary);
+      font-weight: 500;
+    }
+
+    .technical-detail summary:hover {
+      text-decoration: underline;
+    }
+
+    /* Pattern Recognition */
+    .pattern-card {
+      background: var(--color-bg-subtle);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 1.5em;
+      margin-bottom: 1.5em;
+    }
+
+    .pattern-meta {
+      display: flex;
+      gap: 1em;
+      margin: 0.5em 0 1em 0;
+      font-size: 10pt;
+      color: var(--color-text-muted);
+    }
+
+    .badge {
+      background: var(--color-primary);
+      color: white;
+      padding: 0.25em 0.75em;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 9pt;
+    }
+
+    /* Investigation Section */
+    .investigation-section {
+      background: #fff;
+      border: 2px solid var(--color-secondary);
+      border-radius: 8px;
+      padding: 2em;
+      margin: 2em 0;
+    }
+
+    .next-steps-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      margin-bottom: 1em;
+    }
+
+    .next-steps-header h3 {
+      color: var(--color-primary);
+      margin: 0;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 1em;
+      margin: 1em 0;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 0.75em 1.5em;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 10pt;
+      cursor: pointer;
+      border: none;
+      transition: all 250ms ease-out;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-primary {
+      background: var(--color-accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #FF5252;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--color-secondary);
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: var(--color-primary-light);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(44, 165, 141, 0.3);
+    }
+
+    .btn-outline {
+      background: white;
+      border: 2px solid var(--color-secondary);
+      color: var(--color-primary);
+    }
+
+    .btn-outline:hover {
+      background: var(--color-bg-subtle);
+    }
+
+    .prompt-preview {
+      background: #f8f9fa;
+      border: 1px solid var(--color-border);
+      border-left: 4px solid var(--color-secondary);
+      padding: 1em;
+      border-radius: 6px;
+      margin: 1em 0;
+      font-size: 9pt;
+      line-height: 1.6;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-family: 'SF Mono', monospace;
+    }
+
+    .prompt-full {
+      display: none;
+      background: #f8f9fa;
+      border: 1px solid var(--color-border);
+      padding: 1.5em;
+      border-radius: 6px;
+      margin: 1em 0;
+      white-space: pre-wrap;
+      font-size: 10pt;
+      line-height: 1.6;
+      font-family: 'SF Mono', monospace;
+    }
+
+    .prompt-full.show {
+      display: block;
+    }
+
+    /* Evidence Section */
+    .evidence-section {
+      margin-top: 2em;
+    }
+
+    .evidence-summary {
+      background: var(--color-bg-subtle);
+      padding: 1.5em;
+      border-radius: 8px;
+      border-left: 4px solid var(--color-info);
+      margin-bottom: 1.5em;
+    }
+
+    .evidence-summary h4 {
+      color: var(--color-primary);
+      margin-bottom: 0.5em;
+    }
+
+    .evidence-included-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1em;
+      margin: 1em 0;
+    }
+
+    .evidence-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      font-size: 10pt;
+    }
+
+    .evidence-item .count {
+      font-weight: 700;
+      color: var(--color-secondary);
+    }
+
+    .evidence-details {
+      display: none;
+      margin-top: 1em;
+    }
+
+    .evidence-details.show {
+      display: block;
+    }
+
+    /* Evidence Tables */
+    .evidence-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1em 0;
+      font-size: 10pt;
+    }
+
+    .evidence-table thead {
+      background: var(--color-bg-subtle);
+      border-bottom: 2px solid var(--color-border);
+    }
+
+    .evidence-table th {
+      text-align: left;
+      padding: 0.75em 1em;
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+
+    .evidence-table td {
+      padding: 0.75em 1em;
+      border-bottom: 1px solid var(--color-border);
+      vertical-align: top;
+    }
+
+    .evidence-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .evidence-table code {
+      background: var(--color-bg-subtle);
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-size: 9pt;
+    }
+
+    /* Timeline */
+    .timeline {
+      margin: 1em 0;
+    }
+
+    .timeline-event {
+      display: flex;
+      gap: 1em;
+      padding: 0.75em 0;
+      border-left: 2px solid var(--color-border);
+      padding-left: 1em;
+      margin-left: 1em;
+      position: relative;
+    }
+
+    .timeline-event:before {
+      content: '';
+      position: absolute;
+      left: -6px;
+      top: 1em;
+      width: 10px;
+      height: 10px;
+      background: var(--color-secondary);
+      border-radius: 50%;
+    }
+
+    .timeline-time {
+      min-width: 120px;
+      font-size: 10pt;
+      color: var(--color-text-muted);
+    }
+
+    .timeline-badge {
+      font-size: 14pt;
+    }
+
+    .timeline-content {
+      flex: 1;
+      font-size: 10pt;
+    }
+
+    /* Toggle buttons */
+    .toggle-btn {
+      background: white;
+      border: 1px solid var(--color-secondary);
+      color: var(--color-secondary);
+      padding: 0.5em 1em;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 10pt;
+      transition: all 250ms ease-out;
+    }
+
+    .toggle-btn:hover {
+      background: var(--color-bg-subtle);
+    }
+
+    .toggle-btn.active {
+      background: var(--color-secondary);
+      color: white;
+    }
+
+    /* Page Breaks */
+    .page-break-before {
+      page-break-before: always;
+    }
+
+    .page-break-after {
+      page-break-after: always;
+    }
+
+    .page-break-avoid {
+      page-break-inside: avoid;
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        font-size: 10pt;
+        padding: 0;
+      }
+
+      .btn, .toggle-btn, .action-buttons {
+        display: none !important;
+      }
+
+      .prompt-full {
+        display: block !important;
+      }
+
+      .evidence-details {
+        display: block !important;
+      }
+
+      a {
+        color: var(--color-text);
+        text-decoration: none;
+      }
+
+      .no-print {
+        display: none;
+      }
+    }
+
+    @media screen {
+      .print-only {
+        display: none;
+      }
+    }
+  </style>
+  <script>
+    function copyPrompt() {
+      const promptText = document.getElementById('fullPrompt').textContent;
+      navigator.clipboard.writeText(promptText).then(() => {
+        const btn = document.getElementById('copyBtn');
+        const originalText = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        btn.style.background = 'var(--color-success)';
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.style.background = '';
+        }, 2000);
+      });
+    }
+
+    function savePromptToFile() {
+      const promptText = document.getElementById('fullPrompt').textContent;
+      const blob = new Blob([promptText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'investigation_prompt.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function saveEvidenceToFile() {
+      const evidence = {"advisory_ref": "a8058373be6fb6c1", "commits": [{"author": {"email": "github-actions@github.com", "name": "github-actions"}, "files_changed": ["docs/en/docs/release-notes.md"], "message": "\ud83d\udcdd Update release notes\n", "sha": "22c34a39561e3c95eac73847e7279bc0e97912c2", "timestamp": "2026-02-08T12:24:03.124924Z"}, {"author": {"email": "github-actions@github.com", "name": "github-actions"}, "files_changed": ["docs/en/docs/release-notes.md"], "message": "\ud83d\udcdd Update release notes\n", "sha": "925ba5c65205a63a03633f5e3a512efc744c33c3", "timestamp": "2026-02-08T12:23:58.297257Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": ["docs/en/docs/release-notes.md"], "message": "\ud83d\udcdd Update release notes\n", "sha": "c5a21354afff51711241a9a85691a48e83a0df9a", "timestamp": "2026-02-08T12:23:49.058048Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": ["docs/en/docs/release-notes.md", "fastapi/__init__.py"], "message": "\ud83d\udd16 Release version 0.121.0\n", "sha": "4efae81a76b809998c12fc0f7e1c172f451cb304", "timestamp": "2026-02-08T12:24:21.957043Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": ["docs/en/docs/release-notes.md", "fastapi/__init__.py"], "message": "\ud83d\udd16 Release version 0.58.1\n", "sha": "3ff504f03fb5ba852def5a0a41653c6bed7efb1b", "timestamp": "2026-02-08T12:23:48.782994Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": ["docs/tutorial/security/get-current-user.md", "mkdocs.yml"], "message": ":memo: Add Security tutorial: Get current user\n", "sha": "de54e85152dd1c0e8c00896a6c8c86cbc5f52d0f", "timestamp": "2026-02-08T12:23:43.857772Z"}, {"author": {"email": "109919500+YuriiMotov@users.noreply.github.com", "name": "Motov Yurii"}, "files_changed": ["docs/ru/docs/_llm-test.md", "docs/ru/docs/advanced/additional-responses.md", "docs/ru/docs/advanced/advanced-dependencies.md", "docs/ru/docs/advanced/behind-a-proxy.md", "docs/ru/docs/advanced/custom-response.md", "docs/ru/docs/advanced/dataclasses.md", "docs/ru/docs/advanced/events.md", "docs/ru/docs/advanced/generate-clients.md", "docs/ru/docs/advanced/middleware.md", "docs/ru/docs/advanced/openapi-callbacks.md", "docs/ru/docs/advanced/openapi-webhooks.md", "docs/ru/docs/advanced/path-operation-advanced-configuration.md", "docs/ru/docs/advanced/response-headers.md", "docs/ru/docs/advanced/security/http-basic-auth.md", "docs/ru/docs/advanced/security/index.md", "docs/ru/docs/advanced/security/oauth2-scopes.md", "docs/ru/docs/advanced/settings.md", "docs/ru/docs/advanced/sub-applications.md", "docs/ru/docs/advanced/templates.md", "docs/ru/docs/advanced/testing-dependencies.md", "docs/ru/docs/advanced/testing-events.md", "docs/ru/docs/advanced/testing-websockets.md", "docs/ru/docs/advanced/using-request-directly.md", "docs/ru/docs/advanced/wsgi.md", "docs/ru/docs/deployment/cloud.md", "docs/ru/docs/deployment/server-workers.md", "docs/ru/docs/how-to/conditional-openapi.md", "docs/ru/docs/how-to/configure-swagger-ui.md", "docs/ru/docs/how-to/custom-docs-ui-assets.md", "docs/ru/docs/how-to/custom-request-and-route.md", "docs/ru/docs/how-to/extending-openapi.md", "docs/ru/docs/how-to/general.md", "docs/ru/docs/how-to/graphql.md", "docs/ru/docs/how-to/index.md", "docs/ru/docs/how-to/separate-openapi-schemas.md", "docs/ru/docs/how-to/testing-database.md", "docs/ru/docs/resources/index.md"], "message": "\ud83c\udf10 Add Russian translations for missing pages (LLM-generated) (#14135)\n\n* Copy En pages\n\n* Translate pages (reviewed and corrected)\n\n* Apply changes from latest PRs: 13917 and 14099", "sha": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "timestamp": "2026-02-08T12:24:21.251211Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": ["docs/en/docs/release-notes.md", "fastapi/__init__.py"], "message": "\ud83d\udd16 Release version 0.115.13\n", "sha": "4734df1db89607c9579d2bb9795b02214e1e1d47", "timestamp": "2026-02-08T12:24:19.568649Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": ["docs/en/docs/release-notes.md", "fastapi/__init__.py"], "message": "\ud83d\udd16 Release version 0.58.0\n", "sha": "b87072bc1296a26d982207935b23ef67323a238e", "timestamp": "2026-02-08T12:23:48.646353Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": ["README.md", "docs/de/docs/features.md", "docs/de/docs/index.md", "docs/en/docs/advanced/graphql.md", "docs/en/docs/alternatives.md", "docs/en/docs/features.md", "docs/en/docs/index.md", "docs_src/graphql/tutorial001.py"], "message": "\ud83d\udcdd Update GraphQL docs, recommend Strawberry (#3981)\n\n", "sha": "4b968c4e3907066a994e125de1fa90768e9c9188", "timestamp": "2026-02-08T12:23:52.702145Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": ["README.md", "docs/en/data/sponsors.yml", "docs/en/docs/img/sponsors/docarray-top-banner.svg", "docs/en/docs/img/sponsors/docarray.svg", "docs/en/docs/img/sponsors/jina-top-banner.svg", "docs/en/docs/img/sponsors/jina2.svg", "docs/en/overrides/main.html"], "message": "\ud83d\udd27 Update Jina sponsorship (#5272)\n\n", "sha": "a1cdf8cd44e088d1cf2c82cbbb0e3308e726a2a3", "timestamp": "2026-02-08T12:23:54.983807Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": ["docs/en/docs/release-notes.md", "fastapi/__init__.py"], "message": "\ud83d\udd16 Release version 0.88.0\n", "sha": "612b8ff168beee33fcf0c0bdff9718b4c8b1ac63", "timestamp": "2026-02-08T12:23:57.008350Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": ["docs/en/docs/advanced/additional-status-codes.md", "docs/en/docs/advanced/advanced-dependencies.md", "docs/en/docs/advanced/security/http-basic-auth.md", "docs/en/docs/advanced/security/oauth2-scopes.md", "docs/en/docs/advanced/settings.md", "docs/en/docs/advanced/testing-dependencies.md", "docs/en/docs/advanced/websockets.md", "docs/en/docs/tutorial/background-tasks.md", "docs/en/docs/tutorial/bigger-applications.md", "docs/en/docs/tutorial/body-fields.md", "docs/en/docs/tutorial/body-multiple-params.md", "docs/en/docs/tutorial/cookie-params.md", "docs/en/docs/tutorial/dependencies/classes-as-dependencies.md", "docs/en/docs/tutorial/dependencies/dependencies-in-path-operation-decorators.md", "docs/en/docs/tutorial/dependencies/dependencies-with-yield.md", "docs/en/docs/tutorial/dependencies/global-dependencies.md", "docs/en/docs/tutorial/dependencies/index.md", "docs/en/docs/tutorial/dependencies/sub-dependencies.md", "docs/en/docs/tutorial/extra-data-types.md", "docs/en/docs/tutorial/header-params.md", "docs/en/docs/tutorial/path-params-numeric-validations.md", "docs/en/docs/tutorial/query-params-str-validations.md", "docs/en/docs/tutorial/request-files.md", "docs/en/docs/tutorial/request-forms-and-files.md", "docs/en/docs/tutorial/request-forms.md", "docs/en/docs/tutorial/schema-extra-example.md", "docs/en/docs/tutorial/security/first-steps.md", "docs/en/docs/tutorial/security/get-current-user.md", "docs/en/docs/tutorial/security/oauth2-jwt.md", "docs/en/docs/tutorial/security/simple-oauth2.md", "docs/en/docs/tutorial/testing.md"], "message": "\ud83d\udcdd Tweak tip recommending `Annotated` in docs (#9270)\n\n\ud83d\udcdd Tweak tip recommending Annotated", "sha": "0bc87ec77cbc53a16fdc164b3b4f472bfacd0d30", "timestamp": "2026-02-08T12:23:58.032901Z"}, {"author": {"email": "asheuh49@gmail.com", "name": "Brian Mboya"}, "files_changed": ["docs/en/docs/advanced/nosql-databases.md", "docs_src/nosql_databases/tutorial001.py", "fastapi/dependencies/utils.py", "fastapi/security/http.py", "fastapi/security/oauth2.py", "fastapi/utils.py", "pyproject.toml", "scripts/format-imports.sh", "scripts/format.sh", "scripts/lint.sh", "tests/test_tutorial/test_additional_responses/test_tutorial001.py", "tests/test_tutorial/test_additional_responses/test_tutorial002.py", "tests/test_tutorial/test_additional_responses/test_tutorial003.py", "tests/test_tutorial/test_additional_responses/test_tutorial004.py", "tests/test_tutorial/test_additional_status_codes/test_tutorial001.py", "tests/test_tutorial/test_advanced_middleware/test_tutorial001.py", "tests/test_tutorial/test_advanced_middleware/test_tutorial002.py", "tests/test_tutorial/test_advanced_middleware/test_tutorial003.py", "tests/test_tutorial/test_async_sql_databases/test_tutorial001.py", "tests/test_tutorial/test_background_tasks/test_tutorial001.py", "tests/test_tutorial/test_background_tasks/test_tutorial002.py", "tests/test_tutorial/test_behind_a_proxy/test_tutorial001.py", "tests/test_tutorial/test_behind_a_proxy/test_tutorial002.py", "tests/test_tutorial/test_bigger_applications/test_main.py", "tests/test_tutorial/test_body/test_tutorial001.py", "tests/test_tutorial/test_body_fields/test_tutorial001.py", "tests/test_tutorial/test_body_multiple_params/test_tutorial001.py", "tests/test_tutorial/test_body_multiple_params/test_tutorial003.py", "tests/test_tutorial/test_body_nested_models/test_tutorial009.py", "tests/test_tutorial/test_body_updates/test_tutorial001.py", "tests/test_tutorial/test_conditional_openapi/test_tutorial001.py", "tests/test_tutorial/test_cookie_params/test_tutorial001.py", "tests/test_tutorial/test_cors/test_tutorial001.py", "tests/test_tutorial/test_custom_request_and_route/test_tutorial001.py", "tests/test_tutorial/test_custom_request_and_route/test_tutorial002.py", "tests/test_tutorial/test_custom_request_and_route/test_tutorial003.py", "tests/test_tutorial/test_custom_response/test_tutorial001b.py", "tests/test_tutorial/test_custom_response/test_tutorial004.py", "tests/test_tutorial/test_custom_response/test_tutorial005.py", "tests/test_tutorial/test_custom_response/test_tutorial006.py", "tests/test_tutorial/test_custom_response/test_tutorial007.py", "tests/test_tutorial/test_custom_response/test_tutorial008.py", "tests/test_tutorial/test_dependencies/test_tutorial001.py", "tests/test_tutorial/test_dependencies/test_tutorial004.py", "tests/test_tutorial/test_dependencies/test_tutorial006.py", "tests/test_tutorial/test_events/test_tutorial001.py", "tests/test_tutorial/test_events/test_tutorial002.py", "tests/test_tutorial/test_extending_openapi/test_tutorial001.py", "tests/test_tutorial/test_extra_data_types/test_tutorial001.py", "tests/test_tutorial/test_extra_models/test_tutorial003.py", "tests/test_tutorial/test_extra_models/test_tutorial004.py", "tests/test_tutorial/test_extra_models/test_tutorial005.py", "tests/test_tutorial/test_first_steps/test_tutorial001.py", "tests/test_tutorial/test_handling_errors/test_tutorial001.py", "tests/test_tutorial/test_handling_errors/test_tutorial002.py", "tests/test_tutorial/test_handling_errors/test_tutorial003.py", "tests/test_tutorial/test_handling_errors/test_tutorial004.py", "tests/test_tutorial/test_handling_errors/test_tutorial005.py", "tests/test_tutorial/test_handling_errors/test_tutorial006.py", "tests/test_tutorial/test_header_params/test_tutorial001.py", "tests/test_tutorial/test_metadata/test_tutorial001.py", "tests/test_tutorial/test_metadata/test_tutorial004.py", "tests/test_tutorial/test_openapi_callbacks/test_tutorial001.py", "tests/test_tutorial/test_path_operation_advanced_configurations/test_tutorial001.py", "tests/test_tutorial/test_path_operation_advanced_configurations/test_tutorial002.py", "tests/test_tutorial/test_path_operation_advanced_configurations/test_tutorial003.py", "tests/test_tutorial/test_path_operation_advanced_configurations/test_tutorial004.py", "tests/test_tutorial/test_path_operation_configurations/test_tutorial005.py", "tests/test_tutorial/test_path_operation_configurations/test_tutorial006.py", "tests/test_tutorial/test_path_params/test_tutorial004.py", "tests/test_tutorial/test_path_params/test_tutorial005.py", "tests/test_tutorial/test_query_params/test_tutorial005.py", "tests/test_tutorial/test_query_params/test_tutorial006.py", "tests/test_tutorial/test_query_params_str_validations/test_tutorial001.py", "tests/test_tutorial/test_query_params_str_validations/test_tutorial011.py", "tests/test_tutorial/test_query_params_str_validations/test_tutorial012.py", "tests/test_tutorial/test_query_params_str_validations/test_tutorial013.py", "tests/test_tutorial/test_request_files/test_tutorial001.py", "tests/test_tutorial/test_request_files/test_tutorial002.py", "tests/test_tutorial/test_request_forms/test_tutorial001.py", "tests/test_tutorial/test_request_forms_and_files/test_tutorial001.py", "tests/test_tutorial/test_response_change_status_code/test_tutorial001.py", "tests/test_tutorial/test_response_cookies/test_tutorial001.py", "tests/test_tutorial/test_response_cookies/test_tutorial002.py", "tests/test_tutorial/test_response_headers/test_tutorial001.py", "tests/test_tutorial/test_response_headers/test_tutorial002.py", "tests/test_tutorial/test_response_model/test_tutorial003.py", "tests/test_tutorial/test_response_model/test_tutorial004.py", "tests/test_tutorial/test_response_model/test_tutorial005.py", "tests/test_tutorial/test_response_model/test_tutorial006.py", "tests/test_tutorial/test_security/test_tutorial001.py", "tests/test_tutorial/test_security/test_tutorial003.py", "tests/test_tutorial/test_security/test_tutorial005.py", "tests/test_tutorial/test_security/test_tutorial006.py", "tests/test_tutorial/test_settings/test_app02.py", "tests/test_tutorial/test_sub_applications/test_tutorial001.py", "tests/test_tutorial/test_wsgi/test_tutorial001.py"], "message": "\u2b06 Upgrade isort to version 5.x.x (#1670)\n\n* Update isort script to match changes in the new release, isort v5.0.2\r\n\r\n* Downgrade isort to version v4.3.21\r\n\r\n* Add an alternative flag to --recursive in isort v5.0.2\r\n\r\n* Add isort config file\r\n\r\n* \ud83d\ude9a Import from docs_src for tests\r\n\r\n* \ud83c\udfa8 Format dependencies.utils\r\n\r\n* \ud83c\udfa8 Remove isort combine_as_imports, keep black profile\r\n\r\n* \ud83d\udd27 Update isort config, use pyproject.toml, Black profile\r\n\r\n* \ud83d\udd27 Update format scripts to use explicit directories to format\r\n\r\notherwise it would try to format venv env directories, I have several with different Python versions\r\n\r\n* \ud83c\udfa8 Format NoSQL tutorial after re-sorting imports\r\n\r\n* \ud83c\udfa8 Fix format for __init__.py\r\n\r\nCo-authored-by: Sebasti\u00e1n Ram\u00edrez \u003ctiangolo@gmail.com\u003e", "sha": "fe453f80eddea2ffdb87537a6be2cdd686db84c8", "timestamp": "2026-02-08T12:23:48.790508Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": ["pyproject.toml", "tests/test_tutorial/test_request_files/test_tutorial001.py"], "message": "\u2796 Temporarily remove typer-cli from dependencies and upgrade Black (#4754)\n\n", "sha": "e1d0e3874b86bc2d12c0fb720fd35719b985abae", "timestamp": "2026-02-08T12:23:53.899022Z"}, {"author": {"email": "andrewchallis@hotmail.co.uk", "name": "Andy Challis"}, "files_changed": [".github/workflows/test.yml", "README.md", "docs/en/docs/index.md"], "message": "\ud83d\udc9a Fix badges in README and main page (#3979)\n\nCo-authored-by: Anthony Lukach \u003canthonylukach@gmail.com\u003e\r\nCo-authored-by: Sebasti\u00e1n Ram\u00edrez \u003ctiangolo@gmail.com\u003e", "sha": "099c4786554be070eadf47edf80bf4071bccdb47", "timestamp": "2026-02-08T12:23:52.712216Z"}, {"author": {"email": "109919500+YuriiMotov@users.noreply.github.com", "name": "Motov Yurii"}, "files_changed": ["docs/en/docs/advanced/additional-responses.md", "docs/en/docs/advanced/dataclasses.md", "docs/en/docs/advanced/openapi-callbacks.md", "docs/en/docs/advanced/path-operation-advanced-configuration.md", "docs/en/docs/advanced/response-directly.md", "docs/en/docs/advanced/settings.md", "docs/en/docs/how-to/configure-swagger-ui.md", "docs/en/docs/how-to/custom-request-and-route.md", "docs/en/docs/tutorial/bigger-applications.md", "docs/en/docs/tutorial/cookie-param-models.md", "docs/en/docs/tutorial/testing.md", "docs_src/additional_responses/tutorial002_py310.py", "docs_src/additional_responses/tutorial004_py310.py", "docs_src/custom_request_and_route/tutorial001_an.py", "docs_src/custom_request_and_route/tutorial001_an_py310.py", "docs_src/custom_request_and_route/tutorial001_an_py39.py", "docs_src/custom_request_and_route/tutorial001_py310.py", "docs_src/custom_request_and_route/tutorial001_py39.py", "docs_src/custom_request_and_route/tutorial002_an.py", "docs_src/custom_request_and_route/tutorial002_an_py310.py", "docs_src/custom_request_and_route/tutorial002_an_py39.py", "docs_src/custom_request_and_route/tutorial002_py310.py", "docs_src/custom_request_and_route/tutorial002_py39.py", "docs_src/custom_request_and_route/tutorial003_py310.py", "docs_src/dataclasses/tutorial001_py310.py", "docs_src/dataclasses/tutorial002_py310.py", "docs_src/dataclasses/tutorial002_py39.py", "docs_src/dataclasses/tutorial003_py310.py", "docs_src/dataclasses/tutorial003_py39.py", "docs_src/openapi_callbacks/tutorial001_py310.py", "docs_src/path_operation_advanced_configuration/tutorial004_py310.py", "docs_src/path_operation_advanced_configuration/tutorial004_py39.py", "docs_src/path_operation_advanced_configuration/tutorial007_pv1_py39.py", "docs_src/path_operation_advanced_configuration/tutorial007_py39.py", "docs_src/response_directly/tutorial001_py310.py", "docs_src/settings/app03/config.py", "docs_src/settings/app03/config_pv1.py", "docs_src/settings/app03_an/main.py", "docs_src/settings/app03_an_py39/config.py", "docs_src/settings/app03_an_py39/config_pv1.py", "docs_src/settings/app03_an_py39/main.py", "pyproject.toml", "tests/test_tutorial/test_additional_responses/test_tutorial002.py", "tests/test_tutorial/test_additional_responses/test_tutorial004.py", "tests/test_tutorial/test_custom_request_and_route/test_tutorial001.py", "tests/test_tutorial/test_custom_request_and_route/test_tutorial002.py", "tests/test_tutorial/test_custom_request_and_route/test_tutorial003.py", "tests/test_tutorial/test_dataclasses/test_tutorial001.py", "tests/test_tutorial/test_dataclasses/test_tutorial002.py", "tests/test_tutorial/test_dataclasses/test_tutorial003.py", "tests/test_tutorial/test_openapi_callbacks/test_tutorial001.py", "tests/test_tutorial/test_path_operation_advanced_configurations/test_tutorial004.py", "tests/test_tutorial/test_path_operation_advanced_configurations/test_tutorial007.py", "tests/test_tutorial/test_path_operation_advanced_configurations/test_tutorial007_pv1.py", "tests/test_tutorial/test_response_directly/__init__.py", "tests/test_tutorial/test_response_directly/test_tutorial001.py", "tests/test_tutorial/test_settings/test_app02.py", "tests/test_tutorial/test_settings/test_app03.py", "tests/test_tutorial/test_using_request_directly/__init__.py", "tests/test_tutorial/test_using_request_directly/test_tutorial001.py", "tests/test_tutorial/test_websockets/test_tutorial003.py", "tests/test_tutorial/test_websockets/test_tutorial003_py39.py"], "message": "\ud83d\udcdd Add variants for code examples in \"Advanced User Guide\" (#14413)\n\n", "sha": "9475024640f2e204944c5aa2cd9c67a8826189d9", "timestamp": "2026-02-08T12:24:23.120191Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": [".github/workflows/deploy-docs.yml", "scripts/deploy_docs_status.py"], "message": "\ud83d\udc77 Update docs-previews to handle no docs changes (#11975)\n\n", "sha": "233bab7f419c5bf2f9167a850f83c06a7d2c2af0", "timestamp": "2026-02-08T12:24:08.510164Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": ["docs/tutorial/extra-models.md", "docs/tutorial/src/extra-models/tutorial001.py", "docs/tutorial/src/extra-models/tutorial002.py", "mkdocs.yml"], "message": ":memo: Add docs for extra models\n", "sha": "99c7ebdb6b2f850d730ac2ea4c61878f690ea9be", "timestamp": "2026-02-08T12:23:43.489960Z"}, {"author": {"email": "tiangolo@gmail.com", "name": "Sebasti\u00e1n Ram\u00edrez"}, "files_changed": ["docs/en/docs/release-notes.md", "fastapi/__init__.py"], "message": "\ud83d\udd16 Release version 0.98.0\n", "sha": "4721405ef7c970bf3ba08259546dcc0b87cf22c0", "timestamp": "2026-02-08T12:23:59.340853Z"}], "dependencies_changed": [], "evidence_id": "9038a655b7e9833f", "files_affected": [{"change_type": "modified", "first_seen_in": "22c34a39561e3c95eac73847e7279bc0e97912c2", "path": "docs/en/docs/release-notes.md"}, {"change_type": "modified", "first_seen_in": "4efae81a76b809998c12fc0f7e1c172f451cb304", "path": "fastapi/__init__.py"}, {"change_type": "modified", "first_seen_in": "de54e85152dd1c0e8c00896a6c8c86cbc5f52d0f", "path": "docs/tutorial/security/get-current-user.md"}, {"change_type": "modified", "first_seen_in": "de54e85152dd1c0e8c00896a6c8c86cbc5f52d0f", "path": "mkdocs.yml"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/_llm-test.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/additional-responses.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/advanced-dependencies.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/behind-a-proxy.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/custom-response.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/dataclasses.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/events.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/generate-clients.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/middleware.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/openapi-callbacks.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/openapi-webhooks.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/path-operation-advanced-configuration.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/response-headers.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/security/http-basic-auth.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/security/index.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/security/oauth2-scopes.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/settings.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/sub-applications.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/templates.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/testing-dependencies.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/testing-events.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/testing-websockets.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/using-request-directly.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/advanced/wsgi.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/deployment/cloud.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/deployment/server-workers.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/how-to/conditional-openapi.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/how-to/configure-swagger-ui.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/how-to/custom-docs-ui-assets.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/how-to/custom-request-and-route.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/how-to/extending-openapi.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/how-to/general.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/how-to/graphql.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/how-to/index.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/how-to/separate-openapi-schemas.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/how-to/testing-database.md"}, {"change_type": "modified", "first_seen_in": "04d5e659bc9976b7a307541d3c81e5d6307a37d2", "path": "docs/ru/docs/resources/index.md"}, {"change_type": "modified", "first_seen_in": "4b968c4e3907066a994e125de1fa90768e9c9188", "path": "README.md"}, {"change_type": "modified", "first_seen_in": "4b968c4e3907066a994e125de1fa90768e9c9188", "path": "docs/de/docs/features.md"}, {"change_type": "modified", "first_seen_in": "4b968c4e3907066a994e125de1fa90768e9c9188", "path": "docs/de/docs/index.md"}, {"change_type": "modified", "first_seen_in": "4b968c4e3907066a994e125de1fa90768e9c9188", "path": "docs/en/docs/advanced/graphql.md"}, {"change_type": "modified", "first_seen_in": "4b968c4e3907066a994e125de1fa90768e9c9188", "path": "docs/en/docs/alternatives.md"}, {"change_type": "modified", "first_seen_in": "4b968c4e3907066a994e125de1fa90768e9c9188", "path": "docs/en/docs/features.md"}, {"change_type": "modified", "first_seen_in": "4b968c4e3907066a994e125de1fa90768e9c9188", "path": "docs/en/docs/index.md"}, {"change_type": "modified", "first_seen_in": "4b968c4e3907066a994e125de1fa90768e9c9188", "path": "docs_src/graphql/tutorial001.py"}, {"change_type": "modified", "first_seen_in": "a1cdf8cd44e088d1cf2c82cbbb0e3308e726a2a3", "path": "docs/en/data/sponsors.yml"}], "tests_impacted": [], "timeline": [{"event": "Files Changed: 19 (11.8 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:42.864332Z"}, {"event": "Files Changed: 15 (3.5 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:42.892649Z"}, {"event": "Change Dispersion: 1.585 (2.3 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:42.955038Z"}, {"event": "Change Locality: 0 (1.7 stddev below normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.012056Z"}, {"event": "Change Dispersion: 1 (4.9 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.102200Z"}, {"event": "Change Dispersion: 1.459 (2.5 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.181163Z"}, {"event": "Change Locality: 0 (1.6 stddev below normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.186609Z"}, {"event": "Files Changed: 4 (2.3 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.205816Z"}, {"event": "Change Dispersion: 1 (1.9 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.220085Z"}, {"event": "Change Dispersion: 1 (5.4 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.238264Z"}, {"event": "Change Dispersion: 1 (2.6 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.242986Z"}, {"event": "Change Dispersion: 1 (1.9 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.252407Z"}, {"event": "Change Dispersion: 0.8113 (2.3 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.257165Z"}, {"event": "Change Dispersion: 1 (1.9 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.261723Z"}, {"event": "Change Dispersion: 1 (3.9 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.313508Z"}, {"event": "Change Dispersion: 1 (1.8 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.336804Z"}, {"event": "Files Changed: 68 (20.7 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.347082Z"}, {"event": "Files Changed: 4 (1.6 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.361216Z"}, {"event": "Change Dispersion: 0.8113 (2.4 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.361216Z"}, {"event": "Files Changed: 76 (52.5 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.367090Z"}, {"event": "Change Dispersion: 1.459 (2.6 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.376918Z"}, {"event": "Files Changed: 60 (29.5 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.382556Z"}, {"event": "Change Dispersion: 1 (2.2 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.387396Z"}, {"event": "Files Changed: 35 (3.8 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.411235Z"}, {"event": "Files Changed: 168 (15.1 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.418327Z"}, {"event": "Change Locality: 0 (1.5 stddev below normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.433476Z"}, {"event": "Files Changed: 11 (1.9 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.439554Z"}, {"event": "Change Dispersion: 0.8659 (1.8 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.439554Z"}, {"event": "Files Changed: 15 (4.5 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.444626Z"}, {"event": "Change Dispersion: 0.8113 (1.9 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.464701Z"}, {"event": "Files Changed: 11 (3.3 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.469590Z"}, {"event": "Change Dispersion: 0.9183 (1.8 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.474291Z"}, {"event": "Change Dispersion: 0.8113 (2.1 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.478812Z"}, {"event": "Change Dispersion: 0.8113 (2.0 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.489960Z"}, {"event": "Change Dispersion: 0.9183 (4.9 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.494930Z"}, {"event": "Files Changed: 9 (1.7 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.500039Z"}, {"event": "Files Changed: 12 (2.2 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.505111Z"}, {"event": "Files Changed: 13 (3.9 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.510547Z"}, {"event": "Change Dispersion: 0.8113 (2.0 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.515567Z"}, {"event": "Files Changed: 7 (1.9 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.520628Z"}, {"event": "Change Dispersion: 0.9183 (2.6 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.539869Z"}, {"event": "Files Changed: 4 (2.2 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.544499Z"}, {"event": "Change Dispersion: 0.8113 (2.7 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.544499Z"}, {"event": "Change Locality: 0 (1.7 stddev below normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.544499Z"}, {"event": "Files Changed: 84 (22.1 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.550243Z"}, {"event": "Files Changed: 8 (5.5 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.560198Z"}, {"event": "Change Dispersion: 2 (5.0 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.560198Z"}, {"event": "Change Dispersion: 1.585 (3.8 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.589066Z"}, {"event": "Files Changed: 18 (3.2 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.609609Z"}, {"event": "Files Changed: 229 (85.2 stddev above normal)", "family": "version_control", "timestamp": "2026-02-08T12:23:43.626901Z"}]};
+      const blob = new Blob([JSON.stringify(evidence, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'evidence_package.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function toggleEvidence() {
+      const details = document.getElementById('evidenceDetails');
+      const btn = document.getElementById('toggleEvidenceBtn');
+      details.classList.toggle('show');
+      btn.classList.toggle('active');
+      btn.textContent = details.classList.contains('show') ? 'Hide Details' : 'Show Details';
+    }
+
+    function togglePrompt() {
+      const full = document.getElementById('fullPrompt');
+      const btn = document.getElementById('togglePromptBtn');
+      full.classList.toggle('show');
+      btn.classList.toggle('active');
+      btn.textContent = full.classList.contains('show') ? 'Hide Full Prompt' : 'Show Full Prompt';
+    }
+  </script>
+</head>
+<body>
+  <!-- 1. Cover Page -->
+  <div class="cover-page page-break-after">
+    <svg class="logo" viewBox="0 0 48 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M24 0C24 0 0 6 0 14V32C0 44 10 54 24 56C38 54 48 44 48 32V14C48 6 24 0 24 0Z" fill="#0A4D4A"/>
+      <path d="M24 4C24 4 4 9 4 16V31C4 41 12 49 24 51C36 49 44 41 44 31V16C44 9 24 4 24 4Z" fill="none" stroke="#2CA58D" stroke-width="2"/>
+      <path d="M15 20L10 28L15 36" stroke="#F8F9FA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M18 28L22 32L30 22" stroke="#2CA58D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M33 20L38 28L33 36" stroke="#F8F9FA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="cover-brand">CodeQual</div>
+    <h1>Evolution Advisory</h1>
+    <div class="cover-metadata">
+      <p><strong>Project:</strong> fastapi</p>
+      <p><strong>Period:</strong> Feb 08, 2026 at 12:23 PM to Feb 08, 2026 at 12:24 PM</p>
+      <p><strong>Advisory ID:</strong> <code>a8058373be6fb6c1</code></p>
+      <p><strong>Generated:</strong> Feb 08, 2026 at 09:32 AM</p>
+    </div>
+  </div>
+
+  <!-- 2. Executive Summary -->
+  <section class="executive-summary">
+    <h2>Executive Summary</h2>
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="summary-value">4</div>
+        <div class="summary-label">Significant Changes</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value">1</div>
+        <div class="summary-label">Areas Affected</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value">0</div>
+        <div class="summary-label">Known Patterns</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value">4</div>
+        <div class="summary-label">New Observations</div>
+      </div>
+    </div>
+    <p class="summary-families">
+      <strong>Affected areas:</strong> 
+      
+        📝 Version Control
+      
+    </p>
+  </section>
+
+  <!-- 3. Changes Detected -->
+  <section class="changes-detected page-break-before">
+    <h2>What Changed in Your Codebase</h2>
+    <p style="color: var(--color-text-muted); margin-bottom: 1.5em;">
+      We've detected 4 changes that differ from your project's normal patterns. Each change shows what typically happens versus what we observed this time.
+    </p>
+    
+    
+    <div class="change-card deviation-high">
+      <div class="change-card-header">
+        <span class="family-icon">📝</span>
+        <div>
+          <div class="metric-name">Co-change Novelty</div>
+          <div class="family-label">Version Control</div>
+        </div>
+      </div>
+      
+      <!-- User-friendly explanation -->
+      <div class="user-friendly-summary">
+        
+          <strong>What this means:</strong> The pattern of files changed together is completely new. This could indicate a new feature connecting previously unrelated parts of the system.
+        
+      </div>
+      
+      <div class="bar-chart">
+        
+        
+        
+        <div class="bar-chart-row">
+          <div class="bar-label">Typical:</div>
+          <div class="bar-container">
+            <div class="bar-fill normal" style="width: 100%"></div>
+          </div>
+          <div class="bar-value">100.0%</div>
+        </div>
+        <div class="bar-chart-row">
+          <div class="bar-label">This Time:</div>
+          <div class="bar-container">
+            <div class="bar-fill" style="width: 0%"></div>
+          </div>
+          <div class="bar-value">0.0%</div>
+        </div>
+      </div>
+      
+      <div class="deviation-badge">
+        17364.1x below typical range
+      </div>
+      
+      <details class="technical-detail">
+        <summary>Show technical details</summary>
+        <p>The co-change novelty ratio for this change was 0.00. Historically, similar changes had a novelty ratio of 1.00 ± 0.00.</p>
+      </details>
+    </div>
+    
+    <div class="change-card deviation-high">
+      <div class="change-card-header">
+        <span class="family-icon">📝</span>
+        <div>
+          <div class="metric-name">Files Changed</div>
+          <div class="family-label">Version Control</div>
+        </div>
+      </div>
+      
+      <!-- User-friendly explanation -->
+      <div class="user-friendly-summary">
+        
+          <strong>What this means:</strong> This change affected 440 files, which is much higher than usual. Normally, changes in this project touch around 1 files. Large changes like this might indicate a major feature addition, refactoring, or package update.
+        
+      </div>
+      
+      <div class="bar-chart">
+        
+        
+        
+        <div class="bar-chart-row">
+          <div class="bar-label">Typical:</div>
+          <div class="bar-container">
+            <div class="bar-fill normal" style="width: 0%"></div>
+          </div>
+          <div class="bar-value">1</div>
+        </div>
+        <div class="bar-chart-row">
+          <div class="bar-label">This Time:</div>
+          <div class="bar-container">
+            <div class="bar-fill" style="width: 100%"></div>
+          </div>
+          <div class="bar-value">440</div>
+        </div>
+      </div>
+      
+      <div class="deviation-badge">
+        775.7x above typical range
+      </div>
+      
+      <details class="technical-detail">
+        <summary>Show technical details</summary>
+        <p>The co-change novelty ratio for this change was 1.00. Historically, similar changes had a novelty ratio of 1.00 ± 0.00.</p>
+      </details>
+    </div>
+    
+    <div class="change-card deviation-high">
+      <div class="change-card-header">
+        <span class="family-icon">📝</span>
+        <div>
+          <div class="metric-name">Change Dispersion</div>
+          <div class="family-label">Version Control</div>
+        </div>
+      </div>
+      
+      <!-- User-friendly explanation -->
+      <div class="user-friendly-summary">
+        
+          <strong>What this means:</strong> The files changed are spread across 258% of your codebase. Your project typically sees changes concentrated in fewer areas. Wide-spread changes can be normal for infrastructure updates or cross-cutting features.
+        
+      </div>
+      
+      <div class="bar-chart">
+        
+        
+        
+        <div class="bar-chart-row">
+          <div class="bar-label">Typical:</div>
+          <div class="bar-container">
+            <div class="bar-fill normal" style="width: 2%"></div>
+          </div>
+          <div class="bar-value">0.06</div>
+        </div>
+        <div class="bar-chart-row">
+          <div class="bar-label">This Time:</div>
+          <div class="bar-container">
+            <div class="bar-fill" style="width: 100%"></div>
+          </div>
+          <div class="bar-value">2.58</div>
+        </div>
+      </div>
+      
+      <div class="deviation-badge">
+        10.6x above typical range
+      </div>
+      
+      <details class="technical-detail">
+        <summary>Show technical details</summary>
+        <p>The co-change novelty ratio for this change was 0.84. Historically, similar changes had a novelty ratio of 0.98 ± 0.14.</p>
+      </details>
+    </div>
+    
+    <div class="change-card deviation-medium">
+      <div class="change-card-header">
+        <span class="family-icon">📝</span>
+        <div>
+          <div class="metric-name">Change Locality</div>
+          <div class="family-label">Version Control</div>
+        </div>
+      </div>
+      
+      <!-- User-friendly explanation -->
+      <div class="user-friendly-summary">
+        
+          <strong>What this means:</strong> The modified files are more spread out than usual. This might indicate a system-wide change.
+        
+      </div>
+      
+      <div class="bar-chart">
+        
+        
+        
+        <div class="bar-chart-row">
+          <div class="bar-label">Typical:</div>
+          <div class="bar-container">
+            <div class="bar-fill normal" style="width: 10%"></div>
+          </div>
+          <div class="bar-value">0.10</div>
+        </div>
+        <div class="bar-chart-row">
+          <div class="bar-label">This Time:</div>
+          <div class="bar-container">
+            <div class="bar-fill" style="width: 100%"></div>
+          </div>
+          <div class="bar-value">1.00</div>
+        </div>
+      </div>
+      
+      <div class="deviation-badge">
+        3.0x above typical range
+      </div>
+      
+      <details class="technical-detail">
+        <summary>Show technical details</summary>
+        <p>The co-change novelty ratio for this change was 1.00. Historically, similar changes had a novelty ratio of 1.00 ± 0.00. This comparison is based on limited history and may change as more data becomes available.</p>
+      </details>
+    </div>
+    
+  </section>
+
+  <!-- 4. Pattern Recognition (conditional) -->
+  
+
+  <!-- 5. Next Steps: Investigation -->
+  <section class="investigation-section page-break-before">
+    <div class="next-steps-header">
+      <h2 style="margin: 0;">🎯 Next Steps: Investigate with AI</h2>
+    </div>
+    
+    <p style="margin-bottom: 1em;">
+      We've prepared an investigation prompt you can use with your AI assistant (ChatGPT, Claude, etc.) to dig deeper into these changes. The prompt includes all the evidence we collected.
+    </p>
+
+    <div class="prompt-preview">Here is a structural analysis of fastapi from Feb 08, 2026 at 12:23 PM to Feb 08, 2026 at 12:24 PM.
+
+CHANGES DETECTED:
+
+- Version Control: Co-change Novelty changed from 100.0% to 0.0%
+
+- Version Control: Files Changed changed from 1 to 440
+
+- Version Control: Change Dispersion changed from 0.06 to 2.58
+
+- Version Control: Change Locality changed from 0.10 to 1.00
+
+
+Click "Show Full Prompt" to see the complete investigation prompt with all commits and files...</div>
+
+    <div class="action-buttons no-print">
+      <button class="btn btn-primary" onclick="copyPrompt()" id="copyBtn">📋 Copy Prompt to Clipboard</button>
+      <button class="btn btn-secondary" onclick="savePromptToFile()">💾 Save Prompt to File</button>
+      <button class="toggle-btn" onclick="togglePrompt()" id="togglePromptBtn">Show Full Prompt</button>
+    </div>
+
+    <pre class="prompt-full" id="fullPrompt">Here is a structural analysis of fastapi from Feb 08, 2026 at 12:23 PM to Feb 08, 2026 at 12:24 PM.
+
+CHANGES DETECTED:
+
+- Version Control: Co-change Novelty changed from 100.0% to 0.0% (17364.1x below normal)
+
+- Version Control: Files Changed changed from 1 to 440 (775.7x above normal)
+
+- Version Control: Change Dispersion changed from 0.06 to 2.58 (10.6x above normal)
+
+- Version Control: Change Locality changed from 0.10 to 1.00 (3.0x above normal)
+
+
+EVIDENCE SUMMARY:
+- 20 commits involved
+- 50 files affected
+- 50 timeline events
+
+TOP COMMITS:
+
+22c34a39 — 📝 Update release notes
+  Author: github-actions
+  Files: 1
+
+925ba5c6 — 📝 Update release notes
+  Author: github-actions
+  Files: 1
+
+c5a21354 — 📝 Update release notes
+  Author: Sebastián Ramírez
+  Files: 1
+
+4efae81a — 🔖 Release version 0.121.0
+  Author: Sebastián Ramírez
+  Files: 2
+
+3ff504f0 — 🔖 Release version 0.58.1
+  Author: Sebastián Ramírez
+  Files: 2
+
+de54e851 — :memo: Add Security tutorial: Get current user
+  Author: Sebastián Ramírez
+  Files: 2
+
+04d5e659 — 🌐 Add Russian translations for missing pages (LLM-generated) (#14135)
+
+*...
+  Author: Motov Yurii
+  Files: 37
+
+4734df1d — 🔖 Release version 0.115.13
+  Author: Sebastián Ramírez
+  Files: 2
+
+b87072bc — 🔖 Release version 0.58.0
+  Author: Sebastián Ramírez
+  Files: 2
+
+4b968c4e — 📝 Update GraphQL docs, recommend Strawberry (#3981)
+  Author: Sebastián Ramírez
+  Files: 8
+
+
+TOP FILES CHANGED:
+
+- docs/en/docs/release-notes.md (modified)
+
+- fastapi/__init__.py (modified)
+
+- docs/tutorial/security/get-current-user.md (modified)
+
+- mkdocs.yml (modified)
+
+- docs/ru/docs/_llm-test.md (modified)
+
+- docs/ru/docs/advanced/additional-responses.md (modified)
+
+- docs/ru/docs/advanced/advanced-dependencies.md (modified)
+
+- docs/ru/docs/advanced/behind-a-proxy.md (modified)
+
+- docs/ru/docs/advanced/custom-response.md (modified)
+
+- docs/ru/docs/advanced/dataclasses.md (modified)
+
+- docs/ru/docs/advanced/events.md (modified)
+
+- docs/ru/docs/advanced/generate-clients.md (modified)
+
+- docs/ru/docs/advanced/middleware.md (modified)
+
+- docs/ru/docs/advanced/openapi-callbacks.md (modified)
+
+- docs/ru/docs/advanced/openapi-webhooks.md (modified)
+
+- docs/ru/docs/advanced/path-operation-advanced-configuration.md (modified)
+
+- docs/ru/docs/advanced/response-headers.md (modified)
+
+- docs/ru/docs/advanced/security/http-basic-auth.md (modified)
+
+- docs/ru/docs/advanced/security/index.md (modified)
+
+- docs/ru/docs/advanced/security/oauth2-scopes.md (modified)
+
+
+INVESTIGATION QUESTIONS:
+1. What is the most likely root cause of these changes?
+2. Which specific files should be reviewed first?
+3. Are there any structural risks introduced by these changes?
+4. What should the development team prioritize addressing?
+
+Please analyze this evidence and provide specific, actionable recommendations.</pre>
+  </section>
+
+  <!-- 6. Evidence Package -->
+  <section class="evidence-section page-break-before">
+    <h2>📦 Evidence Package</h2>
+    
+    <div class="evidence-summary">
+      <h4>What's Included</h4>
+      <p>We've collected detailed evidence to support the analysis above. You can export this to share with your AI assistant or team.</p>
+      
+      <div class="evidence-included-list">
+        <div class="evidence-item">
+          📝 <span class="count">20</span> Commits
+        </div>
+        <div class="evidence-item">
+          📄 <span class="count">50</span> Files Changed
+        </div>
+        <div class="evidence-item">
+          ⏱️ <span class="count">50</span> Timeline Events
+        </div>
+        
+        
+      </div>
+      
+      <div class="action-buttons no-print">
+        <button class="btn btn-secondary" onclick="saveEvidenceToFile()">💾 Export Evidence (JSON)</button>
+        <button class="toggle-btn" onclick="toggleEvidence()" id="toggleEvidenceBtn">Show Details</button>
+      </div>
+    </div>
+
+    <div class="evidence-details" id="evidenceDetails">
+      <!-- Commits -->
+      <h3>Commits Involved</h3>
+      <table class="evidence-table">
+        <thead>
+          <tr>
+            <th>SHA</th>
+            <th>Message</th>
+            <th>Author</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td><code>22c34a39</code></td>
+            <td>📝 Update release notes
+</td>
+            <td>github-actions</td>
+            <td>Feb 08, 12:24</td>
+          </tr>
+          
+          <tr>
+            <td><code>925ba5c6</code></td>
+            <td>📝 Update release notes
+</td>
+            <td>github-actions</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          <tr>
+            <td><code>c5a21354</code></td>
+            <td>📝 Update release notes
+</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          <tr>
+            <td><code>4efae81a</code></td>
+            <td>🔖 Release version 0.121.0
+</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:24</td>
+          </tr>
+          
+          <tr>
+            <td><code>3ff504f0</code></td>
+            <td>🔖 Release version 0.58.1
+</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          <tr>
+            <td><code>de54e851</code></td>
+            <td>:memo: Add Security tutorial: Get current user
+</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          <tr>
+            <td><code>04d5e659</code></td>
+            <td>🌐 Add Russian translations for missing pages...</td>
+            <td>Motov Yurii</td>
+            <td>Feb 08, 12:24</td>
+          </tr>
+          
+          <tr>
+            <td><code>4734df1d</code></td>
+            <td>🔖 Release version 0.115.13
+</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:24</td>
+          </tr>
+          
+          <tr>
+            <td><code>b87072bc</code></td>
+            <td>🔖 Release version 0.58.0
+</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          <tr>
+            <td><code>4b968c4e</code></td>
+            <td>📝 Update GraphQL docs, recommend Strawberry (#3981)
+
+</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          <tr>
+            <td><code>a1cdf8cd</code></td>
+            <td>🔧 Update Jina sponsorship (#5272)
+
+</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          <tr>
+            <td><code>612b8ff1</code></td>
+            <td>🔖 Release version 0.88.0
+</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          <tr>
+            <td><code>0bc87ec7</code></td>
+            <td>📝 Tweak tip recommending `Annotated` in docs (#9270)
+
+📝...</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          <tr>
+            <td><code>fe453f80</code></td>
+            <td>⬆ Upgrade isort to version 5.x.x (#1670)
+
+* Update isort...</td>
+            <td>Brian Mboya</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          <tr>
+            <td><code>e1d0e387</code></td>
+            <td>➖ Temporarily remove typer-cli from dependencies and...</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          <tr>
+            <td><code>099c4786</code></td>
+            <td>💚 Fix badges in README and main page...</td>
+            <td>Andy Challis</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          <tr>
+            <td><code>94750246</code></td>
+            <td>📝 Add variants for code examples in &#34;Advanced User...</td>
+            <td>Motov Yurii</td>
+            <td>Feb 08, 12:24</td>
+          </tr>
+          
+          <tr>
+            <td><code>233bab7f</code></td>
+            <td>👷 Update docs-previews to handle no docs changes (#11975)
+
+</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:24</td>
+          </tr>
+          
+          <tr>
+            <td><code>99c7ebdb</code></td>
+            <td>:memo: Add docs for extra models
+</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          <tr>
+            <td><code>4721405e</code></td>
+            <td>🔖 Release version 0.98.0
+</td>
+            <td>Sebastián Ramírez</td>
+            <td>Feb 08, 12:23</td>
+          </tr>
+          
+          
+        </tbody>
+      </table>
+      
+      <!-- Files Affected -->
+      <h3>Files Affected</h3>
+      <table class="evidence-table">
+        <thead>
+          <tr>
+            <th>Path</th>
+            <th>Change Type</th>
+            <th>First Seen In</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td><code>docs/en/docs/release-notes.md</code></td>
+            <td>Modified</td>
+            <td><code>22c34a39</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>fastapi/__init__.py</code></td>
+            <td>Modified</td>
+            <td><code>4efae81a</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/tutorial/security/get-current-user.md</code></td>
+            <td>Modified</td>
+            <td><code>de54e851</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>mkdocs.yml</code></td>
+            <td>Modified</td>
+            <td><code>de54e851</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/_llm-test.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/additional-responses.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/advanced-dependencies.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/behind-a-proxy.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/custom-response.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/dataclasses.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/events.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/generate-clients.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/middleware.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/openapi-callbacks.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/openapi-webhooks.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/path-operation-advanced-configuration.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/response-headers.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/security/http-basic-auth.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/security/index.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/security/oauth2-scopes.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/settings.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/sub-applications.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/templates.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/testing-dependencies.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/testing-events.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/testing-websockets.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/using-request-directly.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/advanced/wsgi.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/deployment/cloud.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/deployment/server-workers.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/how-to/conditional-openapi.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/how-to/configure-swagger-ui.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/how-to/custom-docs-ui-assets.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/how-to/custom-request-and-route.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/how-to/extending-openapi.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/how-to/general.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/how-to/graphql.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/how-to/index.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/how-to/separate-openapi-schemas.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/how-to/testing-database.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/ru/docs/resources/index.md</code></td>
+            <td>Modified</td>
+            <td><code>04d5e659</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>README.md</code></td>
+            <td>Modified</td>
+            <td><code>4b968c4e</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/de/docs/features.md</code></td>
+            <td>Modified</td>
+            <td><code>4b968c4e</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/de/docs/index.md</code></td>
+            <td>Modified</td>
+            <td><code>4b968c4e</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/en/docs/advanced/graphql.md</code></td>
+            <td>Modified</td>
+            <td><code>4b968c4e</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/en/docs/alternatives.md</code></td>
+            <td>Modified</td>
+            <td><code>4b968c4e</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/en/docs/features.md</code></td>
+            <td>Modified</td>
+            <td><code>4b968c4e</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/en/docs/index.md</code></td>
+            <td>Modified</td>
+            <td><code>4b968c4e</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs_src/graphql/tutorial001.py</code></td>
+            <td>Modified</td>
+            <td><code>4b968c4e</code></td>
+          </tr>
+          
+          <tr>
+            <td><code>docs/en/data/sponsors.yml</code></td>
+            <td>Modified</td>
+            <td><code>a1cdf8cd</code></td>
+          </tr>
+          
+          
+        </tbody>
+      </table>
+      
+      <!-- Timeline -->
+      <h3>Timeline of Events</h3>
+      <div class="timeline">
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Files Changed: 19 (11.8 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Files Changed: 15 (3.5 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 1.585 (2.3 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Locality: 0 (1.7 stddev below normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 1 (4.9 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 1.459 (2.5 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Locality: 0 (1.6 stddev below normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Files Changed: 4 (2.3 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 1 (1.9 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 1 (5.4 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 1 (2.6 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 1 (1.9 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 0.8113 (2.3 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 1 (1.9 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 1 (3.9 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 1 (1.8 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Files Changed: 68 (20.7 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Files Changed: 4 (1.6 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 0.8113 (2.4 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Files Changed: 76 (52.5 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 1.459 (2.6 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Files Changed: 60 (29.5 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 1 (2.2 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Files Changed: 35 (3.8 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Files Changed: 168 (15.1 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Locality: 0 (1.5 stddev below normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Files Changed: 11 (1.9 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 0.8659 (1.8 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Files Changed: 15 (4.5 stddev above normal)
+          </div>
+        </div>
+        
+        <div class="timeline-event">
+          <div class="timeline-time">Feb 08, 12:23</div>
+          <div class="timeline-badge">📋</div>
+          <div class="timeline-content">
+            <strong>Version_Control:</strong> Change Dispersion: 0.8113 (1.9 stddev above normal)
+          </div>
+        </div>
+        
+        
+        <div class="timeline-event" style="border-left: none;">
+          <div class="timeline-time"></div>
+          <div class="timeline-badge"></div>
+          <div class="timeline-content" style="color: var(--color-text-muted); font-style: italic;">
+            ... and 20 more events (export full evidence to see all)
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </section>
+
+  <footer style="margin-top: 4em; padding-top: 2em; border-top: 1px solid var(--color-border); text-align: center; color: var(--color-text-muted); font-size: 9pt;">
+    <p>Generated by <strong style="color: var(--color-secondary);">CodeQual</strong> Evolution Engine</p>
+    <p style="margin-top: 0.5em;">Advisory ID: a8058373be6fb6c1 • Feb 08, 2026 at 09:32 AM</p>
+  </footer>
+</body>
+</html>

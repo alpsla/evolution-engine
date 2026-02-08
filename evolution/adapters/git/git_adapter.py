@@ -2,14 +2,18 @@
 Git Source Adapter (Reference)
 
 Emits canonical SourceEvent payloads for Git commits.
-Conforms strictly to Adapter Contract.
+Conforms to:
+  - docs/ADAPTER_CONTRACT.md (universal)
+  - docs/adapters/git/FAMILY_CONTRACT.md (version control family)
 """
 
 from pathlib import Path
 from datetime import datetime
 from git import Repo
 
+
 class GitSourceAdapter:
+    source_family = "version_control"
     source_type = "git"
     ordering_mode = "causal"
     attestation_tier = "strong"
@@ -25,6 +29,8 @@ class GitSourceAdapter:
 
         for commit in commits:
             files = list(commit.stats.files.keys())
+            is_merge = len(commit.parents) > 1
+
             payload = {
                 "commit_hash": commit.hexsha,
                 "parent_commits": [p.hexsha for p in commit.parents],
@@ -41,9 +47,11 @@ class GitSourceAdapter:
                 "message": commit.message,
                 "tree_hash": commit.tree.hexsha,
                 "files": files,
+                "is_merge": is_merge,
             }
 
             yield {
+                "source_family": self.source_family,
                 "source_type": self.source_type,
                 "source_id": self.source_id,
                 "ordering_mode": self.ordering_mode,

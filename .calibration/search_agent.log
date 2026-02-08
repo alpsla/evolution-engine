@@ -1,0 +1,26 @@
+10:06:40 [INFO] 🚀 Starting Repository Search Agent
+10:06:40 [INFO] ============================================================
+10:06:40 [INFO] ✅ GitHub CLI found, version: gh version 2.86.0 (2026-01-21)
+10:06:40 [INFO] Note: Authentication will be checked during first API call
+10:06:40 [INFO] 🔍 Searching GitHub for candidate repositories...
+10:06:40 [INFO] Searching Python repositories (stars>=1000)...
+10:06:40 [ERROR] Search failed for Python: Get "https://api.github.com/search/repositories?page=1&per_page=16&q=language%3A%22Python+stars%3A%3E%3D1000+archived%3Afalse%22&sort=stars": tls: failed to verify certificate: x509: OSStatus -26276
+
+10:06:40 [INFO] Searching Go repositories (stars>=1000)...
+10:06:41 [ERROR] Search failed for Go: Get "https://api.github.com/search/repositories?page=1&per_page=16&q=language%3A%22Go+stars%3A%3E%3D1000+archived%3Afalse%22&sort=stars": tls: failed to verify certificate: x509: OSStatus -26276
+
+10:06:41 [INFO] Searching TypeScript repositories (stars>=1000)...
+10:06:41 [ERROR] Search failed for TypeScript: Get "https://api.github.com/search/repositories?page=1&per_page=16&q=language%3A%22TypeScript+stars%3A%3E%3D1000+archived%3Afalse%22&sort=stars": tls: failed to verify certificate: x509: OSStatus -26276
+
+10:06:41 [INFO] Searching JavaScript repositories (stars>=1000)...
+10:06:41 [ERROR] Search failed for JavaScript: Get "https://api.github.com/search/repositories?page=1&per_page=16&q=language%3A%22JavaScript+stars%3A%3E%3D1000+archived%3Afalse%22&sort=stars": tls: failed to verify certificate: x509: OSStatus -26276
+
+10:06:41 [INFO] Searching Java repositories (stars>=1000)...
+10:06:41 [ERROR] Search failed for Java: Get "https://api.github.com/search/repositories?page=1&per_page=16&q=language%3A%22Java+stars%3A%3E%3D1000+archived%3Afalse%22&sort=stars": tls: failed to verify certificate: x509: OSStatus -26276
+
+10:06:41 [INFO] Searching Ruby repositories (stars>=1000)...
+10:06:41 [ERROR] Search failed for Ruby: Get "https://api.github.com/search/repositories?page=1&per_page=16&q=language%3A%22Ruby+stars%3A%3E%3D1000+archived%3Afalse%22&sort=stars": tls: failed to verify certificate: x509: OSStatus -26276
+
+10:06:41 [INFO] ✅ Total repositories found: 0
+10:06:41 [ERROR] No repositories found matching criteria
+10:06:41 [ERROR] No repositories validated successfully

@@ -1,0 +1,55 @@
+"""Phase 3.1 LLM Renderer with validation-gated fallback."""
+import os
+import re
+from evolution.validation_gate import ValidationGate
+from evolution.llm_openrouter import OpenRouterClient
+
+_PREAMBLE_RE = re.compile(
+    r"^(?:(?:Here(?:'s| is) (?:a |the )?rewritten explanation[^:]*:|Explanation:)\s*\n?)",
+    re.IGNORECASE,
+)
+
+class Phase31Renderer:
+    def __init__(self):
+        self.enabled = os.getenv("PHASE31_ENABLED", "false").lower() == "true"
+        self.model = os.getenv("PHASE31_MODEL", "anthropic/claude-3.5-haiku")
+        self.gate = ValidationGate()
+        self.llm = None
+
+        if self.enabled:
+            try:
+                self.llm = OpenRouterClient(self.model)
+            except Exception:
+                # Silent fallback if LLM cannot be initialized (e.g., missing API key)
+                self.llm = None
+                self.enabled = False
+
+    @staticmethod
+    def _strip_preamble(text: str) -> str:
+        """Remove LLM-added preambles like 'Explanation:' or 'Here's a rewritten...'."""
+        return _PREAMBLE_RE.sub("", text).strip()
+
+    def render(self, explanation: dict) -> dict:
+        if not self.enabled or not self.llm:
+            return explanation
+
+        baseline_text = explanation["summary"]
+        prompt = (
+            "Rewrite the following explanation to improve clarity and readability. "
+            "Do not add facts, numbers, judgments, recommendations, or generalizations. "
+            "Preserve all numeric values exactly.\n\n"
+            f"Explanation:\n{baseline_text}"
+        )
+
+        candidate_text = self.llm.generate(prompt)
+
+        # Strip common LLM preamble artifacts
+        candidate_text = self._strip_preamble(candidate_text)
+
+        if not self.gate.accepts(candidate_text, baseline_text):
+            return explanation
+
+        explanation = dict(explanation)
+        explanation["summary"] = candidate_text
+        explanation["phase31_used"] = True
+        return explanation
