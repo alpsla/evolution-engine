@@ -1,0 +1,6 @@
+🔍 Searching GitHub repositories...
+Min stars: 1000
+Max per language: 15
+
+Searching Python repositories...
+Get "https://api.github.com/search/repositories?page=1&per_page=15&q=archived%3Afalse+language%3APython+stars%3A%3E%3D1000&sort=stars": tls: failed to verify certificate: x509: OSStatus -26276

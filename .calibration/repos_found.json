@@ -1,0 +1,1682 @@
+[
+  {
+    "forksCount": 42419,
+    "language": "Python",
+    "name": "public-apis",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjUxMTIxNTYy",
+      "is_bot": false,
+      "login": "public-apis",
+      "type": "Organization",
+      "url": "https://github.com/public-apis"
+    },
+    "stargazersCount": 396455,
+    "updatedAt": "2026-02-08T15:13:05Z"
+  },
+  {
+    "forksCount": 65893,
+    "language": "Python",
+    "name": "free-programming-books",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjE0MTI3MzA4",
+      "is_bot": false,
+      "login": "EbookFoundation",
+      "type": "Organization",
+      "url": "https://github.com/EbookFoundation"
+    },
+    "stargazersCount": 382275,
+    "updatedAt": "2026-02-08T15:14:57Z"
+  },
+  {
+    "forksCount": 54325,
+    "language": "Python",
+    "name": "system-design-primer",
+    "owner": {
+      "id": "MDQ6VXNlcjU0NTg5OTc=",
+      "is_bot": false,
+      "login": "donnemartin",
+      "type": "User",
+      "url": "https://github.com/donnemartin"
+    },
+    "stargazersCount": 334728,
+    "updatedAt": "2026-02-08T15:10:50Z"
+  },
+  {
+    "forksCount": 27172,
+    "language": "Python",
+    "name": "awesome-python",
+    "owner": {
+      "id": "MDQ6VXNlcjY1MjA3MA==",
+      "is_bot": false,
+      "login": "vinta",
+      "type": "User",
+      "url": "https://github.com/vinta"
+    },
+    "stargazersCount": 281959,
+    "updatedAt": "2026-02-08T15:13:40Z"
+  },
+  {
+    "forksCount": 50032,
+    "language": "Python",
+    "name": "Python",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjIwNDg3NzI1",
+      "is_bot": false,
+      "login": "TheAlgorithms",
+      "type": "Organization",
+      "url": "https://github.com/TheAlgorithms"
+    },
+    "stargazersCount": 217541,
+    "updatedAt": "2026-02-08T14:21:00Z"
+  },
+  {
+    "forksCount": 46266,
+    "language": "Python",
+    "name": "AutoGPT",
+    "owner": {
+      "id": "O_kgDOB8roIQ",
+      "is_bot": false,
+      "login": "Significant-Gravitas",
+      "type": "Organization",
+      "url": "https://github.com/Significant-Gravitas"
+    },
+    "stargazersCount": 181721,
+    "updatedAt": "2026-02-08T14:54:46Z"
+  },
+  {
+    "forksCount": 29938,
+    "language": "Python",
+    "name": "stable-diffusion-webui",
+    "owner": {
+      "id": "MDQ6VXNlcjIwOTIwNDkw",
+      "is_bot": false,
+      "login": "AUTOMATIC1111",
+      "type": "User",
+      "url": "https://github.com/AUTOMATIC1111"
+    },
+    "stargazersCount": 160446,
+    "updatedAt": "2026-02-08T14:21:11Z"
+  },
+  {
+    "forksCount": 31994,
+    "language": "Python",
+    "name": "transformers",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjI1NzIwNzQz",
+      "is_bot": false,
+      "login": "huggingface",
+      "type": "Organization",
+      "url": "https://github.com/huggingface"
+    },
+    "stargazersCount": 156220,
+    "updatedAt": "2026-02-08T14:59:45Z"
+  },
+  {
+    "forksCount": 11846,
+    "language": "Python",
+    "name": "yt-dlp",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjc5NTg5MzEw",
+      "is_bot": false,
+      "login": "yt-dlp",
+      "type": "Organization",
+      "url": "https://github.com/yt-dlp"
+    },
+    "stargazersCount": 146294,
+    "updatedAt": "2026-02-08T14:55:01Z"
+  },
+  {
+    "forksCount": 8429,
+    "language": "Python",
+    "name": "langflow",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjg1NzAyNDY3",
+      "is_bot": false,
+      "login": "langflow-ai",
+      "type": "Organization",
+      "url": "https://github.com/langflow-ai"
+    },
+    "stargazersCount": 144639,
+    "updatedAt": "2026-02-08T15:01:27Z"
+  },
+  {
+    "forksCount": 11105,
+    "language": "Python",
+    "name": "HelloGitHub",
+    "owner": {
+      "id": "MDQ6VXNlcjgyNTU4MDA=",
+      "is_bot": false,
+      "login": "521xueweihan",
+      "type": "User",
+      "url": "https://github.com/521xueweihan"
+    },
+    "stargazersCount": 142523,
+    "updatedAt": "2026-02-08T15:09:25Z"
+  },
+  {
+    "forksCount": 10598,
+    "language": "Python",
+    "name": "youtube-dl",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjQ4MzgxMDQw",
+      "is_bot": false,
+      "login": "ytdl-org",
+      "type": "Organization",
+      "url": "https://github.com/ytdl-org"
+    },
+    "stargazersCount": 139634,
+    "updatedAt": "2026-02-08T14:37:07Z"
+  },
+  {
+    "forksCount": 20752,
+    "language": "Python",
+    "name": "langchain",
+    "owner": {
+      "id": "O_kgDOB43M6Q",
+      "is_bot": false,
+      "login": "langchain-ai",
+      "type": "Organization",
+      "url": "https://github.com/langchain-ai"
+    },
+    "stargazersCount": 126221,
+    "updatedAt": "2026-02-08T15:13:41Z"
+  },
+  {
+    "forksCount": 17401,
+    "language": "Python",
+    "name": "open-webui",
+    "owner": {
+      "id": "O_kgDOCWz90A",
+      "is_bot": false,
+      "login": "open-webui",
+      "type": "Organization",
+      "url": "https://github.com/open-webui"
+    },
+    "stargazersCount": 123283,
+    "updatedAt": "2026-02-08T15:00:53Z"
+  },
+  {
+    "forksCount": 11666,
+    "language": "Python",
+    "name": "ComfyUI",
+    "owner": {
+      "id": "O_kgDOCe3O7Q",
+      "is_bot": false,
+      "login": "Comfy-Org",
+      "type": "Organization",
+      "url": "https://github.com/Comfy-Org"
+    },
+    "stargazersCount": 102743,
+    "updatedAt": "2026-02-08T15:13:25Z"
+  },
+  {
+    "forksCount": 12956,
+    "language": "Go",
+    "name": "awesome-go",
+    "owner": {
+      "id": "MDQ6VXNlcjMxOTk2",
+      "is_bot": false,
+      "login": "avelino",
+      "type": "User",
+      "url": "https://github.com/avelino"
+    },
+    "stargazersCount": 164563,
+    "updatedAt": "2026-02-08T15:14:11Z"
+  },
+  {
+    "forksCount": 14495,
+    "language": "Go",
+    "name": "ollama",
+    "owner": {
+      "id": "O_kgDOCQpc8w",
+      "is_bot": false,
+      "login": "ollama",
+      "type": "Organization",
+      "url": "https://github.com/ollama"
+    },
+    "stargazersCount": 162124,
+    "updatedAt": "2026-02-08T15:14:50Z"
+  },
+  {
+    "forksCount": 18803,
+    "language": "Go",
+    "name": "go",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjQzMTQwOTI=",
+      "is_bot": false,
+      "login": "golang",
+      "type": "Organization",
+      "url": "https://github.com/golang"
+    },
+    "stargazersCount": 132339,
+    "updatedAt": "2026-02-08T14:11:09Z"
+  },
+  {
+    "forksCount": 42409,
+    "language": "Go",
+    "name": "kubernetes",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjEzNjI5NDA4",
+      "is_bot": false,
+      "login": "kubernetes",
+      "type": "Organization",
+      "url": "https://github.com/kubernetes"
+    },
+    "stargazersCount": 120354,
+    "updatedAt": "2026-02-08T14:06:54Z"
+  },
+  {
+    "forksCount": 14870,
+    "language": "Go",
+    "name": "frp",
+    "owner": {
+      "id": "MDQ6VXNlcjczNDY2NjE=",
+      "is_bot": false,
+      "login": "fatedier",
+      "type": "User",
+      "url": "https://github.com/fatedier"
+    },
+    "stargazersCount": 104309,
+    "updatedAt": "2026-02-08T15:02:59Z"
+  },
+  {
+    "forksCount": 8553,
+    "language": "Go",
+    "name": "gin",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjc4OTQ0Nzg=",
+      "is_bot": false,
+      "login": "gin-gonic",
+      "type": "Organization",
+      "url": "https://github.com/gin-gonic"
+    },
+    "stargazersCount": 87929,
+    "updatedAt": "2026-02-08T13:15:11Z"
+  },
+  {
+    "forksCount": 8187,
+    "language": "Go",
+    "name": "hugo",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjI5Mzg1MjM3",
+      "is_bot": false,
+      "login": "gohugoio",
+      "type": "Organization",
+      "url": "https://github.com/gohugoio"
+    },
+    "stargazersCount": 86460,
+    "updatedAt": "2026-02-08T15:02:38Z"
+  },
+  {
+    "forksCount": 4923,
+    "language": "Go",
+    "name": "syncthing",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjc2MjgwMTg=",
+      "is_bot": false,
+      "login": "syncthing",
+      "type": "Organization",
+      "url": "https://github.com/syncthing"
+    },
+    "stargazersCount": 79725,
+    "updatedAt": "2026-02-08T14:57:19Z"
+  },
+  {
+    "forksCount": 2693,
+    "language": "Go",
+    "name": "fzf",
+    "owner": {
+      "id": "MDQ6VXNlcjcwMDgyNg==",
+      "is_bot": false,
+      "login": "junegunn",
+      "type": "User",
+      "url": "https://github.com/junegunn"
+    },
+    "stargazersCount": 77631,
+    "updatedAt": "2026-02-08T14:25:18Z"
+  },
+  {
+    "forksCount": 2488,
+    "language": "Go",
+    "name": "lazygit",
+    "owner": {
+      "id": "MDQ6VXNlcjg0NTY2MzM=",
+      "is_bot": false,
+      "login": "jesseduffield",
+      "type": "User",
+      "url": "https://github.com/jesseduffield"
+    },
+    "stargazersCount": 71907,
+    "updatedAt": "2026-02-08T14:34:24Z"
+  },
+  {
+    "forksCount": 18899,
+    "language": "Go",
+    "name": "moby",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjI3MjU5MTk3",
+      "is_bot": false,
+      "login": "moby",
+      "type": "Organization",
+      "url": "https://github.com/moby"
+    },
+    "stargazersCount": 71457,
+    "updatedAt": "2026-02-08T13:22:43Z"
+  },
+  {
+    "forksCount": 4622,
+    "language": "Go",
+    "name": "caddy",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjEyOTU1NTI4",
+      "is_bot": false,
+      "login": "caddyserver",
+      "type": "Organization",
+      "url": "https://github.com/caddyserver"
+    },
+    "stargazersCount": 69708,
+    "updatedAt": "2026-02-08T14:49:50Z"
+  },
+  {
+    "forksCount": 3255,
+    "language": "Go",
+    "name": "node",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjE2NjI3MTAw",
+      "is_bot": false,
+      "login": "base",
+      "type": "Organization",
+      "url": "https://github.com/base"
+    },
+    "stargazersCount": 68783,
+    "updatedAt": "2026-02-08T10:28:35Z"
+  },
+  {
+    "forksCount": 1842,
+    "language": "Go",
+    "name": "act",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjM4MTM2MTg=",
+      "is_bot": false,
+      "login": "nektos",
+      "type": "Organization",
+      "url": "https://github.com/nektos"
+    },
+    "stargazersCount": 68630,
+    "updatedAt": "2026-02-08T14:46:10Z"
+  },
+  {
+    "forksCount": 10165,
+    "language": "Go",
+    "name": "prometheus",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjMzODA0NjI=",
+      "is_bot": false,
+      "login": "prometheus",
+      "type": "Organization",
+      "url": "https://github.com/prometheus"
+    },
+    "stargazersCount": 62603,
+    "updatedAt": "2026-02-08T14:21:04Z"
+  },
+  {
+    "forksCount": 43338,
+    "language": "TypeScript",
+    "name": "freeCodeCamp",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjk4OTI1MjI=",
+      "is_bot": false,
+      "login": "freeCodeCamp",
+      "type": "Organization",
+      "url": "https://github.com/freeCodeCamp"
+    },
+    "stargazersCount": 436903,
+    "updatedAt": "2026-02-08T15:04:15Z"
+  },
+  {
+    "forksCount": 43701,
+    "language": "TypeScript",
+    "name": "developer-roadmap",
+    "owner": {
+      "id": "MDQ6VXNlcjQ5MjExODM=",
+      "is_bot": false,
+      "login": "kamranahmedse",
+      "type": "User",
+      "url": "https://github.com/kamranahmedse"
+    },
+    "stargazersCount": 348738,
+    "updatedAt": "2026-02-08T15:11:49Z"
+  },
+  {
+    "forksCount": 33897,
+    "language": "TypeScript",
+    "name": "vue",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjYxMjgxMDc=",
+      "is_bot": false,
+      "login": "vuejs",
+      "type": "Organization",
+      "url": "https://github.com/vuejs"
+    },
+    "stargazersCount": 209904,
+    "updatedAt": "2026-02-08T15:14:46Z"
+  },
+  {
+    "forksCount": 37799,
+    "language": "TypeScript",
+    "name": "vscode",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjYxNTQ3MjI=",
+      "is_bot": false,
+      "login": "microsoft",
+      "type": "Organization",
+      "url": "https://github.com/microsoft"
+    },
+    "stargazersCount": 181518,
+    "updatedAt": "2026-02-08T14:52:21Z"
+  },
+  {
+    "forksCount": 28797,
+    "language": "TypeScript",
+    "name": "openclaw",
+    "owner": {
+      "id": "O_kgDODxG9fw",
+      "is_bot": false,
+      "login": "openclaw",
+      "type": "Organization",
+      "url": "https://github.com/openclaw"
+    },
+    "stargazersCount": 175640,
+    "updatedAt": "2026-02-08T15:14:27Z"
+  },
+  {
+    "forksCount": 54639,
+    "language": "TypeScript",
+    "name": "n8n",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjQ1NDg3NzEx",
+      "is_bot": false,
+      "login": "n8n-io",
+      "type": "Organization",
+      "url": "https://github.com/n8n-io"
+    },
+    "stargazersCount": 173574,
+    "updatedAt": "2026-02-08T15:13:57Z"
+  },
+  {
+    "forksCount": 16434,
+    "language": "TypeScript",
+    "name": "tech-interview-handbook",
+    "owner": {
+      "id": "MDQ6VXNlcjEzMTUxMDE=",
+      "is_bot": false,
+      "login": "yangshun",
+      "type": "User",
+      "url": "https://github.com/yangshun"
+    },
+    "stargazersCount": 137497,
+    "updatedAt": "2026-02-08T15:13:50Z"
+  },
+  {
+    "forksCount": 20072,
+    "language": "TypeScript",
+    "name": "dify",
+    "owner": {
+      "id": "O_kgDOB5RjPA",
+      "is_bot": false,
+      "login": "langgenius",
+      "type": "Organization",
+      "url": "https://github.com/langgenius"
+    },
+    "stargazersCount": 129055,
+    "updatedAt": "2026-02-08T15:15:05Z"
+  },
+  {
+    "forksCount": 12430,
+    "language": "TypeScript",
+    "name": "excalidraw",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjU5NDUyMTIw",
+      "is_bot": false,
+      "login": "excalidraw",
+      "type": "Organization",
+      "url": "https://github.com/excalidraw"
+    },
+    "stargazersCount": 116258,
+    "updatedAt": "2026-02-08T15:13:27Z"
+  },
+  {
+    "forksCount": 5559,
+    "language": "TypeScript",
+    "name": "iptv",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjU1OTM3MDI4",
+      "is_bot": false,
+      "login": "iptv-org",
+      "type": "Organization",
+      "url": "https://github.com/iptv-org"
+    },
+    "stargazersCount": 111231,
+    "updatedAt": "2026-02-08T14:51:34Z"
+  },
+  {
+    "forksCount": 13220,
+    "language": "TypeScript",
+    "name": "TypeScript",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjYxNTQ3MjI=",
+      "is_bot": false,
+      "login": "microsoft",
+      "type": "Organization",
+      "url": "https://github.com/microsoft"
+    },
+    "stargazersCount": 107724,
+    "updatedAt": "2026-02-08T14:44:07Z"
+  },
+  {
+    "forksCount": 7847,
+    "language": "TypeScript",
+    "name": "ui",
+    "owner": {
+      "id": "O_kgDOCFakBg",
+      "is_bot": false,
+      "login": "shadcn-ui",
+      "type": "Organization",
+      "url": "https://github.com/shadcn-ui"
+    },
+    "stargazersCount": 106294,
+    "updatedAt": "2026-02-08T14:45:16Z"
+  },
+  {
+    "forksCount": 9564,
+    "language": "TypeScript",
+    "name": "opencode",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjY2NTcwOTE1",
+      "is_bot": false,
+      "login": "anomalyco",
+      "type": "Organization",
+      "url": "https://github.com/anomalyco"
+    },
+    "stargazersCount": 100176,
+    "updatedAt": "2026-02-08T15:13:41Z"
+  },
+  {
+    "forksCount": 27052,
+    "language": "TypeScript",
+    "name": "angular",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjEzOTQyNg==",
+      "is_bot": false,
+      "login": "angular",
+      "type": "Organization",
+      "url": "https://github.com/angular"
+    },
+    "stargazersCount": 99817,
+    "updatedAt": "2026-02-08T14:33:01Z"
+  },
+  {
+    "forksCount": 54487,
+    "language": "TypeScript",
+    "name": "ant-design",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjEyMTAxNTM2",
+      "is_bot": false,
+      "login": "ant-design",
+      "type": "Organization",
+      "url": "https://github.com/ant-design"
+    },
+    "stargazersCount": 97465,
+    "updatedAt": "2026-02-08T14:21:27Z"
+  },
+  {
+    "forksCount": 50541,
+    "language": "JavaScript",
+    "name": "react",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjY5NjMx",
+      "is_bot": false,
+      "login": "facebook",
+      "type": "Organization",
+      "url": "https://github.com/facebook"
+    },
+    "stargazersCount": 242861,
+    "updatedAt": "2026-02-08T15:01:29Z"
+  },
+  {
+    "forksCount": 31135,
+    "language": "JavaScript",
+    "name": "javascript-algorithms",
+    "owner": {
+      "id": "MDQ6VXNlcjMwMDAyODU=",
+      "is_bot": false,
+      "login": "trekhleb",
+      "type": "User",
+      "url": "https://github.com/trekhleb"
+    },
+    "stargazersCount": 195528,
+    "updatedAt": "2026-02-08T14:31:04Z"
+  },
+  {
+    "forksCount": 26764,
+    "language": "JavaScript",
+    "name": "javascript",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjY5ODQzNw==",
+      "is_bot": false,
+      "login": "airbnb",
+      "type": "Organization",
+      "url": "https://github.com/airbnb"
+    },
+    "stargazersCount": 148107,
+    "updatedAt": "2026-02-08T14:51:31Z"
+  },
+  {
+    "forksCount": 30416,
+    "language": "JavaScript",
+    "name": "next.js",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjE0OTg1MDIw",
+      "is_bot": false,
+      "login": "vercel",
+      "type": "Organization",
+      "url": "https://github.com/vercel"
+    },
+    "stargazersCount": 137566,
+    "updatedAt": "2026-02-08T15:01:27Z"
+  },
+  {
+    "forksCount": 12436,
+    "language": "JavaScript",
+    "name": "30-seconds-of-code",
+    "owner": {
+      "id": "MDQ6VXNlcjgyODE4NzU=",
+      "is_bot": false,
+      "login": "Chalarangelo",
+      "type": "User",
+      "url": "https://github.com/Chalarangelo"
+    },
+    "stargazersCount": 126713,
+    "updatedAt": "2026-02-08T14:31:52Z"
+  },
+  {
+    "forksCount": 34647,
+    "language": "JavaScript",
+    "name": "node",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjk5NTAzMTM=",
+      "is_bot": false,
+      "login": "nodejs",
+      "type": "Organization",
+      "url": "https://github.com/nodejs"
+    },
+    "stargazersCount": 115608,
+    "updatedAt": "2026-02-08T14:43:43Z"
+  },
+  {
+    "forksCount": 36268,
+    "language": "JavaScript",
+    "name": "three.js",
+    "owner": {
+      "id": "MDQ6VXNlcjk3MDg4",
+      "is_bot": false,
+      "login": "mrdoob",
+      "type": "User",
+      "url": "https://github.com/mrdoob"
+    },
+    "stargazersCount": 110780,
+    "updatedAt": "2026-02-08T14:32:28Z"
+  },
+  {
+    "forksCount": 11506,
+    "language": "JavaScript",
+    "name": "axios",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjMyMzcyMzMz",
+      "is_bot": false,
+      "login": "axios",
+      "type": "Organization",
+      "url": "https://github.com/axios"
+    },
+    "stargazersCount": 108568,
+    "updatedAt": "2026-02-08T14:32:34Z"
+  },
+  {
+    "forksCount": 27139,
+    "language": "JavaScript",
+    "name": "create-react-app",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjY5NjMx",
+      "is_bot": false,
+      "login": "facebook",
+      "type": "Organization",
+      "url": "https://github.com/facebook"
+    },
+    "stargazersCount": 103947,
+    "updatedAt": "2026-02-08T13:25:58Z"
+  },
+  {
+    "forksCount": 7369,
+    "language": "JavaScript",
+    "name": "awesome-mac",
+    "owner": {
+      "id": "MDQ6VXNlcjE2ODAyNzM=",
+      "is_bot": false,
+      "login": "jaywcjlove",
+      "type": "User",
+      "url": "https://github.com/jaywcjlove"
+    },
+    "stargazersCount": 98605,
+    "updatedAt": "2026-02-08T15:12:43Z"
+  },
+  {
+    "forksCount": 32776,
+    "language": "JavaScript",
+    "name": "material-ui",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjMzNjYzOTMy",
+      "is_bot": false,
+      "login": "mui",
+      "type": "Organization",
+      "url": "https://github.com/mui"
+    },
+    "stargazersCount": 97779,
+    "updatedAt": "2026-02-08T14:32:04Z"
+  },
+  {
+    "forksCount": 15127,
+    "language": "JavaScript",
+    "name": "Web-Dev-For-Beginners",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjYxNTQ3MjI=",
+      "is_bot": false,
+      "login": "microsoft",
+      "type": "Organization",
+      "url": "https://github.com/microsoft"
+    },
+    "stargazersCount": 95263,
+    "updatedAt": "2026-02-08T14:26:46Z"
+  },
+  {
+    "forksCount": 12502,
+    "language": "JavaScript",
+    "name": "clean-code-javascript",
+    "owner": {
+      "id": "MDQ6VXNlcjUxMTQ2NjY=",
+      "is_bot": false,
+      "login": "ryanmcdermott",
+      "type": "User",
+      "url": "https://github.com/ryanmcdermott"
+    },
+    "stargazersCount": 94290,
+    "updatedAt": "2026-02-08T14:44:53Z"
+  },
+  {
+    "forksCount": 4758,
+    "language": "JavaScript",
+    "name": "svelte",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjIzNjE3OTYz",
+      "is_bot": false,
+      "login": "sveltejs",
+      "type": "Organization",
+      "url": "https://github.com/sveltejs"
+    },
+    "stargazersCount": 85717,
+    "updatedAt": "2026-02-08T13:49:26Z"
+  },
+  {
+    "forksCount": 7371,
+    "language": "JavaScript",
+    "name": "uptime-kuma",
+    "owner": {
+      "id": "MDQ6VXNlcjEzMzY3Nzg=",
+      "is_bot": false,
+      "login": "louislam",
+      "type": "User",
+      "url": "https://github.com/louislam"
+    },
+    "stargazersCount": 82537,
+    "updatedAt": "2026-02-08T15:07:22Z"
+  },
+  {
+    "forksCount": 46112,
+    "language": "Java",
+    "name": "JavaGuide",
+    "owner": {
+      "id": "MDQ6VXNlcjI5ODgwMTQ1",
+      "is_bot": false,
+      "login": "Snailclimb",
+      "type": "User",
+      "url": "https://github.com/Snailclimb"
+    },
+    "stargazersCount": 153769,
+    "updatedAt": "2026-02-08T14:50:09Z"
+  },
+  {
+    "forksCount": 14825,
+    "language": "Java",
+    "name": "hello-algo",
+    "owner": {
+      "id": "MDQ6VXNlcjI2OTkzMDU2",
+      "is_bot": false,
+      "login": "krahets",
+      "type": "User",
+      "url": "https://github.com/krahets"
+    },
+    "stargazersCount": 122190,
+    "updatedAt": "2026-02-08T15:08:57Z"
+  },
+  {
+    "forksCount": 13485,
+    "language": "Java",
+    "name": "GitHub-Chinese-Top-Charts",
+    "owner": {
+      "id": "MDQ6VXNlcjIxMDE4OTA0",
+      "is_bot": false,
+      "login": "GrowingGit",
+      "type": "User",
+      "url": "https://github.com/GrowingGit"
+    },
+    "stargazersCount": 106071,
+    "updatedAt": "2026-02-08T15:01:30Z"
+  },
+  {
+    "forksCount": 27385,
+    "language": "Java",
+    "name": "java-design-patterns",
+    "owner": {
+      "id": "MDQ6VXNlcjU4MjM0Ng==",
+      "is_bot": false,
+      "login": "iluwatar",
+      "type": "User",
+      "url": "https://github.com/iluwatar"
+    },
+    "stargazersCount": 93699,
+    "updatedAt": "2026-02-08T14:39:58Z"
+  },
+  {
+    "forksCount": 29655,
+    "language": "Java",
+    "name": "mall",
+    "owner": {
+      "id": "MDQ6VXNlcjE1OTAzODA5",
+      "is_bot": false,
+      "login": "macrozheng",
+      "type": "User",
+      "url": "https://github.com/macrozheng"
+    },
+    "stargazersCount": 82874,
+    "updatedAt": "2026-02-08T13:21:20Z"
+  },
+  {
+    "forksCount": 41851,
+    "language": "Java",
+    "name": "spring-boot",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjMxNzc3Ng==",
+      "is_bot": false,
+      "login": "spring-projects",
+      "type": "Organization",
+      "url": "https://github.com/spring-projects"
+    },
+    "stargazersCount": 79866,
+    "updatedAt": "2026-02-08T14:51:57Z"
+  },
+  {
+    "forksCount": 19293,
+    "language": "Java",
+    "name": "advanced-java",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjQzNzE2NzE2",
+      "is_bot": false,
+      "login": "doocs",
+      "type": "Organization",
+      "url": "https://github.com/doocs"
+    },
+    "stargazersCount": 78821,
+    "updatedAt": "2026-02-08T15:12:17Z"
+  },
+  {
+    "forksCount": 13996,
+    "language": "Java",
+    "name": "LeetCodeAnimation",
+    "owner": {
+      "id": "MDQ6VXNlcjE1MzA4ODEx",
+      "is_bot": false,
+      "login": "MisterBooo",
+      "type": "User",
+      "url": "https://github.com/MisterBooo"
+    },
+    "stargazersCount": 76702,
+    "updatedAt": "2026-02-08T02:55:16Z"
+  },
+  {
+    "forksCount": 25800,
+    "language": "Java",
+    "name": "elasticsearch",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjY3NjQzOTA=",
+      "is_bot": false,
+      "login": "elastic",
+      "type": "Organization",
+      "url": "https://github.com/elastic"
+    },
+    "stargazersCount": 76027,
+    "updatedAt": "2026-02-08T12:27:42Z"
+  },
+  {
+    "forksCount": 20946,
+    "language": "Java",
+    "name": "Java",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjIwNDg3NzI1",
+      "is_bot": false,
+      "login": "TheAlgorithms",
+      "type": "Organization",
+      "url": "https://github.com/TheAlgorithms"
+    },
+    "stargazersCount": 64963,
+    "updatedAt": "2026-02-08T14:48:50Z"
+  },
+  {
+    "forksCount": 12936,
+    "language": "Java",
+    "name": "interviews",
+    "owner": {
+      "id": "MDQ6VXNlcjE2OTAzNjQ0",
+      "is_bot": false,
+      "login": "kdn251",
+      "type": "User",
+      "url": "https://github.com/kdn251"
+    },
+    "stargazersCount": 64861,
+    "updatedAt": "2026-02-08T14:48:55Z"
+  },
+  {
+    "forksCount": 7120,
+    "language": "Java",
+    "name": "ghidra",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjExMjk4Mjky",
+      "is_bot": false,
+      "login": "NationalSecurityAgency",
+      "type": "Organization",
+      "url": "https://github.com/NationalSecurityAgency"
+    },
+    "stargazersCount": 64188,
+    "updatedAt": "2026-02-08T13:23:13Z"
+  },
+  {
+    "forksCount": 38916,
+    "language": "Java",
+    "name": "spring-framework",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjMxNzc3Ng==",
+      "is_bot": false,
+      "login": "spring-projects",
+      "type": "Organization",
+      "url": "https://github.com/spring-projects"
+    },
+    "stargazersCount": 59593,
+    "updatedAt": "2026-02-08T15:05:05Z"
+  },
+  {
+    "forksCount": 11143,
+    "language": "Java",
+    "name": "guava",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjEzNDIwMDQ=",
+      "is_bot": false,
+      "login": "google",
+      "type": "Organization",
+      "url": "https://github.com/google"
+    },
+    "stargazersCount": 51461,
+    "updatedAt": "2026-02-08T12:25:24Z"
+  },
+  {
+    "forksCount": 5990,
+    "language": "Java",
+    "name": "termux-app",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjgxMDQ3NzY=",
+      "is_bot": false,
+      "login": "termux",
+      "type": "Organization",
+      "url": "https://github.com/termux"
+    },
+    "stargazersCount": 50331,
+    "updatedAt": "2026-02-08T15:11:25Z"
+  },
+  {
+    "forksCount": 22181,
+    "language": "Ruby",
+    "name": "rails",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjQyMjM=",
+      "is_bot": false,
+      "login": "rails",
+      "type": "Organization",
+      "url": "https://github.com/rails"
+    },
+    "stargazersCount": 58177,
+    "updatedAt": "2026-02-08T13:16:38Z"
+  },
+  {
+    "forksCount": 10301,
+    "language": "Ruby",
+    "name": "jekyll",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjMwODM2NTI=",
+      "is_bot": false,
+      "login": "jekyll",
+      "type": "Organization",
+      "url": "https://github.com/jekyll"
+    },
+    "stargazersCount": 51418,
+    "updatedAt": "2026-02-08T14:53:54Z"
+  },
+  {
+    "forksCount": 7402,
+    "language": "Ruby",
+    "name": "mastodon",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjI0OTc5MDMy",
+      "is_bot": false,
+      "login": "mastodon",
+      "type": "Organization",
+      "url": "https://github.com/mastodon"
+    },
+    "stargazersCount": 49618,
+    "updatedAt": "2026-02-08T13:03:00Z"
+  },
+  {
+    "forksCount": 4228,
+    "language": "Ruby",
+    "name": "huginn",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjIzMjI1MTQy",
+      "is_bot": false,
+      "login": "huginn",
+      "type": "Organization",
+      "url": "https://github.com/huginn"
+    },
+    "stargazersCount": 48665,
+    "updatedAt": "2026-02-08T13:45:49Z"
+  },
+  {
+    "forksCount": 10950,
+    "language": "Ruby",
+    "name": "brew",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjE1MDM1MTI=",
+      "is_bot": false,
+      "login": "Homebrew",
+      "type": "Organization",
+      "url": "https://github.com/Homebrew"
+    },
+    "stargazersCount": 46537,
+    "updatedAt": "2026-02-08T10:27:11Z"
+  },
+  {
+    "forksCount": 8806,
+    "language": "Ruby",
+    "name": "discourse",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjMyMjAxMzg=",
+      "is_bot": false,
+      "login": "discourse",
+      "type": "Organization",
+      "url": "https://github.com/discourse"
+    },
+    "stargazersCount": 46251,
+    "updatedAt": "2026-02-08T14:23:38Z"
+  },
+  {
+    "forksCount": 5977,
+    "language": "Ruby",
+    "name": "fastlane",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjExMDk4MzM3",
+      "is_bot": false,
+      "login": "fastlane",
+      "type": "Organization",
+      "url": "https://github.com/fastlane"
+    },
+    "stargazersCount": 40975,
+    "updatedAt": "2026-02-08T14:41:10Z"
+  },
+  {
+    "forksCount": 2560,
+    "language": "Ruby",
+    "name": "devdocs",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjk4OTI1MjI=",
+      "is_bot": false,
+      "login": "freeCodeCamp",
+      "type": "Organization",
+      "url": "https://github.com/freeCodeCamp"
+    },
+    "stargazersCount": 38462,
+    "updatedAt": "2026-02-08T13:35:49Z"
+  },
+  {
+    "forksCount": 14731,
+    "language": "Ruby",
+    "name": "metasploit-framework",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjEwMTM2NzE=",
+      "is_bot": false,
+      "login": "rapid7",
+      "type": "Organization",
+      "url": "https://github.com/rapid7"
+    },
+    "stargazersCount": 37463,
+    "updatedAt": "2026-02-08T15:00:21Z"
+  },
+  {
+    "forksCount": 1944,
+    "language": "Ruby",
+    "name": "engineering-blogs",
+    "owner": {
+      "id": "MDQ6VXNlcjEzNTYwMDc=",
+      "is_bot": false,
+      "login": "kilimchoi",
+      "type": "User",
+      "url": "https://github.com/kilimchoi"
+    },
+    "stargazersCount": 37056,
+    "updatedAt": "2026-02-08T14:25:13Z"
+  },
+  {
+    "forksCount": 3587,
+    "language": "Ruby",
+    "name": "awesome-awesomeness",
+    "owner": {
+      "id": "MDQ6VXNlcjg2NDIxMw==",
+      "is_bot": false,
+      "login": "bayandin",
+      "type": "User",
+      "url": "https://github.com/bayandin"
+    },
+    "stargazersCount": 33203,
+    "updatedAt": "2026-02-08T12:20:19Z"
+  },
+  {
+    "forksCount": 4450,
+    "language": "Ruby",
+    "name": "vagrant",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjc2MTQ1Ng==",
+      "is_bot": false,
+      "login": "hashicorp",
+      "type": "Organization",
+      "url": "https://github.com/hashicorp"
+    },
+    "stargazersCount": 27243,
+    "updatedAt": "2026-02-06T23:29:30Z"
+  },
+  {
+    "forksCount": 6268,
+    "language": "Ruby",
+    "name": "chatwoot",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjIzNDE2NjY3",
+      "is_bot": false,
+      "login": "chatwoot",
+      "type": "Organization",
+      "url": "https://github.com/chatwoot"
+    },
+    "stargazersCount": 27206,
+    "updatedAt": "2026-02-08T14:23:58Z"
+  },
+  {
+    "forksCount": 3110,
+    "language": "Ruby",
+    "name": "awesome-swift",
+    "owner": {
+      "id": "MDQ6VXNlcjQ3NTQ2Mw==",
+      "is_bot": false,
+      "login": "matteocrippa",
+      "type": "User",
+      "url": "https://github.com/matteocrippa"
+    },
+    "stargazersCount": 25893,
+    "updatedAt": "2026-02-08T04:53:13Z"
+  },
+  {
+    "forksCount": 5512,
+    "language": "Ruby",
+    "name": "devise",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjU5NTg0MDM3",
+      "is_bot": false,
+      "login": "heartcombo",
+      "type": "Organization",
+      "url": "https://github.com/heartcombo"
+    },
+    "stargazersCount": 24334,
+    "updatedAt": "2026-02-08T14:38:52Z"
+  },
+  {
+    "forksCount": 14456,
+    "language": "Rust",
+    "name": "rust",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjU0MzA5MDU=",
+      "is_bot": false,
+      "login": "rust-lang",
+      "type": "Organization",
+      "url": "https://github.com/rust-lang"
+    },
+    "stargazersCount": 110122,
+    "updatedAt": "2026-02-08T14:52:18Z"
+  },
+  {
+    "forksCount": 15908,
+    "language": "Rust",
+    "name": "rustdesk",
+    "owner": {
+      "id": "MDQ6VXNlcjcxNjM2MTkx",
+      "is_bot": false,
+      "login": "rustdesk",
+      "type": "User",
+      "url": "https://github.com/rustdesk"
+    },
+    "stargazersCount": 107106,
+    "updatedAt": "2026-02-08T15:14:18Z"
+  },
+  {
+    "forksCount": 5888,
+    "language": "Rust",
+    "name": "deno",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjQyMDQ4OTE1",
+      "is_bot": false,
+      "login": "denoland",
+      "type": "Organization",
+      "url": "https://github.com/denoland"
+    },
+    "stargazersCount": 106086,
+    "updatedAt": "2026-02-08T14:32:46Z"
+  },
+  {
+    "forksCount": 3369,
+    "language": "Rust",
+    "name": "tauri",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjU0NTM2MDEx",
+      "is_bot": false,
+      "login": "tauri-apps",
+      "type": "Organization",
+      "url": "https://github.com/tauri-apps"
+    },
+    "stargazersCount": 102440,
+    "updatedAt": "2026-02-08T14:46:07Z"
+  },
+  {
+    "forksCount": 2538,
+    "language": "Rust",
+    "name": "uv",
+    "owner": {
+      "id": "O_kgDOBulz1w",
+      "is_bot": false,
+      "login": "astral-sh",
+      "type": "Organization",
+      "url": "https://github.com/astral-sh"
+    },
+    "stargazersCount": 78835,
+    "updatedAt": "2026-02-08T14:52:58Z"
+  },
+  {
+    "forksCount": 6870,
+    "language": "Rust",
+    "name": "zed",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjc5MzQ1Mzg0",
+      "is_bot": false,
+      "login": "zed-industries",
+      "type": "Organization",
+      "url": "https://github.com/zed-industries"
+    },
+    "stargazersCount": 74954,
+    "updatedAt": "2026-02-08T15:11:57Z"
+  },
+  {
+    "forksCount": 3844,
+    "language": "Rust",
+    "name": "union",
+    "owner": {
+      "id": "O_kgDOB7vtlw",
+      "is_bot": false,
+      "login": "unionlabs",
+      "type": "Organization",
+      "url": "https://github.com/unionlabs"
+    },
+    "stargazersCount": 74338,
+    "updatedAt": "2026-02-08T14:10:00Z"
+  },
+  {
+    "forksCount": 3296,
+    "language": "Rust",
+    "name": "alacritty",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjI5NzE0MzQ5",
+      "is_bot": false,
+      "login": "alacritty",
+      "type": "Organization",
+      "url": "https://github.com/alacritty"
+    },
+    "stargazersCount": 62331,
+    "updatedAt": "2026-02-08T14:54:26Z"
+  },
+  {
+    "forksCount": 5432,
+    "language": "Rust",
+    "name": "sway",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjU1OTkzMTgz",
+      "is_bot": false,
+      "login": "FuelLabs",
+      "type": "Organization",
+      "url": "https://github.com/FuelLabs"
+    },
+    "stargazersCount": 61966,
+    "updatedAt": "2026-02-08T06:42:42Z"
+  },
+  {
+    "forksCount": 11137,
+    "language": "Rust",
+    "name": "rustlings",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjU0MzA5MDU=",
+      "is_bot": false,
+      "login": "rust-lang",
+      "type": "Organization",
+      "url": "https://github.com/rust-lang"
+    },
+    "stargazersCount": 61743,
+    "updatedAt": "2026-02-08T09:16:44Z"
+  },
+  {
+    "forksCount": 2392,
+    "language": "Rust",
+    "name": "ripgrep",
+    "owner": {
+      "id": "MDQ6VXNlcjQ1NjY3NA==",
+      "is_bot": false,
+      "login": "BurntSushi",
+      "type": "User",
+      "url": "https://github.com/BurntSushi"
+    },
+    "stargazersCount": 59679,
+    "updatedAt": "2026-02-08T15:09:54Z"
+  },
+  {
+    "forksCount": 7800,
+    "language": "Rust",
+    "name": "codex",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjE0OTU3MDgy",
+      "is_bot": false,
+      "login": "openai",
+      "type": "Organization",
+      "url": "https://github.com/openai"
+    },
+    "stargazersCount": 59530,
+    "updatedAt": "2026-02-08T15:09:29Z"
+  },
+  {
+    "forksCount": 16682,
+    "language": "Rust",
+    "name": "Magisk",
+    "owner": {
+      "id": "MDQ6VXNlcjczMzczMDE=",
+      "is_bot": false,
+      "login": "topjohnwu",
+      "type": "User",
+      "url": "https://github.com/topjohnwu"
+    },
+    "stargazersCount": 58587,
+    "updatedAt": "2026-02-08T14:48:38Z"
+  },
+  {
+    "forksCount": 2860,
+    "language": "Rust",
+    "name": "fuel-core",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjU1OTkzMTgz",
+      "is_bot": false,
+      "login": "FuelLabs",
+      "type": "Organization",
+      "url": "https://github.com/FuelLabs"
+    },
+    "stargazersCount": 57378,
+    "updatedAt": "2026-02-07T20:50:26Z"
+  },
+  {
+    "forksCount": 1449,
+    "language": "Rust",
+    "name": "bat",
+    "owner": {
+      "id": "MDQ6VXNlcjQyMDkyNzY=",
+      "is_bot": false,
+      "login": "sharkdp",
+      "type": "User",
+      "url": "https://github.com/sharkdp"
+    },
+    "stargazersCount": 57030,
+    "updatedAt": "2026-02-08T13:46:32Z"
+  },
+  {
+    "forksCount": 75218,
+    "language": "C++",
+    "name": "tensorflow",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjE1NjU4NjM4",
+      "is_bot": false,
+      "login": "tensorflow",
+      "type": "Organization",
+      "url": "https://github.com/tensorflow"
+    },
+    "stargazersCount": 193660,
+    "updatedAt": "2026-02-08T13:23:16Z"
+  },
+  {
+    "forksCount": 25078,
+    "language": "C++",
+    "name": "react-native",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjY5NjMx",
+      "is_bot": false,
+      "login": "facebook",
+      "type": "Organization",
+      "url": "https://github.com/facebook"
+    },
+    "stargazersCount": 125316,
+    "updatedAt": "2026-02-08T13:35:17Z"
+  },
+  {
+    "forksCount": 16975,
+    "language": "C++",
+    "name": "electron",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjEzNDA5MjIy",
+      "is_bot": false,
+      "login": "electron",
+      "type": "Organization",
+      "url": "https://github.com/electron"
+    },
+    "stargazersCount": 120042,
+    "updatedAt": "2026-02-08T14:32:03Z"
+  },
+  {
+    "forksCount": 24276,
+    "language": "C++",
+    "name": "godot",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjYzMTg1MDA=",
+      "is_bot": false,
+      "login": "godotengine",
+      "type": "Organization",
+      "url": "https://github.com/godotengine"
+    },
+    "stargazersCount": 106454,
+    "updatedAt": "2026-02-08T15:03:16Z"
+  },
+  {
+    "forksCount": 9067,
+    "language": "C++",
+    "name": "terminal",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjYxNTQ3MjI=",
+      "is_bot": false,
+      "login": "microsoft",
+      "type": "Organization",
+      "url": "https://github.com/microsoft"
+    },
+    "stargazersCount": 101750,
+    "updatedAt": "2026-02-08T14:57:57Z"
+  },
+  {
+    "forksCount": 14814,
+    "language": "C++",
+    "name": "llama.cpp",
+    "owner": {
+      "id": "O_kgDOCACxUw",
+      "is_bot": false,
+      "login": "ggml-org",
+      "type": "Organization",
+      "url": "https://github.com/ggml-org"
+    },
+    "stargazersCount": 94635,
+    "updatedAt": "2026-02-08T15:08:29Z"
+  },
+  {
+    "forksCount": 38868,
+    "language": "C++",
+    "name": "bitcoin",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjUyODg2MA==",
+      "is_bot": false,
+      "login": "bitcoin",
+      "type": "Organization",
+      "url": "https://github.com/bitcoin"
+    },
+    "stargazersCount": 88015,
+    "updatedAt": "2026-02-08T15:10:55Z"
+  },
+  {
+    "forksCount": 56526,
+    "language": "C++",
+    "name": "opencv",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjUwMDk5MzQ=",
+      "is_bot": false,
+      "login": "opencv",
+      "type": "Organization",
+      "url": "https://github.com/opencv"
+    },
+    "stargazersCount": 86103,
+    "updatedAt": "2026-02-08T10:41:56Z"
+  },
+  {
+    "forksCount": 8324,
+    "language": "C++",
+    "name": "gpt4all",
+    "owner": {
+      "id": "O_kgDOBh6fZA",
+      "is_bot": false,
+      "login": "nomic-ai",
+      "type": "Organization",
+      "url": "https://github.com/nomic-ai"
+    },
+    "stargazersCount": 77116,
+    "updatedAt": "2026-02-08T12:08:09Z"
+  },
+  {
+    "forksCount": 10489,
+    "language": "C++",
+    "name": "tesseract",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjg0MDE0MjI=",
+      "is_bot": false,
+      "login": "tesseract-ocr",
+      "type": "Organization",
+      "url": "https://github.com/tesseract-ocr"
+    },
+    "stargazersCount": 72292,
+    "updatedAt": "2026-02-08T12:32:53Z"
+  },
+  {
+    "forksCount": 11529,
+    "language": "C++",
+    "name": "imgui",
+    "owner": {
+      "id": "MDQ6VXNlcjgyMjUwNTc=",
+      "is_bot": false,
+      "login": "ocornut",
+      "type": "User",
+      "url": "https://github.com/ocornut"
+    },
+    "stargazersCount": 71220,
+    "updatedAt": "2026-02-08T15:10:46Z"
+  },
+  {
+    "forksCount": 16028,
+    "language": "C++",
+    "name": "protobuf",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjI2MzEwNTQx",
+      "is_bot": false,
+      "login": "protocolbuffers",
+      "type": "Organization",
+      "url": "https://github.com/protocolbuffers"
+    },
+    "stargazersCount": 70660,
+    "updatedAt": "2026-02-08T13:28:56Z"
+  },
+  {
+    "forksCount": 10655,
+    "language": "C++",
+    "name": "swift",
+    "owner": {
+      "id": "MDEyOk9yZ2FuaXphdGlvbjQyODE2NjU2",
+      "is_bot": false,
+      "login": "swiftlang",
+      "type": "Organization",
+      "url": "https://github.com/swiftlang"
+    },
+    "stargazersCount": 69657,
+    "updatedAt": "2026-02-08T10:07:17Z"
+  },
+  {
+    "forksCount": 2659,
+    "language": "C++",
+    "name": "ladybird",
+    "owner": {
+      "id": "O_kgDOCAbyFg",
+      "is_bot": false,
+      "login": "LadybirdBrowser",
+      "type": "Organization",
+      "url": "https://github.com/LadybirdBrowser"
+    },
+    "stargazersCount": 58434,
+    "updatedAt": "2026-02-08T12:58:30Z"
+  },
+  {
+    "forksCount": 2337,
+    "language": "C++",
+    "name": "ImHex",
+    "owner": {
+      "id": "MDQ6VXNlcjEwODM1MzU0",
+      "is_bot": false,
+      "login": "WerWolv",
+      "type": "User",
+      "url": "https://github.com/WerWolv"
+    },
+    "stargazersCount": 52556,
+    "updatedAt": "2026-02-08T08:49:01Z"
+  }
+]
