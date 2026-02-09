@@ -16,6 +16,7 @@ Conforms to PHASE_4_CONTRACT.md and PHASE_4_DESIGN.md.
 
 import hashlib
 import json
+import logging
 import os
 import re
 from collections import defaultdict
@@ -25,6 +26,8 @@ from pathlib import Path
 from statistics import mean, pstdev
 from typing import Optional
 
+log = logging.getLogger("evolution.phase4")
+
 from evolution.knowledge_store import SQLiteKnowledgeStore
 from evolution.validation_gate import ValidationGate
 
@@ -32,6 +35,11 @@ try:
     from evolution.llm_openrouter import OpenRouterClient
 except ImportError:
     OpenRouterClient = None
+
+try:
+    from evolution.llm_anthropic import AnthropicClient
+except ImportError:
+    AnthropicClient = None
 
 try:
     from dotenv import load_dotenv
@@ -44,11 +52,13 @@ except ImportError:
 
 DEFAULT_PARAMS = {
     "min_support": 3,          # Lowered from 10 for early-stage use; raise for production
-    "min_correlation": 0.5,    # Minimum pairwise correlation for co-occurrence
+    "min_correlation": 0.3,    # Minimum pairwise correlation for co-occurrence
     "promotion_threshold": 10, # Occurrences to promote to knowledge (lowered for testing)
     "decay_window": 90,        # Days before unseen patterns decay
     "semantic_multiplier": 3,  # Extra evidence for LLM-only hypotheses
     "direction_threshold": 1.0, # Stddev threshold for direction classification
+    "confidence_full_at": 30,  # Sample count at which confidence weight reaches 1.0
+    "temporal_window_hours": 24,  # Time window for temporal alignment (supplementary to commit-SHA)
 }
 
 # Signal files from Phase 2 (same map as Phase 3)
@@ -67,14 +77,17 @@ SIGNAL_FILES = {
 # ─────────────────── Signal Fingerprinting ───────────────────
 
 
-def classify_direction(deviation: float, threshold: float = 1.0) -> str:
+def classify_direction(deviation: float, threshold: float = 1.0,
+                       unit: str = "modified_zscore") -> str:
     """Classify a signal's deviation into a direction.
 
     Per PHASE_4_DESIGN.md §3.4:
-      increased:  deviation > +threshold stddev
-      decreased:  deviation < -threshold stddev
-      unchanged:  within ±threshold stddev
+      increased:  deviation > +threshold
+      decreased:  deviation < -threshold
+      unchanged:  within ±threshold or degenerate baseline
     """
+    if unit == "degenerate":
+        return "unchanged"
     if deviation > threshold:
         return "increased"
     elif deviation < -threshold:
@@ -97,11 +110,18 @@ def signals_to_components(signals: list[dict], threshold: float = 1.0) -> list[t
     """Convert Phase 2 signals to fingerprint components.
 
     Only includes signals that deviate beyond the threshold (i.e. not 'unchanged').
+    Skips degenerate signals.
     """
     components = []
     for s in signals:
-        deviation = s["deviation"]["measure"]
-        direction = classify_direction(deviation, threshold)
+        dev = s.get("deviation", {})
+        if dev.get("degenerate", False):
+            continue
+        deviation = dev.get("measure", 0)
+        if deviation is None:
+            continue
+        unit = dev.get("unit", "modified_zscore")
+        direction = classify_direction(deviation, threshold, unit)
         if direction != "unchanged":
             components.append((s["engine_id"], s["metric"], direction))
     return components
@@ -139,11 +159,21 @@ class Phase4Engine:
 
     def _get_llm(self):
         """Lazy-init LLM client."""
-        if self._llm is None and self._llm_enabled and OpenRouterClient:
-            try:
-                self._llm = OpenRouterClient(self._llm_model)
-            except Exception:
-                self._llm_enabled = False
+        if self._llm is None and self._llm_enabled:
+            # Try Anthropic direct first
+            if os.getenv("ANTHROPIC_API_KEY") and AnthropicClient:
+                try:
+                    self._llm = AnthropicClient(self._llm_model)
+                    return self._llm
+                except Exception:
+                    pass
+
+            # Fallback to OpenRouter
+            if OpenRouterClient:
+                try:
+                    self._llm = OpenRouterClient(self._llm_model)
+                except Exception:
+                    self._llm_enabled = False
         return self._llm
 
     # ─────────────────── Data Loading ───────────────────
@@ -183,6 +213,139 @@ class Phase4Engine:
                 groups[ref].append(s)
         return dict(groups)
 
+    # ─────────────────── Commit Index ───────────────────
+
+    def _build_commit_index(self) -> dict[str, str]:
+        """Build a mapping from event_id to commit SHA.
+
+        Reads Phase 1 event files and extracts the commit SHA each event
+        is associated with, enabling cross-family signal alignment by commit.
+
+        Returns:
+            {event_id: commit_sha} for all events that have a commit SHA.
+        """
+        if hasattr(self, "_commit_index"):
+            return self._commit_index
+
+        index: dict[str, str] = {}
+        events_dir = self.evo_dir / "events"
+        if not events_dir.exists():
+            self._commit_index = index
+            return index
+
+        for p in events_dir.glob("*.json"):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    ev = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                continue
+
+            event_id = ev.get("event_id", "")
+            if not event_id:
+                continue
+
+            payload = ev.get("payload", {})
+            source_type = ev.get("source_type", "")
+
+            # Git events store commit hash directly in payload
+            if source_type == "git":
+                sha = payload.get("commit_hash")
+            else:
+                # All other families use payload.trigger.commit_sha
+                sha = (payload.get("trigger") or {}).get("commit_sha")
+
+            if sha:
+                index[event_id] = sha
+
+        self._commit_index = index
+        return index
+
+    # ─────────────────── Temporal Index ───────────────────
+
+    @staticmethod
+    def _extract_event_timestamp(ev: dict) -> str:
+        """Extract the actual event timestamp from a Phase 1 event.
+
+        Uses the real event time (commit date, CI run creation, release date)
+        rather than ``observed_at`` which reflects ingestion time and collapses
+        all events into a single time bucket.
+
+        Falls back to ``observed_at`` for walker-produced events (dependency,
+        schema, config) where ``observed_at`` is already set to the commit time
+        via ``override_observed_at``.
+        """
+        payload = ev.get("payload", {})
+        source_type = ev.get("source_type", "")
+
+        if source_type == "git":
+            ts = payload.get("committed_at") or payload.get("authored_at")
+            if ts:
+                return ts
+
+        elif source_type == "github_actions":
+            timing = payload.get("timing", {})
+            ts = timing.get("created_at") or timing.get("started_at")
+            if ts:
+                return ts
+
+        elif source_type == "github_releases":
+            timing = payload.get("timing", {})
+            ts = timing.get("initiated_at") or timing.get("completed_at")
+            if ts:
+                return ts
+
+        # Fallback: observed_at (correct for walker events that used override)
+        return ev.get("observed_at", "")
+
+    def _build_temporal_index(self) -> dict[str, str]:
+        """Build a mapping from event_id to actual event timestamp.
+
+        Uses the real event time (commit date, CI run creation, release date)
+        rather than ``observed_at`` which reflects ingestion time.
+
+        Used for temporal alignment when commit-SHA alignment has insufficient
+        overlap (e.g. CI runs cover multiple commits, deployment events are rare).
+
+        Returns:
+            {event_id: event_timestamp_iso} for all events that have a timestamp.
+        """
+        if hasattr(self, "_temporal_index"):
+            return self._temporal_index
+
+        index: dict[str, str] = {}
+        events_dir = self.evo_dir / "events"
+        if not events_dir.exists():
+            self._temporal_index = index
+            return index
+
+        for p in events_dir.glob("*.json"):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    ev = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                continue
+
+            event_id = ev.get("event_id", "")
+            ts = self._extract_event_timestamp(ev)
+            if event_id and ts:
+                index[event_id] = ts
+
+        self._temporal_index = index
+        return index
+
+    @staticmethod
+    def _time_bucket(iso_ts: str, window_hours: int) -> Optional[int]:
+        """Convert ISO timestamp to a time bucket number.
+
+        Returns floor(epoch_hours / window_hours), or None if parsing fails.
+        """
+        try:
+            dt = datetime.fromisoformat(iso_ts.replace("Z", "+00:00"))
+            epoch_hours = dt.timestamp() / 3600
+            return int(epoch_hours // window_hours)
+        except (ValueError, TypeError, AttributeError):
+            return None
+
     # ─────────────────── Phase 4a: KB Lookup (Fast Path) ───────────────────
 
     def _lookup_fingerprint(self, fingerprint: str) -> dict:
@@ -210,93 +373,151 @@ class Phase4Engine:
     def _discover_cooccurrences(self, signals: list[dict]) -> list[dict]:
         """Discover co-occurring signal pairs/groups across the signal window.
 
-        Cross-family signals don't share event_refs, so we align them by
-        ordinal position within each metric series. This detects when metrics
-        from different families deviate in correlated patterns over time.
+        Two alignment passes:
+        1. Commit-SHA alignment (precise): signals sharing the same originating
+           commit are paired. Preferred when overlap >= min_support.
+        2. Temporal alignment (supplementary): for cross-family pairs with
+           insufficient SHA overlap, bucket signals into time windows and align
+           within the same window. Addresses structural sparsity (e.g. git has
+           6,708 commits but CI has 58 runs, SHA overlap is only 11).
+
+        Degenerate signals (constant baselines) are pre-filtered.
+        Correlations are discounted by confidence weight (sample count).
 
         Returns list of candidate pattern dicts (not yet stored).
         """
         threshold = self.params["direction_threshold"]
         min_support = self.params["min_support"]
         min_correlation = self.params["min_correlation"]
+        confidence_full_at = self.params.get("confidence_full_at", 30)
+        window_hours = self.params.get("temporal_window_hours", 24)
 
-        # Build per-metric deviation series, ordered by appearance
-        # Key: (engine_id, metric) -> list of {deviation, direction, event_ref}
-        metric_series = defaultdict(list)
+        commit_index = self._build_commit_index()
+        temporal_index = self._build_temporal_index()
 
+        # Pre-filter: exclude degenerate signals
+        valid_signals = []
+        skipped = 0
         for s in signals:
+            dev = s.get("deviation", {})
+            if dev.get("degenerate", False) or dev.get("measure") is None:
+                skipped += 1
+                continue
+            valid_signals.append(s)
+        if skipped:
+            log.info("Co-occurrence: skipped %d degenerate signals (of %d total)",
+                     skipped, len(signals))
+
+        # Build per-metric deviation series keyed by commit SHA
+        # Key: (engine_id, metric) -> {commit_sha: {deviation, direction, event_ref}}
+        metric_by_commit: dict[tuple, dict[str, dict]] = defaultdict(dict)
+        # Also build per-metric deviation series keyed by time bucket
+        # Key: (engine_id, metric) -> {bucket: {deviation, direction, event_ref}}
+        metric_by_bucket: dict[tuple, dict[int, dict]] = defaultdict(dict)
+
+        for s in valid_signals:
+            event_ref = s.get("event_ref", "")
             deviation = s["deviation"]["measure"]
-            direction = classify_direction(deviation, threshold)
+            unit = s["deviation"].get("unit", "modified_zscore")
+            direction = classify_direction(deviation, threshold, unit)
             key = (s["engine_id"], s["metric"])
-            metric_series[key].append({
-                "event_ref": s.get("event_ref", ""),
+            entry = {
+                "event_ref": event_ref,
                 "direction": direction,
                 "deviation": deviation,
-            })
+            }
 
-        # Only consider metrics with enough observations
-        active_metrics = [k for k, v in metric_series.items() if len(v) >= min_support]
+            commit_sha = commit_index.get(event_ref)
+            if commit_sha:
+                metric_by_commit[key][commit_sha] = entry
+
+            # Temporal bucket for supplementary alignment
+            ts = temporal_index.get(event_ref)
+            if ts:
+                bucket = self._time_bucket(ts, window_hours)
+                if bucket is not None:
+                    # Keep the entry with highest absolute deviation per bucket
+                    existing = metric_by_bucket[key].get(bucket)
+                    if existing is None or abs(deviation) > abs(existing["deviation"]):
+                        metric_by_bucket[key][bucket] = entry
+
+        # Only consider metrics with enough commit observations
+        active_metrics_commit = [k for k, v in metric_by_commit.items() if len(v) >= min_support]
 
         candidates = []
+        discovered_pairs = set()  # Track pairs found via commit alignment
 
-        for (k1, k2) in combinations(active_metrics, 2):
-            # Skip intra-family correlations (less interesting for cross-source patterns)
+        # ── Pass 1: Commit-SHA alignment (precise) ──
+        for (k1, k2) in combinations(active_metrics_commit, 2):
+            # Skip intra-family correlations
             if k1[0] == k2[0]:
                 continue
 
-            series1 = metric_series[k1]
-            series2 = metric_series[k2]
+            commits1 = metric_by_commit[k1]
+            commits2 = metric_by_commit[k2]
 
-            # Align by ordinal position (truncate to shorter series)
-            n = min(len(series1), len(series2))
+            # Align by shared commit SHAs
+            shared_commits = sorted(set(commits1) & set(commits2))
+            n = len(shared_commits)
             if n < min_support:
                 continue
 
-            deviations_1 = [series1[i]["deviation"] for i in range(n)]
-            deviations_2 = [series2[i]["deviation"] for i in range(n)]
+            deviations_1 = [commits1[c]["deviation"] for c in shared_commits]
+            deviations_2 = [commits2[c]["deviation"] for c in shared_commits]
 
             # Count co-deviations (both deviate beyond threshold simultaneously)
             co_deviations = 0
-            for i in range(n):
-                d1 = series1[i]["direction"]
-                d2 = series2[i]["direction"]
+            for c in shared_commits:
+                d1 = commits1[c]["direction"]
+                d2 = commits2[c]["direction"]
                 if d1 != "unchanged" and d2 != "unchanged":
                     co_deviations += 1
 
             if co_deviations < min_support:
                 continue
 
-            # Compute Pearson correlation on deviation magnitudes
+            # Compute Pearson correlation on aligned deviation magnitudes
             correlation = self._pearson(deviations_1, deviations_2)
 
-            if abs(correlation) < min_correlation:
+            # Discount correlation by confidence (min sample count of the two series)
+            min_samples = min(len(commits1), len(commits2))
+            confidence_weight = min(1.0, min_samples / confidence_full_at)
+            effective_correlation = correlation * confidence_weight
+
+            if abs(effective_correlation) < min_correlation:
                 continue
 
             # Build fingerprint from predominant directions
-            dir1 = self._predominant_direction(series1, threshold)
-            dir2 = self._predominant_direction(series2, threshold)
+            aligned_entries_1 = [commits1[c] for c in shared_commits]
+            aligned_entries_2 = [commits2[c] for c in shared_commits]
+            dir1 = self._predominant_direction(aligned_entries_1, threshold)
+            dir2 = self._predominant_direction(aligned_entries_2, threshold)
             components = [
                 (k1[0], k1[1], dir1),
                 (k2[0], k2[1], dir2),
             ]
             fingerprint = compute_fingerprint(components)
 
-            # Collect signal_refs from both series
-            signal_refs = [e["event_ref"] for e in series1[:10] if e["event_ref"]]
-            signal_refs += [e["event_ref"] for e in series2[:10] if e["event_ref"]]
+            # Collect signal_refs from both series (aligned commits only)
+            signal_refs = [commits1[c]["event_ref"] for c in shared_commits[:10]]
+            signal_refs += [commits2[c]["event_ref"] for c in shared_commits[:10]]
 
             candidates.append({
                 "fingerprint": fingerprint,
                 "scope": "local",
                 "discovery_method": "statistical",
+                "alignment": "commit_sha",
                 "pattern_type": "co_occurrence",
                 "sources": sorted(set([k1[0], k2[0]])),
                 "metrics": sorted([k1[1], k2[1]]),
                 "description_statistical": (
                     f"Signals {k1[0]}.{k1[1]} and {k2[0]}.{k2[1]} co-occur "
-                    f"with correlation {correlation:.2f} across {co_deviations} observations."
+                    f"with correlation {effective_correlation:.2f} across {co_deviations} "
+                    f"commit-aligned observations (of {n} shared commits)."
                 ),
-                "correlation_strength": round(correlation, 4),
+                "correlation_strength": round(effective_correlation, 4),
+                "raw_correlation": round(correlation, 4),
+                "confidence_weight": round(confidence_weight, 4),
                 "occurrence_count": co_deviations,
                 "signal_refs": signal_refs,
                 "first_seen": datetime.utcnow().isoformat() + "Z",
@@ -304,6 +525,91 @@ class Phase4Engine:
                 "confidence_tier": "statistical",
                 "confidence_status": "emerging",
             })
+
+            discovered_pairs.add((k1, k2))
+
+        # ── Pass 2: Temporal alignment (supplementary) ──
+        # Only for cross-family pairs that weren't found via commit alignment
+        active_metrics_temporal = [k for k, v in metric_by_bucket.items() if len(v) >= min_support]
+
+        temporal_count = 0
+        for (k1, k2) in combinations(active_metrics_temporal, 2):
+            if k1[0] == k2[0]:
+                continue
+            # Skip pairs already discovered via commit alignment
+            if (k1, k2) in discovered_pairs or (k2, k1) in discovered_pairs:
+                continue
+
+            buckets1 = metric_by_bucket[k1]
+            buckets2 = metric_by_bucket[k2]
+
+            shared_buckets = sorted(set(buckets1) & set(buckets2))
+            n = len(shared_buckets)
+            if n < min_support:
+                continue
+
+            deviations_1 = [buckets1[b]["deviation"] for b in shared_buckets]
+            deviations_2 = [buckets2[b]["deviation"] for b in shared_buckets]
+
+            co_deviations = 0
+            for b in shared_buckets:
+                d1 = buckets1[b]["direction"]
+                d2 = buckets2[b]["direction"]
+                if d1 != "unchanged" and d2 != "unchanged":
+                    co_deviations += 1
+
+            if co_deviations < min_support:
+                continue
+
+            correlation = self._pearson(deviations_1, deviations_2)
+
+            min_samples = min(len(buckets1), len(buckets2))
+            confidence_weight = min(1.0, min_samples / confidence_full_at)
+            effective_correlation = correlation * confidence_weight
+
+            if abs(effective_correlation) < min_correlation:
+                continue
+
+            aligned_entries_1 = [buckets1[b] for b in shared_buckets]
+            aligned_entries_2 = [buckets2[b] for b in shared_buckets]
+            dir1 = self._predominant_direction(aligned_entries_1, threshold)
+            dir2 = self._predominant_direction(aligned_entries_2, threshold)
+            components = [
+                (k1[0], k1[1], dir1),
+                (k2[0], k2[1], dir2),
+            ]
+            fingerprint = compute_fingerprint(components)
+
+            signal_refs = [buckets1[b]["event_ref"] for b in shared_buckets[:10]]
+            signal_refs += [buckets2[b]["event_ref"] for b in shared_buckets[:10]]
+
+            candidates.append({
+                "fingerprint": fingerprint,
+                "scope": "local",
+                "discovery_method": "statistical",
+                "alignment": "temporal",
+                "pattern_type": "co_occurrence",
+                "sources": sorted(set([k1[0], k2[0]])),
+                "metrics": sorted([k1[1], k2[1]]),
+                "description_statistical": (
+                    f"Signals {k1[0]}.{k1[1]} and {k2[0]}.{k2[1]} co-occur "
+                    f"with correlation {effective_correlation:.2f} across {co_deviations} "
+                    f"temporally-aligned observations (of {n} shared {window_hours}h windows)."
+                ),
+                "correlation_strength": round(effective_correlation, 4),
+                "raw_correlation": round(correlation, 4),
+                "confidence_weight": round(confidence_weight, 4),
+                "occurrence_count": co_deviations,
+                "signal_refs": signal_refs,
+                "first_seen": datetime.utcnow().isoformat() + "Z",
+                "last_seen": datetime.utcnow().isoformat() + "Z",
+                "confidence_tier": "statistical",
+                "confidence_status": "emerging",
+            })
+            temporal_count += 1
+
+        if temporal_count:
+            log.info("Temporal alignment discovered %d additional candidate patterns", temporal_count)
 
         return candidates
 
@@ -320,6 +626,8 @@ class Phase4Engine:
         sy = pstdev(ys)
 
         if sx == 0 or sy == 0:
+            log.debug("Pearson returned 0.0: constant series (sx=%.4f, sy=%.4f, n=%d)",
+                      sx, sy, n)
             return 0.0
 
         cov = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / n

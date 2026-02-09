@@ -2,13 +2,14 @@
 Phase 2 Engine — Behavioral Baselines & Deviation Signals
 
 Multi-family implementation.
+Uses MAD-based robust deviation (resistant to outliers, no Gaussian assumption).
 Emits canonical Phase 2 signals for all source families:
 - version_control (git): files_touched, dispersion, cochange_novelty_ratio, change_locality
-- ci:                     run_duration, job_count, failure_rate
+- ci:                     run_duration, run_failed
 - testing:                total_tests, failure_rate, skip_rate, suite_duration
-- dependency:             dependency_count, direct_count, max_depth
+- dependency:             dependency_count, max_depth (ecosystem-gated)
 - schema:                 endpoint_count, type_count, field_count, schema_churn
-- deployment:             deploy_duration, failure_rate
+- deployment:             release_cadence_hours, is_prerelease, asset_count
 - config:                 resource_count, resource_type_count, config_churn
 - security:               vulnerability_count, critical_count, fixable_ratio
 
@@ -18,8 +19,53 @@ Conforms to PHASE_2_CONTRACT.md and PHASE_2_DESIGN.md.
 from pathlib import Path
 import json
 from collections import defaultdict, deque
-from statistics import mean, pstdev
+from statistics import mean, median, pstdev
 import math
+
+
+def _median_absolute_deviation(values: list) -> float:
+    """MAD = median(|x_i - median(x)|)."""
+    med = median(values)
+    return median([abs(v - med) for v in values])
+
+
+def _iqr(values: list) -> float:
+    """Interquartile range — fallback when MAD=0."""
+    s = sorted(values)
+    n = len(s)
+    q1 = s[n // 4]
+    q3 = s[(3 * n) // 4]
+    return q3 - q1
+
+
+def compute_robust_deviation(observed: float, values: list) -> dict:
+    """Compute deviation using MAD (robust to outliers), IQR fallback.
+
+    Returns dict with: measure, unit, median, mad, degenerate.
+    """
+    med = median(values)
+    mad = _median_absolute_deviation(values)
+
+    if mad > 0:
+        # 0.6745 = normal distribution 75th percentile (consistency constant)
+        measure = 0.6745 * (observed - med) / mad
+        return {"measure": round(measure, 6), "unit": "modified_zscore",
+                "median": med, "mad": mad, "degenerate": False}
+
+    iqr_val = _iqr(values)
+    if iqr_val > 0:
+        measure = (observed - med) / (iqr_val / 1.35)
+        return {"measure": round(measure, 6), "unit": "iqr_normalized",
+                "median": med, "mad": 0.0, "degenerate": False}
+
+    # Constant series — both MAD and IQR are 0
+    if observed == med:
+        return {"measure": 0.0, "unit": "degenerate",
+                "median": med, "mad": 0.0, "degenerate": True}
+    else:
+        # Value changed from a constant baseline. Flag but don't fabricate sigma.
+        return {"measure": None, "unit": "degenerate",
+                "median": med, "mad": 0.0, "degenerate": True}
 
 
 class Phase2Engine:
@@ -63,24 +109,32 @@ class Phase2Engine:
 
             if len(window) >= self.min_baseline:
                 for metric_name, observed in metrics.items():
+                    if observed is None:
+                        continue
                     history = [w["metrics"][metric_name] for w in window
-                               if metric_name in w["metrics"]]
+                               if metric_name in w["metrics"]
+                               and w["metrics"][metric_name] is not None]
                     if len(history) < self.min_baseline:
                         continue
 
                     baseline_mean = mean(history)
                     baseline_std = pstdev(history) if len(history) > 1 else 0.0
+                    robust = compute_robust_deviation(observed, history)
 
                     signal = {
                         "engine_id": engine_id,
                         "source_type": source_type,
                         "metric": metric_name,
                         "window": {"type": "rolling", "size": self.window_size},
-                        "baseline": {"mean": baseline_mean, "stddev": baseline_std},
+                        "baseline": {
+                            "mean": baseline_mean, "stddev": baseline_std,
+                            "median": robust["median"], "mad": robust["mad"],
+                        },
                         "observed": observed,
                         "deviation": {
-                            "measure": (observed - baseline_mean) / (baseline_std or 1.0),
-                            "unit": "stddev_from_mean",
+                            "measure": robust["measure"] if robust["measure"] is not None else 0.0,
+                            "unit": robust["unit"],
+                            "degenerate": robust["degenerate"],
                         },
                         "confidence": {
                             "sample_count": len(history),
@@ -160,35 +214,55 @@ class Phase2Engine:
                 "dispersion": self._dispersion(files),
             }
 
-            current_pairs = self._cochange_pairs(files)
+            # Cap pair tracking for mega-commits (>30 files) to prevent
+            # quadratic pair explosion that makes novelty trivially high
+            MAX_PAIR_FILES = 30
+            if len(files) <= MAX_PAIR_FILES:
+                current_pairs = self._cochange_pairs(files)
+            else:
+                current_pairs = set()
+
             recent_files = set().union(*(w["files"] for w in window)) if window else set()
             locality = len(files & recent_files) / len(files) if files else 0.0
 
             metrics["change_locality"] = locality
-            metrics["cochange_novelty_ratio"] = 1.0
 
-            if window:
-                historical_pairs = set().union(*(w["pairs"] for w in window))
-                if current_pairs:
-                    unseen = current_pairs - historical_pairs
-                    metrics["cochange_novelty_ratio"] = len(unseen) / len(current_pairs)
+            if current_pairs and window:
+                historical_pairs = set()
+                for w in window:
+                    historical_pairs.update(w.get("pairs", set()))
+                unseen = current_pairs - historical_pairs
+                metrics["cochange_novelty_ratio"] = len(unseen) / len(current_pairs)
+            elif current_pairs:
+                metrics["cochange_novelty_ratio"] = 1.0
+            # else: skip novelty metric for mega-commits (None excluded by _emit_signals)
 
             if len(window) >= self.min_baseline:
-                for metric, observed in metrics.items():
-                    history = [w["metrics"][metric] for w in window]
+                for metric_name, observed in metrics.items():
+                    if observed is None:
+                        continue
+                    history = [w["metrics"][metric_name] for w in window
+                               if w["metrics"].get(metric_name) is not None]
+                    if len(history) < self.min_baseline:
+                        continue
                     baseline_mean = mean(history)
                     baseline_std = pstdev(history) if len(history) > 1 else 0.0
+                    robust = compute_robust_deviation(observed, history)
 
                     signal = {
                         "engine_id": "git",
                         "source_type": "git",
-                        "metric": metric,
+                        "metric": metric_name,
                         "window": {"type": "rolling", "size": self.window_size},
-                        "baseline": {"mean": baseline_mean, "stddev": baseline_std},
+                        "baseline": {
+                            "mean": baseline_mean, "stddev": baseline_std,
+                            "median": robust["median"], "mad": robust["mad"],
+                        },
                         "observed": observed,
                         "deviation": {
-                            "measure": (observed - baseline_mean) / (baseline_std or 1.0),
-                            "unit": "stddev_from_mean",
+                            "measure": robust["measure"] if robust["measure"] is not None else 0.0,
+                            "unit": robust["unit"],
+                            "degenerate": robust["degenerate"],
                         },
                         "confidence": {
                             "sample_count": len(window),
@@ -219,15 +293,11 @@ class Phase2Engine:
 
         def metric_fn(e):
             payload = e["payload"]
-            jobs = payload.get("jobs", [])
             duration = payload.get("timing", {}).get("duration_seconds", 0.0)
-            status = payload.get("status", "")
-            failed_jobs = sum(1 for j in jobs if j.get("status") == "failure")
-
+            conclusion = payload.get("conclusion", payload.get("status", ""))
             return {
                 "run_duration": duration,
-                "job_count": len(jobs),
-                "failure_rate": failed_jobs / max(len(jobs), 1),
+                "run_failed": 1.0 if conclusion == "failure" else 0.0,
             }
 
         def window_fn(e, m):
@@ -278,11 +348,14 @@ class Phase2Engine:
         def metric_fn(e):
             payload = e["payload"]
             snap = payload.get("snapshot", {})
-            return {
+            metrics = {
                 "dependency_count": snap.get("total_count", 0),
-                "direct_count": snap.get("direct_count", 0),
-                "max_depth": snap.get("max_depth", 1),
             }
+            # Only emit max_depth for ecosystems with transitive resolution
+            ecosystem = payload.get("ecosystem", "")
+            if ecosystem in ("npm", "go", "cargo", "bundler"):
+                metrics["max_depth"] = snap.get("max_depth", 1)
+            return metrics
 
         def window_fn(e, m):
             return None
@@ -337,14 +410,16 @@ class Phase2Engine:
 
         def metric_fn(e):
             payload = e["payload"]
-            status = payload.get("status", "")
-            trigger_type = payload.get("trigger", {}).get("type", "")
-            duration = payload.get("timing", {}).get("duration_seconds", 0.0)
-            return {
-                "deploy_duration": duration,
-                "failure_rate": 1.0 if status == "failure" else 0.0,
-                "is_rollback": 1.0 if trigger_type == "rollback" else 0.0,
+            timing = payload.get("timing", {})
+            cadence = timing.get("since_previous_seconds")
+            metrics = {
+                "is_prerelease": 1.0 if payload.get("is_prerelease", False) else 0.0,
+                "asset_count": payload.get("asset_count", 0),
             }
+            # release_cadence_hours: None for the first release (no previous)
+            if cadence is not None:
+                metrics["release_cadence_hours"] = cadence / 3600.0
+            return metrics
 
         def window_fn(e, m):
             return None
@@ -420,7 +495,7 @@ class Phase2Engine:
     # =============== Run All ===============
 
     def run_all(self):
-        """Run Phase 2 for all families. Returns total signal count."""
+        """Run Phase 2 for all families sequentially. Returns dict of family -> signals."""
         results = {}
         results["git"] = self.run_git()
         results["ci"] = self.run_ci()
@@ -430,4 +505,39 @@ class Phase2Engine:
         results["deployment"] = self.run_deployment()
         results["config"] = self.run_config()
         results["security"] = self.run_security()
+        return results
+
+    def run_all_parallel(self, max_workers: int = 4):
+        """Run Phase 2 for all families concurrently. Returns dict of family -> signals.
+
+        Each family reads its own events and writes its own signal file,
+        so they are safe to run in parallel.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        runners = {
+            "git": self.run_git,
+            "ci": self.run_ci,
+            "testing": self.run_testing,
+            "dependency": self.run_dependency,
+            "schema": self.run_schema,
+            "deployment": self.run_deployment,
+            "config": self.run_config,
+            "security": self.run_security,
+        }
+
+        results = {}
+        with ThreadPoolExecutor(max_workers=max_workers,
+                                thread_name_prefix="p2") as executor:
+            future_to_family = {
+                executor.submit(fn): name for name, fn in runners.items()
+            }
+            for future in as_completed(future_to_family):
+                family = future_to_family[future]
+                try:
+                    results[family] = future.result()
+                except Exception as e:
+                    print(f"  [Phase 2] {family} failed: {e}")
+                    results[family] = []
+
         return results

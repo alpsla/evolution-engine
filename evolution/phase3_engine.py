@@ -46,165 +46,180 @@ class Phase3Engine:
 
     # ---------- Templates ----------
 
+    def _baseline_str(self, signal: dict) -> str:
+        """Format baseline summary using median/MAD when available, else mean/stddev."""
+        baseline = signal["baseline"]
+        med = baseline.get("median")
+        mad = baseline.get("mad")
+        if med is not None and mad is not None and mad > 0:
+            return f"median {med:.2f} (MAD {mad:.2f})"
+        return f"{baseline['mean']:.2f} \u00b1 {baseline['stddev']:.2f}"
+
     def _template(self, signal: dict) -> str:
         metric = signal["metric"]
         observed = signal["observed"]
-        m = signal["baseline"]["mean"]
-        std = signal["baseline"]["stddev"]
+        baseline = signal["baseline"]
+        m = baseline["mean"]
+        std = baseline["stddev"]
         window = signal["window"]["size"]
         conf = signal["confidence"]["status"]
         engine = signal.get("engine_id", "unknown")
+        bl = self._baseline_str(signal)
+
+        # Handle degenerate baselines
+        dev = signal.get("deviation", {})
+        if dev.get("degenerate", False):
+            med = baseline.get("median", m)
+            base = (
+                f"Metric '{metric}' was {observed}. "
+                f"Baseline was constant at {med:.4g} across {window} observations. "
+                f"No meaningful deviation."
+            )
+            return base
 
         # ---- Git metrics ----
         if metric == "files_touched":
             base = (
                 f"This change touched {observed} files. "
-                f"Over the last {window} changes, similar changes typically touched "
-                f"{m:.2f} \u00b1 {std:.2f} files."
+                f"Over the last {window} changes, the baseline was {bl}."
             )
         elif metric == "dispersion":
             base = (
                 f"This change had a dispersion value of {observed:.2f}. "
-                f"Recent changes typically had a dispersion of {m:.2f} \u00b1 {std:.2f}."
+                f"Recent baseline: {bl}."
             )
         elif metric == "change_locality":
             base = (
                 f"The change locality for this commit was {observed:.2f}. "
-                f"Recent changes typically had a locality of {m:.2f} \u00b1 {std:.2f}."
+                f"Recent baseline: {bl}."
             )
         elif metric == "cochange_novelty_ratio":
             base = (
                 f"The co-change novelty ratio for this change was {observed:.2f}. "
-                f"Historically, similar changes had a novelty ratio of {m:.2f} \u00b1 {std:.2f}."
+                f"Recent baseline: {bl}."
             )
 
         # ---- CI metrics ----
         elif metric == "run_duration":
             base = (
                 f"This CI run took {observed:.1f} seconds. "
-                f"Recent runs typically completed in {m:.1f} \u00b1 {std:.1f} seconds."
+                f"Recent runs: {bl} seconds."
             )
-        elif metric == "job_count":
+        elif metric == "run_failed":
+            status = "failed" if observed > 0 else "succeeded"
             base = (
-                f"This CI run contained {observed:.0f} jobs. "
-                f"Recent runs typically had {m:.1f} \u00b1 {std:.1f} jobs."
+                f"This CI run {status}. "
+                f"Recent failure rate: {m:.2%}."
             )
 
         # ---- Testing metrics ----
         elif metric == "total_tests":
             base = (
                 f"This test run executed {observed:.0f} tests. "
-                f"Recent runs typically included {m:.1f} \u00b1 {std:.1f} tests."
+                f"Recent baseline: {bl} tests."
             )
         elif metric == "suite_duration":
             base = (
                 f"This test suite completed in {observed:.1f} seconds. "
-                f"Recent suites typically ran in {m:.1f} \u00b1 {std:.1f} seconds."
+                f"Recent baseline: {bl} seconds."
             )
         elif metric == "skip_rate":
             base = (
                 f"The skip rate for this run was {observed:.2%}. "
-                f"Recent runs typically had a skip rate of {m:.2%} \u00b1 {std:.2%}."
+                f"Recent baseline: {m:.2%} \u00b1 {std:.2%}."
             )
 
         # ---- Dependency metrics ----
         elif metric == "dependency_count":
             base = (
                 f"This snapshot contains {observed:.0f} dependencies. "
-                f"Recent snapshots typically had {m:.1f} \u00b1 {std:.1f} dependencies."
-            )
-        elif metric == "direct_count":
-            base = (
-                f"This snapshot declares {observed:.0f} direct dependencies. "
-                f"Recent snapshots typically declared {m:.1f} \u00b1 {std:.1f} direct dependencies."
+                f"Recent baseline: {bl}."
             )
         elif metric == "max_depth":
             base = (
                 f"The maximum transitive depth is {observed:.0f}. "
-                f"Recent snapshots had a max depth of {m:.1f} \u00b1 {std:.1f}."
+                f"Recent baseline: {bl}."
             )
 
         # ---- Schema metrics ----
         elif metric == "endpoint_count":
             base = (
                 f"This schema version has {observed:.0f} endpoints. "
-                f"Recent versions typically had {m:.1f} \u00b1 {std:.1f} endpoints."
+                f"Recent baseline: {bl}."
             )
         elif metric == "type_count":
             base = (
                 f"This schema version defines {observed:.0f} types. "
-                f"Recent versions typically defined {m:.1f} \u00b1 {std:.1f} types."
+                f"Recent baseline: {bl}."
             )
         elif metric == "field_count":
             base = (
                 f"This schema version contains {observed:.0f} fields. "
-                f"Recent versions typically contained {m:.1f} \u00b1 {std:.1f} fields."
+                f"Recent baseline: {bl}."
             )
         elif metric == "schema_churn":
             base = (
                 f"Schema churn for this version was {observed:.2f}. "
-                f"Recent versions had a churn of {m:.2f} \u00b1 {std:.2f}."
+                f"Recent baseline: {bl}."
             )
 
         # ---- Deployment metrics ----
-        elif metric == "deploy_duration":
+        elif metric == "release_cadence_hours":
             base = (
-                f"This deployment took {observed:.1f} seconds. "
-                f"Recent deployments typically took {m:.1f} \u00b1 {std:.1f} seconds."
+                f"This release came {observed:.1f} hours after the previous one. "
+                f"Recent cadence baseline: {bl} hours."
             )
-        elif metric == "is_rollback":
+        elif metric == "is_prerelease":
+            status = "a pre-release" if observed > 0 else "a stable release"
             base = (
-                f"This deployment {'was' if observed > 0 else 'was not'} a rollback. "
-                f"The rollback rate across recent deployments was {m:.2%}."
+                f"This was {status}. "
+                f"Recent pre-release rate: {m:.2%}."
+            )
+        elif metric == "asset_count":
+            base = (
+                f"This release included {observed:.0f} assets. "
+                f"Recent baseline: {bl} assets."
             )
 
         # ---- Config metrics ----
         elif metric == "resource_count":
             base = (
                 f"This configuration manages {observed:.0f} resources. "
-                f"Recent snapshots managed {m:.1f} \u00b1 {std:.1f} resources."
+                f"Recent baseline: {bl}."
             )
         elif metric == "resource_type_count":
             base = (
                 f"This configuration uses {observed:.0f} distinct resource types. "
-                f"Recent snapshots used {m:.1f} \u00b1 {std:.1f} types."
+                f"Recent baseline: {bl}."
             )
         elif metric == "config_churn":
             base = (
                 f"Configuration churn was {observed:.0f} (total changes). "
-                f"Recent snapshots had a churn of {m:.1f} \u00b1 {std:.1f}."
+                f"Recent baseline: {bl}."
             )
 
         # ---- Security metrics ----
         elif metric == "vulnerability_count":
             base = (
                 f"This scan found {observed:.0f} vulnerabilities. "
-                f"Recent scans typically found {m:.1f} \u00b1 {std:.1f}."
+                f"Recent baseline: {bl}."
             )
         elif metric == "critical_count":
             base = (
                 f"This scan found {observed:.0f} critical vulnerabilities. "
-                f"Recent scans typically found {m:.1f} \u00b1 {std:.1f} critical findings."
+                f"Recent baseline: {bl}."
             )
         elif metric == "fixable_ratio":
             base = (
                 f"The fixable ratio is {observed:.2%} of findings. "
-                f"Recent scans had a fixable ratio of {m:.2%} \u00b1 {std:.2%}."
-            )
-
-        # ---- Shared metrics ----
-        elif metric == "failure_rate":
-            source = engine
-            base = (
-                f"The {source} failure rate for this event was {observed:.2%}. "
-                f"Recent {source} events had a failure rate of {m:.2%} \u00b1 {std:.2%}."
+                f"Recent baseline: {m:.2%} \u00b1 {std:.2%}."
             )
 
         # ---- Fallback ----
         else:
             base = (
                 f"Metric '{metric}' had a value of {observed}. "
-                f"Baseline was {m:.2f} \u00b1 {std:.2f}."
+                f"Baseline: {bl}."
             )
 
         if conf != "sufficient":

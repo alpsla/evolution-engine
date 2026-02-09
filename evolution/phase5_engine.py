@@ -57,20 +57,19 @@ METRIC_LABELS = {
     "change_locality": "Change Locality",
     "cochange_novelty_ratio": "Co-change Novelty",
     "run_duration": "Build Duration",
-    "job_count": "Job Count",
-    "failure_rate": "Failure Rate",
+    "run_failed": "Build Failure",
     "total_tests": "Test Count",
     "skip_rate": "Skip Rate",
     "suite_duration": "Suite Duration",
     "dependency_count": "Total Dependencies",
-    "direct_count": "Direct Dependencies",
     "max_depth": "Dependency Depth",
     "endpoint_count": "API Endpoints",
     "type_count": "API Types",
     "field_count": "API Fields",
     "schema_churn": "Schema Churn",
-    "deploy_duration": "Deploy Duration",
-    "is_rollback": "Rollback",
+    "release_cadence_hours": "Release Cadence",
+    "is_prerelease": "Pre-release",
+    "asset_count": "Release Assets",
     "resource_count": "Resources",
     "resource_type_count": "Resource Types",
     "config_churn": "Config Churn",
@@ -111,7 +110,11 @@ class Phase5Engine:
         return all_signals
 
     def _load_explanations(self) -> dict:
-        """Load Phase 3 explanations indexed by signal_ref and engine:metric."""
+        """Load Phase 3 explanations indexed by compound key (event_ref:engine:metric).
+
+        Primary lookup: {event_ref}:{engine_id}:{metric} — unique per signal.
+        Fallback lookup: {engine_id}:{metric} — last explanation for that metric.
+        """
         path = self.phase3_path / "explanations.json"
         if not path.exists():
             return {}
@@ -119,12 +122,16 @@ class Phase5Engine:
             explanations = json.load(f)
         by_key = {}
         for e in explanations:
-            ref = e.get("signal_ref")
-            if ref:
-                by_key[ref] = e
-            key = f"{e.get('engine_id')}:{e.get('details', {}).get('metric', '')}"
-            if key not in by_key:
-                by_key[key] = e
+            ref = e.get("signal_ref", "")
+            engine = e.get("engine_id", "")
+            metric = e.get("details", {}).get("metric", "")
+            # Primary: compound key (unique per signal)
+            if ref and engine and metric:
+                by_key[f"{ref}:{engine}:{metric}"] = e
+            # Fallback: engine:metric (for last-resort lookup)
+            fallback = f"{engine}:{metric}"
+            if fallback not in by_key:
+                by_key[fallback] = e
         return by_key
 
     def _load_events(self) -> dict:
@@ -168,11 +175,17 @@ class Phase5Engine:
         Per PHASE_5_DESIGN.md §3.1:
         - deviation exceeds ±threshold stddev
         - confidence is at least accumulating
+        Skips degenerate signals (constant baselines) and None measures.
         """
         significant = []
         for s in signals:
-            dev = abs(s["deviation"]["measure"])
-            if dev >= self.significance_threshold:
+            dev_info = s.get("deviation", {})
+            if dev_info.get("degenerate", False):
+                continue
+            measure = dev_info.get("measure")
+            if measure is None:
+                continue
+            if abs(measure) >= self.significance_threshold:
                 significant.append(s)
         return significant
 
@@ -321,32 +334,166 @@ class Phase5Engine:
 
         return matches
 
+    # ─────────────────── 3b. Candidate Pattern Matcher ───────────────────
+
+    def _match_candidate_patterns(self, significant_signals: list[dict],
+                                   patterns: list[dict]) -> list[dict]:
+        """Match current signals against Phase 4 candidate patterns (not yet promoted).
+
+        Same overlap logic as _match_patterns() but for raw correlation patterns.
+        """
+        if not patterns or not significant_signals:
+            return []
+
+        components = signals_to_components(significant_signals, threshold=1.0)
+        if not components:
+            return []
+
+        current_families = set(c[0] for c in components)
+        current_metrics = set(c[1] for c in components)
+
+        matches = []
+        for p in patterns:
+            p_families = set()
+            p_metrics = set()
+            for comp in p.get("components", []):
+                p_families.add(comp.get("engine_id", ""))
+                p_metrics.add(comp.get("metric", ""))
+
+            if p_families & current_families and p_metrics & current_metrics:
+                matches.append({
+                    "pattern_id": p.get("fingerprint", ""),
+                    "correlation": p.get("correlation_strength", 0),
+                    "raw_correlation": p.get("raw_correlation", p.get("correlation_strength", 0)),
+                    "confidence_weight": p.get("confidence_weight", 1.0),
+                    "families": sorted(p_families & current_families),
+                    "metrics": sorted(p_metrics & current_metrics),
+                    "description": p.get("semantic", p.get("description", "")),
+                    "support_count": p.get("support_count", 0),
+                })
+
+        return matches
+
+    # ─────────────────── 3c. Event Grouping ───────────────────
+
+    def _group_by_trigger_event(self, changes: list[dict]) -> list[dict]:
+        """Group changes that share the same trigger event (event_ref).
+
+        A single large commit can trigger signals across multiple families.
+        Grouping shows them as one event with sub-metrics instead of N
+        independent anomalies.
+
+        Returns list of event groups, each with:
+          - event_ref: the shared event reference
+          - primary: the change with highest deviation
+          - families: list of families involved
+          - changes: all changes in this group
+          - signal_count: number of signals
+        """
+        groups = defaultdict(list)
+        ungrouped = []
+
+        for change in changes:
+            ref = change.get("event_ref", "")
+            if ref:
+                groups[ref].append(change)
+            else:
+                ungrouped.append(change)
+
+        result = []
+        for event_ref, group_changes in groups.items():
+            # Sort by absolute deviation descending
+            group_changes.sort(key=lambda c: abs(c["deviation_stddev"]), reverse=True)
+            primary = group_changes[0]
+            families = sorted(set(c["family"] for c in group_changes))
+            result.append({
+                "event_ref": event_ref,
+                "primary": primary,
+                "families": families,
+                "changes": group_changes,
+                "signal_count": len(group_changes),
+            })
+
+        # Sort groups by primary deviation
+        result.sort(key=lambda g: abs(g["primary"]["deviation_stddev"]), reverse=True)
+
+        # Append ungrouped as singleton groups
+        for change in ungrouped:
+            result.append({
+                "event_ref": None,
+                "primary": change,
+                "families": [change["family"]],
+                "changes": [change],
+                "signal_count": 1,
+            })
+
+        return result
+
     # ─────────────────── 4. Formatters ───────────────────
 
     def _format_change(self, signal: dict, explanations: dict) -> dict:
         """Format a single significant signal as a change entry."""
         dev = signal["deviation"]["measure"]
         baseline = signal["baseline"]
+        event_ref = signal.get("event_ref", "")
+        engine_id = signal["engine_id"]
+        metric = signal["metric"]
 
-        # Get Phase 3 explanation
+        # Get Phase 3 explanation via compound key (event_ref:engine:metric)
         explanation = ""
-        exp = explanations.get(signal.get("event_ref", ""))
+        exp = explanations.get(f"{event_ref}:{engine_id}:{metric}")
         if not exp:
-            exp = explanations.get(f"{signal['engine_id']}:{signal['metric']}")
+            exp = explanations.get(f"{engine_id}:{metric}")
         if exp:
             explanation = exp.get("summary", "")
 
         return {
-            "family": signal["engine_id"],
-            "metric": signal["metric"],
+            "family": engine_id,
+            "metric": metric,
             "normal": {
                 "mean": round(baseline["mean"], 4),
                 "stddev": round(baseline["stddev"], 4),
+                "median": round(baseline.get("median", baseline["mean"]), 4),
+                "mad": round(baseline.get("mad", 0), 4),
             },
             "current": signal["observed"],
             "deviation_stddev": round(dev, 2),
+            "deviation_unit": signal["deviation"].get("unit", "modified_zscore"),
             "description": explanation,
+            "event_ref": event_ref,
         }
+
+    def _append_change_lines(self, lines: list, change: dict, indent: str = "") -> None:
+        """Append formatted lines for a single change entry."""
+        family_label = FAMILY_LABELS.get(change["family"], change["family"])
+        metric_label = METRIC_LABELS.get(change["metric"], change["metric"])
+        normal = change["normal"]
+        current = change["current"]
+        dev = change["deviation_stddev"]
+        unit = change.get("deviation_unit", "modified_zscore")
+        direction = "above" if dev > 0 else "below"
+
+        lines.append(f"{indent}{family_label} / {metric_label}")
+
+        # Use median/MAD when available, fall back to mean/stddev
+        if normal.get("mad", 0) > 0:
+            normal_str = f"{normal['median']:.4g}"
+            spread_str = f"MAD {normal['mad']:.2f}"
+        else:
+            normal_str = f"{normal['mean']:.4g}"
+            spread_str = f"+/- {normal['stddev']:.2f}"
+
+        # Format current value
+        if change["metric"] in ("skip_rate", "fixable_ratio", "is_prerelease", "run_failed"):
+            current_str = f"{current:.1%}" if current < 1.01 else f"{current:.4g}"
+        elif isinstance(current, float) and current < 1:
+            current_str = f"{current:.2f}"
+        else:
+            current_str = f"{current:.4g}"
+
+        unit_label = {"modified_zscore": "MAD", "iqr_normalized": "IQR", "degenerate": "deg"}.get(unit, "std")
+        lines.append(f"{indent}   Normally: {normal_str} ({spread_str})")
+        lines.append(f"{indent}   Now:      {current_str}  ({abs(dev):.1f} {unit_label} {direction} normal)")
 
     def _format_human_summary(self, advisory: dict) -> str:
         """Render advisory as human-readable 'normal vs now' summary.
@@ -359,46 +506,32 @@ class Phase5Engine:
         lines.append("")
 
         summary = advisory["summary"]
+        event_groups = advisory.get("event_groups", [])
+        n_groups = len(event_groups)
+
         lines.append(f"{summary['significant_changes']} significant changes detected "
                      f"across {', '.join(summary['families_affected'])}.")
+        if n_groups and n_groups < summary["significant_changes"]:
+            lines.append(f"(Grouped into {n_groups} trigger events)")
         lines.append("")
 
-        # Changes with normal vs now
-        for i, change in enumerate(advisory["changes"], 1):
-            family_label = FAMILY_LABELS.get(change["family"], change["family"])
-            metric_label = METRIC_LABELS.get(change["metric"], change["metric"])
-            normal_mean = change["normal"]["mean"]
-            normal_std = change["normal"]["stddev"]
-            current = change["current"]
-            dev = change["deviation_stddev"]
-            direction = "above" if dev > 0 else "below"
-
-            lines.append(f"{i}. {family_label} / {metric_label}")
-
-            # Format based on whether it's a rate/ratio or a count
-            if change["metric"] in ("failure_rate", "skip_rate", "fixable_ratio"):
-                normal_str = f"{normal_mean:.1%}"
-                current_str = f"{current:.1%}"
-            elif isinstance(current, float) and current < 1:
-                normal_str = f"{normal_mean:.2f}"
-                current_str = f"{current:.2f}"
-            else:
-                normal_str = f"{normal_mean:.1f}"
-                current_str = f"{current:.4g}"
-
-            lines.append(f"   Normally: {normal_str} +/- {normal_std:.2f}")
-            lines.append(f"   Now:      {current_str}  ({abs(dev):.1f}x stddev {direction} normal)")
-
-            # Visual bar
-            if normal_mean > 0 and isinstance(current, (int, float)):
-                ratio = current / normal_mean if normal_mean else 1
-                bar_normal = int(min(20, 20))
-                bar_current = int(min(20, 20 * ratio))
-                lines.append(f"   Normal: {'█' * bar_normal}")
-                lines.append(f"   Now:    {'█' * min(bar_current, 40)}"
-                             + (f"  <- {ratio:.1f}x" if ratio > 1.2 or ratio < 0.8 else ""))
-
-            lines.append("")
+        # Render by event group if available, else flat changes
+        if event_groups:
+            for gi, group in enumerate(event_groups, 1):
+                if group["signal_count"] > 1:
+                    families_str = ", ".join(
+                        FAMILY_LABELS.get(f, f) for f in group["families"]
+                    )
+                    lines.append(f"Event {gi} ({group['signal_count']} signals across {families_str}):")
+                    for change in group["changes"]:
+                        self._append_change_lines(lines, change, indent="  ")
+                else:
+                    self._append_change_lines(lines, group["primary"], indent="")
+                lines.append("")
+        else:
+            for change in advisory["changes"]:
+                self._append_change_lines(lines, change, indent="")
+                lines.append("")
 
         # Pattern matches
         if advisory.get("pattern_matches"):
@@ -407,6 +540,19 @@ class Phase5Engine:
             for pm in advisory["pattern_matches"]:
                 lines.append(f"  These changes match a known pattern (seen {pm['seen_count']} times):")
                 lines.append(f"  {pm['description']}")
+                lines.append("")
+
+        # Candidate patterns
+        if advisory.get("candidate_patterns"):
+            lines.append("CANDIDATE PATTERNS (not yet promoted)")
+            lines.append("")
+            for cp in advisory["candidate_patterns"]:
+                r = cp.get("correlation", 0)
+                families_str = ", ".join(cp.get("families", []))
+                desc = cp.get("description", "")
+                lines.append(f"  r={r:.2f} across {families_str}")
+                if desc:
+                    lines.append(f"  {desc}")
                 lines.append("")
 
         # Evidence summary
@@ -806,6 +952,7 @@ class Phase5Engine:
         explanations = self._load_explanations()
         all_events = self._load_events()
         knowledge = self._load_phase4_knowledge()
+        patterns = self._load_phase4_patterns()
 
         if not all_signals:
             return {"status": "no_signals", "advisory": None}
@@ -819,8 +966,9 @@ class Phase5Engine:
         # Step 2: Evidence collection
         evidence = self._collect_evidence(significant, all_events)
 
-        # Step 3: Pattern matching
+        # Step 3: Pattern matching (promoted knowledge + candidates)
         pattern_matches = self._match_patterns(significant, knowledge)
+        candidate_patterns = self._match_candidate_patterns(significant, patterns)
 
         # Step 4: Compile advisory
         # Determine period from events
@@ -842,6 +990,9 @@ class Phase5Engine:
         # Families affected
         families_affected = sorted(set(c["family"] for c in changes))
 
+        # Event grouping — cluster signals by trigger event
+        event_groups = self._group_by_trigger_event(changes)
+
         # Build evidence package
         evidence_package = {
             "evidence_id": _content_hash(evidence),
@@ -859,10 +1010,14 @@ class Phase5Engine:
                 "significant_changes": len(changes),
                 "families_affected": families_affected,
                 "known_patterns_matched": len(pattern_matches),
+                "candidate_patterns_matched": len(candidate_patterns),
+                "event_groups": len(event_groups),
                 "new_observations": len(changes) - len(pattern_matches),
             },
             "changes": changes,
+            "event_groups": event_groups,
             "pattern_matches": pattern_matches,
+            "candidate_patterns": candidate_patterns,
             "evidence": evidence_package,
         }
 

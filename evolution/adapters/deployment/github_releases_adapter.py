@@ -93,7 +93,25 @@ class GitHubReleasesAdapter:
             deployments = self._fixture_deployments
         else:
             raw_releases = self._fetch_releases()
-            deployments = [self._release_to_deployment(r) for r in raw_releases]
+            deployments = []
+            prev_time = None
+            for r in raw_releases:
+                d = self._release_to_deployment(r)
+                # Compute inter-release interval (release cadence)
+                current_time = d["timing"]["initiated_at"]
+                since_previous = None
+                if prev_time and current_time:
+                    try:
+                        t1 = datetime.fromisoformat(prev_time.replace("Z", "+00:00"))
+                        t2 = datetime.fromisoformat(current_time.replace("Z", "+00:00"))
+                        since_previous = max(0.0, (t2 - t1).total_seconds())
+                    except (ValueError, TypeError):
+                        pass
+                d["timing"]["since_previous_seconds"] = since_previous
+                d["is_prerelease"] = r.get("prerelease", False)
+                d["asset_count"] = len(r.get("assets", []))
+                prev_time = current_time
+                deployments.append(d)
 
         for deploy in deployments:
             content_hash = self._hash(json.dumps(deploy, sort_keys=True))
