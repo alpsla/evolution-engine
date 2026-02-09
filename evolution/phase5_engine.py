@@ -354,22 +354,20 @@ class Phase5Engine:
 
         matches = []
         for p in patterns:
-            p_families = set()
-            p_metrics = set()
-            for comp in p.get("components", []):
-                p_families.add(comp.get("engine_id", ""))
-                p_metrics.add(comp.get("metric", ""))
+            p_families = set(p.get("sources", []))
+            p_metrics = set(p.get("metrics", []))
 
             if p_families & current_families and p_metrics & current_metrics:
                 matches.append({
-                    "pattern_id": p.get("fingerprint", ""),
+                    "pattern_id": p.get("pattern_id", p.get("fingerprint", "")),
                     "correlation": p.get("correlation_strength", 0),
-                    "raw_correlation": p.get("raw_correlation", p.get("correlation_strength", 0)),
-                    "confidence_weight": p.get("confidence_weight", 1.0),
                     "families": sorted(p_families & current_families),
                     "metrics": sorted(p_metrics & current_metrics),
-                    "description": p.get("semantic", p.get("description", "")),
-                    "support_count": p.get("support_count", 0),
+                    "description": (
+                        p.get("description_semantic")
+                        or p.get("description_statistical", "")
+                    ),
+                    "support_count": p.get("occurrence_count", 0),
                 })
 
         return matches
