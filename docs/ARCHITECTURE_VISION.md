@@ -75,7 +75,7 @@ Any change that violates these principles is considered architectural regression
 │                  ┌─────────────────────────┐                      │
 │                  │       Phase 4           │                      │
 │                  │  4a: Pattern Discovery  │ ←──── Knowledge Base │
-│                  │  4b: Pattern Interpret  │ ────▶ (PostgreSQL)   │
+│                  │  4b: Pattern Interpret  │ ────▶ (SQLite)       │
 │                  └────────────┬────────────┘                      │
 │                               │                                    │
 │                               ▼                                    │
@@ -201,8 +201,10 @@ Each Knowledge Artifact contains:
 - Scope designation (local to one repo, or global across repos)
 
 **Knowledge scopes:**
-- **Local knowledge** — specific to one repository; always takes precedence
-- **Global knowledge** — derived from multiple repositories; serves only as a defeasible prior; decays to zero influence when sufficient local baselines exist
+- **Local** — discovered on this repository; always takes precedence
+- **Community** — imported from shared anonymized digests; never overwrites local
+- **Confirmed** — discovered locally AND matches a community pattern; highest confidence
+- **Universal** — found in 3+ repos across calibration; bundled in the pip package as defeasible priors; decays to zero influence when sufficient local baselines exist
 
 ---
 
@@ -240,40 +242,51 @@ This evidence is structured so that:
 
 ## 10. Delivery Channels
 
-The Evolution Engine is a **product** that reaches users through multiple delivery channels, added iteratively in priority order.
+The Evolution Engine is a **local-first product** that reaches users through multiple delivery channels, added iteratively in priority order.
 
 ```
 ┌──────────────────────────────────────────────┐
 │              DELIVERY CHANNELS               │
 │                                              │
-│  Priority 1: GitHub / GitLab CI Integration  │
+│  Priority 1: CLI Tool (evo analyze .)        │
+│     (local analysis, zero config,            │
+│      HTML reports, pattern KB)               │
+│                                              │
+│  Priority 2: GitHub / GitLab CI Integration  │
 │     (PR comments, check annotations,         │
 │      evidence as build artifact)             │
 │                                              │
-│  Priority 2: API Service (SaaS)              │
-│     (webhook ingestion, REST endpoints,      │
-│      multi‑repo, multi‑tenant)               │
-│                                              │
-│  Priority 3: Web Dashboard                   │
-│     ("normal vs now" visuals, timeline,      │
-│      pattern catalog, evidence browser)      │
-│                                              │
-│  Priority 4: IDE Extension                   │
+│  Priority 3: IDE Extension                   │
 │     (inline annotations, status bar,         │
 │      evidence quick action)                  │
 │                                              │
-│  Priority 5: CLI Tool                        │
-│     (local analysis, pipeline scripting,     │
-│      power user workflows)                   │
+│  Priority 4: Web Dashboard                   │
+│     ("normal vs now" visuals, timeline,      │
+│      pattern catalog, evidence browser)      │
+│                                              │
+│  Priority 5: API Service (SaaS)              │
+│     (webhook ingestion, REST endpoints,      │
+│      multi‑repo, multi‑tenant)               │
 └──────────────────────────────────────────────┘
 ```
 
 ### Delivery Principles
 
+- **Local-first** — all analysis runs on the user's machine; no data leaves by default
+- **CLI is the primary interface** — `evo analyze .` with zero config
 - **CI integration is never blocking** — advisory only, never a gate
 - **All channels consume the same engine** — no channel‑specific logic in core
 - **Evidence format is channel‑agnostic** — structured JSON consumed by all renderers
-- **The API service is the central hub** once multi‑repo or persistence is needed
+
+### Adapter Ecosystem
+
+The system supports three tiers of adapter discovery:
+
+- **Tier 1 (File-based)**: Detect adapters from repository files (`.git/`, lockfiles, config files). Always works offline.
+- **Tier 2 (API-enriched)**: Optional tokens unlock CI, deployment, and security data from hosted services.
+- **Tier 3 (Plugins)**: Community adapters installed via `pip install evo-adapter-<name>`, auto-discovered through Python `entry_points`.
+
+Third-party adapters must pass a **13-check certification gate** before publishing, validating contract compliance, event structure, JSON serialization, and attestation integrity.
 
 ---
 
