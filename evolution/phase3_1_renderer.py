@@ -3,6 +3,10 @@ import os
 import re
 from evolution.validation_gate import ValidationGate
 from evolution.llm_openrouter import OpenRouterClient
+try:
+    from evolution.llm_anthropic import AnthropicClient
+except ImportError:
+    AnthropicClient = None
 
 _PREAMBLE_RE = re.compile(
     r"^(?:(?:Here(?:'s| is) (?:a |the )?rewritten explanation[^:]*:|Explanation:)\s*\n?)",
@@ -17,12 +21,22 @@ class Phase31Renderer:
         self.llm = None
 
         if self.enabled:
-            try:
-                self.llm = OpenRouterClient(self.model)
-            except Exception:
-                # Silent fallback if LLM cannot be initialized (e.g., missing API key)
-                self.llm = None
-                self.enabled = False
+            # Prefer Anthropic direct if key is present and client is available
+            if os.getenv("ANTHROPIC_API_KEY") and AnthropicClient:
+                try:
+                    self.llm = AnthropicClient(self.model)
+                except Exception:
+                    self.llm = None
+            
+            # Fallback to OpenRouter
+            if not self.llm:
+                try:
+                    self.llm = OpenRouterClient(self.model)
+                except Exception:
+                    # Silent fallback if LLM cannot be initialized
+                    self.llm = None
+                    if not os.getenv("ANTHROPIC_API_KEY"):
+                         self.enabled = False
 
     @staticmethod
     def _strip_preamble(text: str) -> str:
@@ -41,7 +55,11 @@ class Phase31Renderer:
             f"Explanation:\n{baseline_text}"
         )
 
-        candidate_text = self.llm.generate(prompt)
+        try:
+            candidate_text = self.llm.generate(prompt)
+        except Exception:
+            # LLM unavailable (timeout, rate limit, network) — fall back to template
+            return explanation
 
         # Strip common LLM preamble artifacts
         candidate_text = self._strip_preamble(candidate_text)

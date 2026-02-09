@@ -28,7 +28,11 @@ class GitSourceAdapter:
         commits.reverse()  # oldest → newest
 
         for commit in commits:
-            files = list(commit.stats.files.keys())
+            try:
+                files = list(commit.stats.files.keys())
+            except Exception:
+                # Shallow clone boundary — parent object missing
+                files = []
             is_merge = len(commit.parents) > 1
 
             payload = {
