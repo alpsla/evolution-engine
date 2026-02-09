@@ -213,14 +213,14 @@ class Phase5Engine:
 
             family = event.get("source_family", event.get("source_type", "unknown"))
             payload = event.get("payload", {})
-            observed_at = event.get("observed_at", "")
+            event_time = Phase4Engine._extract_event_timestamp(event)
 
             # Timeline entry
             metric_label = METRIC_LABELS.get(signal["metric"], signal["metric"])
             dev = signal["deviation"]["measure"]
             direction = "above" if dev > 0 else "below"
             timeline.append({
-                "timestamp": observed_at,
+                "timestamp": event_time,
                 "family": family,
                 "event": f"{metric_label}: {signal['observed']:.4g} ({abs(dev):.1f} stddev {direction} normal)",
             })
@@ -234,7 +234,7 @@ class Phase5Engine:
                         "sha": sha,
                         "message": payload.get("message", ""),
                         "author": payload.get("author", ""),
-                        "timestamp": observed_at,
+                        "timestamp": event_time,
                         "files_changed": payload.get("files", []),
                     })
                     for f in payload.get("files", []):
@@ -273,7 +273,7 @@ class Phase5Engine:
                 for finding in findings:
                     if finding.get("severity") in ("critical", "high"):
                         timeline.append({
-                            "timestamp": observed_at,
+                            "timestamp": event_time,
                             "family": "security",
                             "event": f"Vulnerability {finding.get('id', 'unknown')}: "
                                      f"{finding.get('severity', '')} in {finding.get('package', '')}",
@@ -282,13 +282,22 @@ class Phase5Engine:
         # Sort timeline chronologically
         timeline.sort(key=lambda t: t.get("timestamp", ""))
 
+        # Deduplicate timeline: keep first occurrence per (family, event_text)
+        seen_timeline = set()
+        deduped_timeline = []
+        for t in timeline:
+            key = (t["family"], t["event"])
+            if key not in seen_timeline:
+                seen_timeline.add(key)
+                deduped_timeline.append(t)
+
         # Cap lists for readability
         return {
             "commits": commits[:20],
             "files_affected": files_affected[:50],
             "tests_impacted": tests_impacted[:30],
             "dependencies_changed": deps_changed[:30],
-            "timeline": timeline[:50],
+            "timeline": deduped_timeline[:50],
         }
 
     # ─────────────────── 3. Pattern Matcher ───────────────────
@@ -587,7 +596,8 @@ class Phase5Engine:
             family_label = FAMILY_LABELS.get(change["family"], change["family"])
             metric_label = METRIC_LABELS.get(change["metric"], change["metric"])
             current = change["current"]
-            normal = change["normal"]["mean"]
+            normal_info = change["normal"]
+            normal = normal_info["median"] if normal_info.get("mad", 0) > 0 else normal_info["mean"]
             dev = abs(change["deviation_stddev"])
 
             if change["metric"] in ("failure_rate", "skip_rate", "fixable_ratio"):
@@ -1010,7 +1020,7 @@ class Phase5Engine:
                 "known_patterns_matched": len(pattern_matches),
                 "candidate_patterns_matched": len(candidate_patterns),
                 "event_groups": len(event_groups),
-                "new_observations": len(changes) - len(pattern_matches),
+                "new_observations": max(0, len(changes) - len(pattern_matches) - len(candidate_patterns)),
             },
             "changes": changes,
             "event_groups": event_groups,
