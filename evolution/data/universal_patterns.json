@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "generated_by": "scripts/aggregate_calibration.py",
+  "repos_analyzed": 7,
+  "total_unique_fingerprints": 6,
+  "min_repos_filter": 2,
+  "patterns": [
+    {
+      "fingerprint": "7b112861822577bb",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "dependency",
+        "git"
+      ],
+      "metrics": [
+        "dependency_presence",
+        "dispersion"
+      ],
+      "description_statistical": "When dependency events occur, git.dispersion is systematically increased (effect size d=0.49, treated=7018, control=1930).",
+      "description_semantic": null,
+      "correlation_strength": 0.4066,
+      "occurrence_count": 10241,
+      "confidence_tier": "statistical",
+      "scope": "universal",
+      "repo_count": 3,
+      "repos_observed": [
+        "gohugoio--hugo",
+        "junegunn--fzf",
+        "tauri-apps--tauri"
+      ]
+    }
+  ],
+  "import_ready": [
+    {
+      "fingerprint": "7b112861822577bb",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "dependency",
+        "git"
+      ],
+      "metrics": [
+        "dependency_presence",
+        "dispersion"
+      ],
+      "description_statistical": "When dependency events occur, git.dispersion is systematically increased (effect size d=0.49, treated=7018, control=1930).",
+      "description_semantic": null,
+      "correlation_strength": 0.4066,
+      "occurrence_count": 10241,
+      "confidence_tier": "statistical",
+      "scope": "universal"
+    }
+  ]
+}

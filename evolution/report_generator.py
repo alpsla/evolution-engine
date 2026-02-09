@@ -1,0 +1,867 @@
+"""
+HTML Report Generator — Produces standalone HTML reports from Phase 5 advisory data.
+
+Usage:
+    from evolution.report_generator import generate_report
+    html = generate_report(advisory_path)
+    Path("report.html").write_text(html)
+
+Or via CLI:
+    evo report [path]
+    evo report . --output report.html
+"""
+
+import json
+from datetime import datetime
+from pathlib import Path
+
+FAMILY_LABELS = {
+    "git": "Version Control",
+    "ci": "CI / Build",
+    "testing": "Testing",
+    "dependency": "Dependencies",
+    "schema": "API / Schema",
+    "deployment": "Deployment",
+    "config": "Configuration",
+    "security": "Security",
+}
+
+METRIC_LABELS = {
+    "files_touched": "Files Changed",
+    "dispersion": "Change Dispersion",
+    "change_locality": "Change Locality",
+    "cochange_novelty_ratio": "Co-change Novelty",
+    "run_duration": "Build Duration",
+    "run_failed": "Build Failure",
+    "dependency_count": "Total Dependencies",
+    "max_depth": "Dependency Depth",
+    "release_cadence_hours": "Release Cadence",
+    "is_prerelease": "Pre-release",
+    "asset_count": "Release Assets",
+}
+
+FAMILY_COLORS = {
+    "git": "#3b82f6",
+    "ci": "#f59e0b",
+    "testing": "#10b981",
+    "dependency": "#8b5cf6",
+    "schema": "#ec4899",
+    "deployment": "#06b6d4",
+    "config": "#6366f1",
+    "security": "#ef4444",
+}
+
+
+def generate_report(
+    evo_dir: str | Path,
+    title: str = None,
+    calibration_result: dict = None,
+) -> str:
+    """Generate a standalone HTML report from Phase 5 output.
+
+    Args:
+        evo_dir: Path to the .evo directory (or calibration run dir).
+        title: Optional title override.
+        calibration_result: Optional calibration_result.json dict for extra stats.
+
+    Returns:
+        Complete HTML string.
+    """
+    evo_dir = Path(evo_dir)
+    advisory_path = evo_dir / "phase5" / "advisory.json"
+    evidence_path = evo_dir / "phase5" / "evidence.json"
+
+    if not advisory_path.exists():
+        raise FileNotFoundError(f"No advisory found at {advisory_path}")
+
+    advisory = json.loads(advisory_path.read_text())
+    evidence = json.loads(evidence_path.read_text()) if evidence_path.exists() else {}
+
+    scope = advisory.get("scope", "Unknown Repository")
+    title = title or f"Evolution Report — {scope}"
+
+    return _render_html(advisory, evidence, title, calibration_result)
+
+
+def _render_html(
+    advisory: dict,
+    evidence: dict,
+    title: str,
+    cal: dict = None,
+) -> str:
+    """Render the full HTML report."""
+    scope = advisory.get("scope", "Unknown")
+    summary = advisory.get("summary", {})
+    changes = advisory.get("changes", [])
+    event_groups = advisory.get("event_groups", [])
+    pattern_matches = advisory.get("pattern_matches", [])
+    candidate_patterns = advisory.get("candidate_patterns", [])
+    commits = evidence.get("commits", [])
+    files_affected = evidence.get("files_affected", [])
+    timeline = evidence.get("timeline", [])
+    deps_changed = evidence.get("dependencies_changed", [])
+
+    period = advisory.get("period", {})
+    period_from = _format_date(period.get("from", ""))
+    period_to = _format_date(period.get("to", ""))
+    generated = _format_date(advisory.get("generated_at", ""))
+
+    families_affected = summary.get("families_affected", [])
+    sig_changes = summary.get("significant_changes", 0)
+    patterns_matched = summary.get("known_patterns_matched", 0)
+    candidate_matched = summary.get("candidate_patterns_matched", 0)
+
+    # Build family badges
+    family_badges = "".join(
+        f'<span class="badge" style="background:{FAMILY_COLORS.get(f, "#6b7280")}">'
+        f'{FAMILY_LABELS.get(f, f)}</span>'
+        for f in families_affected
+    )
+
+    # Build stat cards
+    stat_cards = _build_stat_cards(summary, cal)
+
+    # Build change cards
+    change_cards = _build_change_cards(event_groups, changes)
+
+    # Build pattern section
+    pattern_section = _build_pattern_section(pattern_matches, candidate_patterns)
+
+    # Build evidence section
+    evidence_section = _build_evidence_section(commits, files_affected, deps_changed, timeline)
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{_esc(title)}</title>
+<style>
+{_CSS}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="logo">evo</div>
+  <h1>{_esc(title)}</h1>
+  <p class="subtitle">{_esc(scope)} &mdash; {period_from} to {period_to}</p>
+  <p class="generated">Generated {generated}</p>
+</header>
+
+<section class="summary">
+  <h2>Summary</h2>
+  <div class="badges">{family_badges}</div>
+  <div class="stat-grid">{stat_cards}</div>
+</section>
+
+<section class="changes">
+  <h2>Significant Changes</h2>
+  {change_cards if change_cards else '<p class="empty">No significant changes detected.</p>'}
+</section>
+
+{pattern_section}
+
+<section class="evidence">
+  <h2>Evidence</h2>
+  {evidence_section}
+</section>
+
+<footer>
+  <p>Generated by <strong>Evolution Engine</strong> v0.1.0</p>
+</footer>
+
+</div>
+</body>
+</html>"""
+
+
+def _build_stat_cards(summary: dict, cal: dict = None) -> str:
+    cards = []
+    cards.append(_stat_card(
+        str(summary.get("significant_changes", 0)),
+        "Significant Changes",
+        "changes",
+    ))
+    cards.append(_stat_card(
+        str(len(summary.get("families_affected", []))),
+        "Families Affected",
+        "families",
+    ))
+    cards.append(_stat_card(
+        str(summary.get("known_patterns_matched", 0)),
+        "Patterns Matched",
+        "patterns",
+    ))
+    cards.append(_stat_card(
+        str(summary.get("event_groups", 0)),
+        "Event Groups",
+        "groups",
+    ))
+
+    if cal:
+        events = cal.get("events", 0)
+        signals = cal.get("signals", 0)
+        if events:
+            cards.append(_stat_card(f"{events:,}", "Events Analyzed", "events"))
+        if signals:
+            cards.append(_stat_card(f"{signals:,}", "Signals Computed", "signals"))
+
+    return "\n".join(cards)
+
+
+def _stat_card(value: str, label: str, css_class: str) -> str:
+    return (
+        f'<div class="stat-card {css_class}">'
+        f'<div class="stat-value">{value}</div>'
+        f'<div class="stat-label">{label}</div>'
+        f'</div>'
+    )
+
+
+def _build_change_cards(event_groups: list, changes: list) -> str:
+    if not event_groups and not changes:
+        return ""
+
+    cards = []
+    seen_refs = set()
+
+    for group in event_groups:
+        ref = group.get("event_ref", "")[:12]
+        primary = group.get("primary", {})
+        group_changes = group.get("changes", [])
+        families = group.get("families", [])
+        seen_refs.add(group.get("event_ref", ""))
+
+        family_badges = " ".join(
+            f'<span class="badge-sm" style="background:{FAMILY_COLORS.get(f, "#6b7280")}">'
+            f'{FAMILY_LABELS.get(f, f)}</span>'
+            for f in families
+        )
+
+        change_rows = []
+        for c in group_changes:
+            family = FAMILY_LABELS.get(c["family"], c["family"])
+            metric = METRIC_LABELS.get(c["metric"], c["metric"])
+            current = c.get("current", 0)
+            normal = c.get("normal", {})
+            median = normal.get("median", normal.get("mean", 0))
+            dev = abs(c.get("deviation_stddev", 0))
+            unit = c.get("deviation_unit", "")
+            direction = "above" if c.get("deviation_stddev", 0) >= 0 else "below"
+            color = "#ef4444" if direction == "above" else "#3b82f6"
+
+            unit_label = {"modified_zscore": "MAD", "iqr_normalized": "IQR"}.get(unit, unit)
+
+            change_rows.append(
+                f'<tr>'
+                f'<td class="metric-name">{_esc(family)} / {_esc(metric)}</td>'
+                f'<td class="metric-normal">{_fmt_num(median)}</td>'
+                f'<td class="metric-current" style="color:{color}">{_fmt_num(current)}</td>'
+                f'<td class="metric-deviation">'
+                f'<span class="dev-badge" style="background:{color}">'
+                f'{_fmt_num(dev)} {unit_label} {direction}</span></td>'
+                f'</tr>'
+            )
+
+        desc = primary.get("description", "")
+        rows_html = "\n".join(change_rows)
+
+        cards.append(f"""
+<div class="change-card">
+  <div class="change-header">
+    <span class="event-ref" title="{_esc(group.get('event_ref', ''))}">{ref}</span>
+    {family_badges}
+    <span class="signal-count">{group.get('signal_count', 1)} signal(s)</span>
+  </div>
+  <table class="change-table">
+    <thead><tr><th>Metric</th><th>Normal</th><th>Now</th><th>Deviation</th></tr></thead>
+    <tbody>{rows_html}</tbody>
+  </table>
+  {f'<p class="change-desc">{_esc(desc)}</p>' if desc else ''}
+</div>""")
+
+    # Add any ungrouped changes
+    for c in changes:
+        if c.get("event_ref", "") not in seen_refs:
+            family = FAMILY_LABELS.get(c["family"], c["family"])
+            metric = METRIC_LABELS.get(c["metric"], c["metric"])
+            dev = abs(c.get("deviation_stddev", 0))
+            unit = c.get("deviation_unit", "")
+            direction = "above" if c.get("deviation_stddev", 0) >= 0 else "below"
+            unit_label = {"modified_zscore": "MAD", "iqr_normalized": "IQR"}.get(unit, unit)
+            cards.append(f"""
+<div class="change-card">
+  <div class="change-header">
+    <span class="badge-sm" style="background:{FAMILY_COLORS.get(c['family'], '#6b7280')}">{_esc(family)}</span>
+  </div>
+  <p class="change-metric">{_esc(metric)}: {_fmt_num(c.get('current', 0))}
+    <span class="dev-badge">{_fmt_num(dev)} {unit_label} {direction}</span></p>
+  {f'<p class="change-desc">{_esc(c.get("description", ""))}</p>' if c.get("description") else ''}
+</div>""")
+
+    return "\n".join(cards)
+
+
+def _build_pattern_section(matches: list, candidates: list) -> str:
+    if not matches and not candidates:
+        return ""
+
+    items = []
+    for p in matches:
+        sources = ", ".join(FAMILY_LABELS.get(s, s) for s in p.get("sources", []))
+        metrics = ", ".join(METRIC_LABELS.get(m, m) for m in p.get("metrics", []))
+        corr = p.get("correlation_strength", 0)
+        items.append(
+            f'<div class="pattern-card matched">'
+            f'<div class="pattern-badge">Matched</div>'
+            f'<div class="pattern-sources">{_esc(sources)}</div>'
+            f'<div class="pattern-metrics">{_esc(metrics)}</div>'
+            f'<div class="pattern-corr">r = {corr:.2f}</div>'
+            f'{_pattern_desc(p)}'
+            f'</div>'
+        )
+
+    for p in candidates:
+        sources = ", ".join(FAMILY_LABELS.get(s, s) for s in p.get("sources", []))
+        metrics = ", ".join(METRIC_LABELS.get(m, m) for m in p.get("metrics", []))
+        corr = p.get("correlation_strength", 0)
+        items.append(
+            f'<div class="pattern-card candidate">'
+            f'<div class="pattern-badge candidate-badge">Candidate</div>'
+            f'<div class="pattern-sources">{_esc(sources)}</div>'
+            f'<div class="pattern-metrics">{_esc(metrics)}</div>'
+            f'<div class="pattern-corr">r = {corr:.2f}</div>'
+            f'{_pattern_desc(p)}'
+            f'</div>'
+        )
+
+    return f"""
+<section class="patterns">
+  <h2>Pattern Recognition</h2>
+  <div class="pattern-grid">
+    {"".join(items)}
+  </div>
+</section>"""
+
+
+def _pattern_desc(p: dict) -> str:
+    desc = p.get("description_semantic") or p.get("description_statistical", "")
+    if desc:
+        return f'<p class="pattern-desc">{_esc(desc)}</p>'
+    return ""
+
+
+def _build_evidence_section(
+    commits: list, files: list, deps: list, timeline: list,
+) -> str:
+    parts = []
+
+    if commits:
+        commit_rows = []
+        for c in commits[:15]:  # Cap display
+            sha = c.get("sha", "")[:8]
+            msg = c.get("message", "").split("\n")[0][:80]
+            author = c.get("author", {}).get("name", "")
+            ts = _format_date(c.get("timestamp", ""))
+            n_files = len(c.get("files_changed", []))
+            commit_rows.append(
+                f'<tr>'
+                f'<td class="mono">{sha}</td>'
+                f'<td>{_esc(msg)}</td>'
+                f'<td>{_esc(author)}</td>'
+                f'<td>{ts}</td>'
+                f'<td>{n_files}</td>'
+                f'</tr>'
+            )
+
+        parts.append(f"""
+<div class="evidence-block">
+  <h3>Commits ({len(commits)})</h3>
+  <table class="evidence-table">
+    <thead><tr><th>SHA</th><th>Message</th><th>Author</th><th>Date</th><th>Files</th></tr></thead>
+    <tbody>{"".join(commit_rows)}</tbody>
+  </table>
+  {f'<p class="more">... and {len(commits) - 15} more</p>' if len(commits) > 15 else ''}
+</div>""")
+
+    if files:
+        file_items = []
+        for f in files[:30]:
+            path = f.get("path", "")
+            change_type = f.get("change_type", "")
+            file_items.append(f'<li><code>{_esc(path)}</code> <span class="tag">{change_type}</span></li>')
+
+        parts.append(f"""
+<div class="evidence-block">
+  <h3>Files Affected ({len(files)})</h3>
+  <ul class="file-list">{"".join(file_items)}</ul>
+  {f'<p class="more">... and {len(files) - 30} more</p>' if len(files) > 30 else ''}
+</div>""")
+
+    if deps:
+        dep_items = []
+        for d in deps[:20]:
+            name = d.get("name", "")
+            ver_from = d.get("version_from", "")
+            ver_to = d.get("version_to", "")
+            dep_items.append(f'<li><code>{_esc(name)}</code> {_esc(ver_from)} &rarr; {_esc(ver_to)}</li>')
+
+        parts.append(f"""
+<div class="evidence-block">
+  <h3>Dependencies Changed ({len(deps)})</h3>
+  <ul class="dep-list">{"".join(dep_items)}</ul>
+</div>""")
+
+    if timeline:
+        tl_items = []
+        for entry in timeline[:20]:
+            family = entry.get("family", "")
+            text = entry.get("event_text", "")
+            ts = _format_date(entry.get("timestamp", ""))
+            color = FAMILY_COLORS.get(family, "#6b7280")
+            tl_items.append(
+                f'<div class="tl-entry">'
+                f'<div class="tl-dot" style="background:{color}"></div>'
+                f'<div class="tl-content">'
+                f'<span class="tl-time">{ts}</span>'
+                f'<span class="tl-badge" style="background:{color}">'
+                f'{FAMILY_LABELS.get(family, family)}</span>'
+                f'<span class="tl-text">{_esc(text)}</span>'
+                f'</div></div>'
+            )
+
+        parts.append(f"""
+<div class="evidence-block">
+  <h3>Timeline</h3>
+  <div class="timeline">{"".join(tl_items)}</div>
+</div>""")
+
+    if not parts:
+        return '<p class="empty">No evidence collected.</p>'
+
+    return "\n".join(parts)
+
+
+# ─── Helpers ───
+
+
+def _esc(text: str) -> str:
+    """HTML-escape a string."""
+    return (
+        str(text)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
+
+
+def _fmt_num(n) -> str:
+    """Format a number for display."""
+    if isinstance(n, int):
+        return f"{n:,}"
+    if isinstance(n, float):
+        if abs(n) >= 100:
+            return f"{n:,.1f}"
+        if abs(n) >= 1:
+            return f"{n:.2f}"
+        return f"{n:.4f}"
+    return str(n)
+
+
+def _format_date(iso_str: str) -> str:
+    """Format ISO date to readable form."""
+    if not iso_str:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+        return dt.strftime("%Y-%m-%d %H:%M")
+    except (ValueError, TypeError):
+        return iso_str[:16] if len(iso_str) > 16 else iso_str
+
+
+# ─── CSS ───
+
+_CSS = """
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-2: #334155;
+  --border: #475569;
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --accent: #38bdf8;
+  --green: #34d399;
+  --red: #f87171;
+  --orange: #fb923c;
+  --purple: #a78bfa;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  display: inline-block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  font-size: 1rem;
+}
+
+.generated {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--surface-2);
+}
+
+h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--text);
+}
+
+section { margin-bottom: 2.5rem; }
+
+.badges { margin-bottom: 1.2rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+.badge, .badge-sm {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+}
+
+.badge-sm { font-size: 0.65rem; padding: 0.15rem 0.45rem; }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.stat-card {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 1.2rem 1rem;
+  text-align: center;
+  border: 1px solid var(--surface-2);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+
+.stat-card.changes .stat-value { color: var(--orange); }
+.stat-card.patterns .stat-value { color: var(--purple); }
+.stat-card.events .stat-value { color: var(--green); }
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.change-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: 8px;
+  padding: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.change-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.event-ref {
+  font-family: 'SF Mono', SFMono-Regular, Consolas, monospace;
+  font-size: 0.75rem;
+  background: var(--surface-2);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  color: var(--text-dim);
+}
+
+.signal-count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.change-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.change-table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--surface-2);
+}
+
+.change-table td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.metric-name { font-weight: 500; }
+.metric-normal { color: var(--text-dim); }
+.metric-current { font-weight: 600; }
+
+.dev-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: white;
+}
+
+.change-desc {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.pattern-grid { display: grid; gap: 1rem; }
+
+.pattern-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: 8px;
+  padding: 1.2rem;
+}
+
+.pattern-card.matched { border-left: 3px solid var(--green); }
+.pattern-card.candidate { border-left: 3px solid var(--orange); }
+
+.pattern-badge {
+  display: inline-block;
+  background: var(--green);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.candidate-badge { background: var(--orange); }
+
+.pattern-sources { font-weight: 600; margin-bottom: 0.2rem; }
+.pattern-metrics { color: var(--text-dim); font-size: 0.85rem; }
+.pattern-corr { font-size: 0.8rem; color: var(--accent); margin-top: 0.3rem; }
+.pattern-desc { font-size: 0.85rem; color: var(--text-dim); margin-top: 0.4rem; }
+
+.evidence-block {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: 8px;
+  padding: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.evidence-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.evidence-table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--surface-2);
+}
+
+.evidence-table td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.2);
+  vertical-align: top;
+}
+
+.mono {
+  font-family: 'SF Mono', SFMono-Regular, Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
+.file-list, .dep-list {
+  list-style: none;
+  font-size: 0.8rem;
+}
+
+.file-list li, .dep-list li {
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.2);
+}
+
+.file-list code, .dep-list code {
+  font-family: 'SF Mono', SFMono-Regular, Consolas, monospace;
+  font-size: 0.75rem;
+  background: var(--surface-2);
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+}
+
+.tag {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  background: var(--surface-2);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  margin-left: 0.3rem;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.tl-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  margin-bottom: 0.6rem;
+  position: relative;
+}
+
+.tl-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 0.35rem;
+}
+
+.tl-content { flex: 1; font-size: 0.8rem; }
+
+.tl-time {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  margin-right: 0.5rem;
+}
+
+.tl-badge {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: white;
+  margin-right: 0.4rem;
+}
+
+.tl-text { color: var(--text); }
+
+.more {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+.empty {
+  color: var(--text-dim);
+  font-style: italic;
+  text-align: center;
+  padding: 2rem;
+}
+
+footer {
+  text-align: center;
+  padding-top: 2rem;
+  border-top: 1px solid var(--surface-2);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .change-table { font-size: 0.75rem; }
+  h1 { font-size: 1.4rem; }
+}
+
+@media print {
+  body { background: white; color: #1e293b; }
+  .container { max-width: 100%; }
+  .stat-card, .change-card, .pattern-card, .evidence-block {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    break-inside: avoid;
+  }
+  .stat-value { color: #0f172a; }
+  header { border-bottom-color: #e2e8f0; }
+  h2 { border-bottom-color: #e2e8f0; }
+  footer { border-top-color: #e2e8f0; }
+}
+"""

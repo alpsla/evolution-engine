@@ -8,13 +8,46 @@ license = { text = "MIT" }
 authors = [
   { name = "Slava" }
 ]
-
-dependencies = [
-  "GitPython>=3.1"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "License :: OSI Approved :: MIT License",
 ]
 
+dependencies = [
+  "GitPython>=3.1",
+  "click>=8.0",
+  "requests>=2.25",
+  "jinja2>=3.0",
+]
+
+[project.optional-dependencies]
+llm = [
+  "requests>=2.25",
+]
+dev = [
+  "pytest>=7.0",
+  "pytest-cov>=4.0",
+  "python-dotenv>=0.19",
+]
+
+[project.urls]
+Repository = "https://github.com/openclaw/evolution-engine"
+
 [project.scripts]
-evolution = "evolution.cli:main"
+evo = "evolution.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.setuptools]
+packages = ["evolution", "evolution.adapters", "evolution.adapters.git", "evolution.adapters.ci", "evolution.adapters.testing", "evolution.adapters.dependency", "evolution.adapters.config", "evolution.adapters.schema", "evolution.adapters.security", "evolution.adapters.deployment", "evolution.report"]
+
+[tool.setuptools.package-data]
+evolution = ["data/*.json"]
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]

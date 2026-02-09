@@ -7,7 +7,7 @@
 >
 > The plan is intentionally conservative: each step validates an architectural assumption before expanding scope.
 >
-> **Last updated:** February 8, 2026 (LLM resilience complete, batch calibration infrastructure ready for 120 repos)
+> **Last updated:** February 9, 2026 (open-core pivot: local-first CLI, adapter registry, KB security, 148 tests)
 
 ---
 
@@ -341,58 +341,56 @@ Top 20 ranked by family coverage score (max 8/8):
 - ✅ fastapi — 11,593 events (4 families), 41K signals, 1 cross-family pattern, 7 significant changes
 - ✅ gin — 1,000 events, 3,465 signals, 5 significant changes
 
-### 7.4 Priority 4: Multi‑Family Calibration Runs
+### 7.4 Priority 4: Multi‑Family Calibration & Data Quality ✅
 
-> **Status: 🔄 In Progress — first multi-family pattern discovered, need more repos**
+> **Status: ✅ Complete — 6-wave data quality fix, 2 patterns discovered on fastapi**
 >
-> Phase 4's cross-family alignment fixed to use commit SHA instead of ordinal position.
-> First calibration with GitHub API families (CI + deployment) completed on fastapi.
-> Pipeline parallelized (concurrent API fetches, parallel Phase 2 families).
+> Pipeline was producing unreliable output (8/13 metrics degenerate, absurd deviation scores).
+> All 6 waves of fixes implemented. Reframed as "Seeding Universal Patterns" for the
+> open-core product model (see §8).
 
-**Completed:**
-- ✅ **Phase 4 alignment fix**: `_build_commit_index()` maps event_id → commit_sha; `_discover_cooccurrences()` aligns by shared commits
-- ✅ **fastapi 4-family run**: 11,593 events (git: 6713, dependency: 4126, ci: 500, deployment: 254)
-- ✅ **First pattern**: `git.change_locality ↔ ci.run_duration` (r=-0.59, 3 co-deviations across 11 shared commits)
-- ✅ **Pipeline parallelized**: API fetches concurrent with walker, Phase 2 families in parallel (198s total)
+**6-Wave Data Quality Fix (ALL COMPLETED):**
 
-**fastapi results (4 families):**
+| Wave | Fix | Impact |
+|------|-----|--------|
+| 1 | MAD/IQR replaces z-score, degenerate flagging | Eliminated 775σ, 17,364σ nonsense |
+| 2 | Removed 5 degenerate metrics, added 4 new ones | Clean metric set (see §7.4.1) |
+| 3 | Phase 4 degenerate filter, confidence weighting | Honest pattern strength |
+| 4 | Phase 5 compound-key lookup, event grouping | Correct advisory output |
+| 5 | Temporal alignment (24h windows) supplements SHA | Cross-family overlap for sparse data |
+| 6 | Phase 3 templates for new/removed metrics | Explanations match data |
+
+**E2E Results (fastapi, post-fix):**
 ```
+Pipeline:   6.6s total (Phase 2: 4.6s, Phase 3: 0.6s, Phase 4: 0.7s, Phase 5: 0.6s)
 Events:     11,593 (git: 6713, dependency: 4126, ci: 500, deployment: 254)
-Signals:    41,427 (git: 26832, dependency: 12363, ci: 1485, deployment: 747)
-Patterns:   1 (git × ci, change_locality ↔ run_duration, r=-0.59)
-Advisory:   7 significant changes across 3 families
-Time:       198s
+Signals:    27,390 across 4 families
+Deviating:  4,421 (16%)
+Patterns:   2 discovered (git×dependency, git×ci)
+Advisory:   6 significant changes
 ```
 
-**Remaining — Batch Calibration (120 repos):**
-- [ ] Run batch calibration across all 120 candidate repos (see `.calibration/BATCH_CALIBRATION_PLAN.md`)
-- [ ] Parallel Sonnet 4.5 agents via `claude --dangerously-skip-permissions --model sonnet`
-- [ ] Repos with OpenAPI specs (schema family) and Terraform (config family) for 6+ family coverage
-- [ ] Aggregate patterns across all repos, classify: generalizable, local-only, false positive
-- [ ] Parameter tuning across profiles (conservative, moderate, aggressive)
+#### 7.4.1 Current Metrics (Post Data Quality Fix)
 
-**Process per repo:**
-```
-1. Git History Walker → extract dependency/schema/config snapshots from past commits
-2. GitHub API Adapter → fetch CI runs, releases, security advisories
-3. Phase 1 → ingest all families
-4. Phase 2 → compute baselines for all families (parallel)
-5. Phase 3 → generate explanations (LLM‑enhanced)
-6. Phase 4 → discover cross-family patterns (commit-SHA aligned)
-7. Phase 5 → generate advisory with pattern context
-8. Classify patterns: generalizable, local-only, false positive, noise
-9. Write calibration report
-```
+| Family | Metrics | Notes |
+|--------|---------|-------|
+| Git | `files_touched`, `dispersion`, `change_locality`, `cochange_novelty_ratio` | Core 4, stable |
+| CI | `run_duration`, `run_failed` (binary) | Removed `job_count`, `failure_rate` |
+| Deployment | `release_cadence_hours`, `is_prerelease`, `asset_count` | Replaced `deploy_duration`, `is_rollback` |
+| Dependency | `dependency_count`, `max_depth` | Only npm/go/cargo/bundler for depth |
 
-**Parameter tuning:**
+**Removed metrics:** `job_count`, `failure_rate`, `deploy_duration`, `is_rollback`, `direct_count` — all degenerate across repos.
 
-| Profile | min_support | min_correlation | promotion_threshold | Use Case |
-|---------|-------------|-----------------|---------------------|----------|
-| Conservative | 10 | 0.7 | 25 | Fewer patterns, higher quality |
-| Moderate | 5 | 0.5 | 15 | Balanced |
-| Aggressive | 3 | 0.3 | 10 | More patterns, more noise |
+### 7.4.2 Remaining: Batch Calibration → Seed Universal Patterns
 
-Run each repo with all three profiles, compare pattern quality.
+> Reframed from "calibration runs" to "seeding universal patterns" for the open-core model.
+> Output: `evolution/data/universal_patterns.json` bundled in the pip package.
+
+- [ ] Run batch calibration across top 20 repos (from `.calibration/repos_found.json`)
+- [ ] Aggregate patterns across repos: universal (50+ repos), ecosystem-specific (10+), local (<10)
+- [ ] Output: `evolution/data/universal_patterns.json` bundled in pip package
+- [ ] Phase 4 loads universal patterns at startup → instant recognition on new repos
+- [ ] Target: 10+ universal patterns, 5+ per ecosystem (python, node, go)
 
 ### 7.5 Priority 5: Fix Verification Loop (Phase 5 Extension) ✅
 
@@ -407,43 +405,32 @@ Implemented in `evolution/phase5_engine.py`:
 
 **Known limitation:** Regression classification matches by family rather than family:metric pair. Functionally acceptable but could be tightened.
 
-### 7.6 Priority 6: Report Generator (Consulting Deliverable) 🆕
+### 7.6 Priority 6: Report Generator (Product Feature) 🆕
 
 > **Status: ⏳ Not Started | Effort: 2–3 days**
 
-Professional HTML/PDF report from `advisory.json` for consulting engagements.
-
-**Current state:** Phase 5 produces text files (`summary.txt`, `chat.txt`).
-**Needed for consulting:** Branded, presentable document suitable for client delivery.
+HTML report from `advisory.json` — a core product feature, not just a consulting deliverable.
 
 **Implementation:**
 - [ ] Jinja2 HTML template with CSS styling
 - [ ] Cover page: repo name, date range, scope, executive summary
-- [ ] "Normal vs Now" section with proper bar charts (SVG or Chart.js)
-- [ ] Evidence section: commit table, affected files, test results
-- [ ] Pattern matches section (when KB has patterns)
-- [ ] Investigation prompt as appendix
-- [ ] Fix Verification section (when comparing advisories)
-- [ ] PDF export via `weasyprint` or browser print
-- [ ] CLI command: `evolution report --format html --output report.html`
+- [ ] "Normal vs Now" section with visual bars (SVG)
+- [ ] Evidence section: commit table, affected files, pattern matches
+- [ ] "Unlock more" section: detected vs. available adapters (upsell for Pro tier)
+- [ ] CLI command: `evo report [path]`
 
-**Why before web dashboard:** A static report is simpler than a full web app,
-delivers immediate consulting value, and validates the visual format before building a dashboard.
-
-### 7.7 Priority 7: Marketing Materials 🆕
+### 7.7 Priority 7: Marketing & Product Launch 🆕
 
 > **Status: ⏳ Not Started | Effort: Separate track**
 
-Materials needed to begin consulting outreach.
+Materials for product launch (not consulting outreach — see §8.1 for product vision).
 
-- [ ] **One‑pager:** What the system does, who it's for, how it works (1 page)
-- [ ] **Sample report:** Generated from a real open‑source repo (fastapi) with multi‑family data
-- [ ] **Demo script:** Walk‑through of running the pipeline and reviewing the advisory
-- [ ] **Pricing structure:** Consulting tiers (Audit, Baseline, Ongoing Advisory)
-- [ ] **Landing page:** Simple website explaining the product (separate project)
+- [ ] **Sample report:** From fastapi multi-family run, showing real patterns
+- [ ] **Demo script:** `evo analyze .` → advisory → patterns → done
+- [ ] **Landing page:** "Your development process, measured" (separate project)
+- [ ] **README:** Clear value prop, install instructions, quick start
 
-**Dependency:** Sample report requires multi‑family calibration (§7.4) to be complete first,
-so the report shows actual patterns and pattern matching — not just git‑only metrics.
+**Dependency:** Sample report needs batch calibration (§7.4.2) for pattern showcase.
 
 ### 7.8 Calibration Matrix
 
@@ -466,193 +453,345 @@ The system must be tested across multiple dimensions to produce reliable pattern
 - [ ] Universal parameter defaults validated
 - [ ] Confidence thresholds tuned per project size tier
 
-### 7.10 Consulting (Parallel Track — Revenue + Beta Testing)
+### 7.10 Consulting (Optional Enterprise Tier)
 
-> Consulting runs **in parallel** with open‑source calibration, not instead of it.
-> It serves three purposes simultaneously: **revenue** to fund the project,
-> **real‑world calibration data** from production environments,
-> and **beta testing experience** that shapes the product before self‑service launch.
+> **Deprioritized.** The primary delivery model is now the local-first CLI tool (§8).
+> Consulting is available as an enterprise tier, not the primary revenue path.
 
-**Consulting offering (updated with Fix Verification):**
+Consulting may still serve as:
+- Enterprise onboarding assistance
+- Custom adapter development
+- Pattern validation for regulated industries
+- Revenue supplement while product scales
 
-| Phase | What We Deliver | What We Learn |
-|-------|----------------|---------------|
-| **Environment Assessment** | Inventory of client's source families, vendors, data access | Which adapters need extending |
-| **Data Collection** | Run full pipeline against client repos | Real‑world adapter edge cases |
-| **Calibration** | Tune baselines and thresholds for client's environment | Pattern discovery in new contexts |
-| **Baseline Report** | Branded HTML/PDF: "Here's how your systems normally evolve" | Client‑specific normal ranges |
-| **Investigation Prompt** | Pre‑built prompt for client's AI to investigate flagged issues | What users actually do with our output |
-| **Fix Verification** 🆕 | Re‑run pipeline after fixes, verify what resolved | Fix effectiveness patterns |
-| **Ongoing Advisory** | Periodic reports, pattern reviews, fix verification | Long‑horizon drift patterns |
+### 7.11 Product Readiness Criteria
 
-**Engagement pipeline (updated):**
-```
-Discovery → Assessment → Baseline Report → Investigation Prompt → Fix Verification
-    │                          │                    │                     │
-    └── can stop here          └── seed KB          └── user's AI        └── verify & repeat
-                                                         investigates       (monthly retainer)
-```
+The product is ready for beta when:
 
-### 7.11 Self‑Service Readiness Criteria
-
-The system is ready to transition from calibration + consulting to self‑service when **both tracks** have contributed enough:
-
-- [ ] Seed KB contains 50+ validated patterns across 3+ languages
-- [ ] Universal parameters produce <10% false positive rate on new repos
-- [ ] Cold‑start experience is useful (global KB provides meaningful priors)
-- [ ] At least 3 consulting clients have validated the advisory output
-- [ ] Fix Verification Loop tested on 3+ engagements
-- [ ] HTML/PDF report quality approved by clients
-- [ ] GitHub Action integration is tested in 5+ real CI environments
+- [x] Pipeline produces correct results on real repos (fastapi validated)
+- [x] `evo analyze .` works end-to-end without config
+- [x] 148 tests pass with >80% coverage on core engines
+- [x] KB security validates all imported patterns
+- [ ] 10+ universal patterns bundled in pip package
+- [ ] False positive rate <10% on unseen repos
+- [ ] License key gates features correctly
+- [ ] Compiled wheel installs and runs without source
 
 ---
 
-## 8. Future Enhancements (Post Calibration)
+## 8. Product Vision & Open‑Core Architecture
 
-### 8.1 PostgreSQL + pgvector Migration
-- Migrate KB from SQLite to PostgreSQL for multi‑tenant deployment
-- Add vector similarity search for fuzzy pattern matching
-- Enable cross‑account global knowledge
+> **Pivot (February 2026):** The product direction has shifted from consulting-first → SaaS
+> to a **local-first CLI tool** with an **open-core** business model.
+> The user runs `evo analyze .` on their own machine. No data leaves by default.
+> Community patterns are shared anonymously via opt-in.
 
-### 8.2 Integrated AI Investigation (Level 3)
-- Direct API call to AI coding assistant with evidence package
-- Response validation (does the AI cite real artifacts?)
-- In‑product investigation results
+### 8.1 What Is Evo?
 
-### 8.3 Additional Vendor Adapters
-Each family can expand with new vendor implementations:
-- GitLab CI, Jenkins, CircleCI (CI family)
-- pytest, Jest, Go test (Testing family)
-- npm, Cargo, Go modules (Dependency family)
-- GraphQL, Protobuf (Schema family)
-- ArgoCD, Kubernetes (Deployment family)
-- Kubernetes manifests, Helm (Config family)
-- Snyk, Dependabot (Security family)
+**Evo is a doctor for your development process.**
 
-### 8.4 Application Flow Shape Source
-- Highest‑risk, highest‑value source (Source 4 from Engine Abstract Base)
-- Static analysis of code structure (call graphs, module dependencies)
-- Requires mature adapter infrastructure before attempting
+Every code repository has a "normal" — a characteristic rhythm of how commits land, how
+CI behaves, how dependencies change, and how releases ship. Evo learns this normal from
+your git history and connected services, then tells you when something structural has changed.
 
-### 8.5 Real‑Time Event Streaming
-- Webhook‑based event ingestion (vs batch polling)
-- Near‑real‑time advisory updates
+This is **not** runtime monitoring (New Relic/Datadog), **not** code quality scoring
+(SonarQube), and **not** project management analytics (LinearB/Jellyfish). Evo watches
+the *development process itself* — the structural artifacts that engineers produce — and
+detects when the process changes in ways that historically correlate with problems.
+
+**The value chain:**
+```
+Git History + CI + Dependencies + Releases + Security
+    ↓
+Phase 1: Record immutable events
+    ↓
+Phase 2: Compute baselines per metric ("normal" for this repo)
+    ↓
+Phase 3: Explain each deviation in human language
+    ↓
+Phase 4: Discover cross-family patterns (KB learning)
+    ↓
+Phase 5: Advisory → Evidence Package → Investigation Prompt → Fix Verification
+```
+
+**Key insight:** The pipeline doesn't just flag problems — it **learns patterns** and
+**tracks outcomes**. Over time, it builds a knowledge base of what structural changes
+tend to precede what kinds of issues.
+
+### 8.2 Competitive Positioning
+
+| Dimension | Evo | APM (New Relic, Datadog) | Code Quality (SonarQube) | Dev Analytics (LinearB) |
+|-----------|-----|--------------------------|--------------------------|--------------------------|
+| **What it watches** | Development process artifacts | Runtime production systems | Code patterns | Developer activity metrics |
+| **When it runs** | Pre-production (on every commit) | Post-deployment | During CI | Retroactively |
+| **Data source** | Git + CI + deps + releases | Application telemetry | Source code | Jira + Git + CI |
+| **What it finds** | Structural process changes | Performance anomalies | Code smells | Productivity metrics |
+| **Key output** | "Your release pattern changed" | "p99 latency spiked" | "Complexity increased" | "Cycle time is 3 days" |
+| **Moat** | Pattern Knowledge Base | Scale of telemetry | Rule database | Integrations |
+
+**Why big players can't easily replicate this:**
+
+1. **The Pattern Knowledge Base is the product, not the code.** New Relic could build a
+   Phase 2 engine in weeks. They cannot build a KB with 10,000+ validated cross-family
+   patterns without running the pipeline on thousands of repos over months.
+
+2. **Network effects compound.** Every repo that runs evo and opts into community sharing
+   makes the pattern KB better for everyone. This is a data flywheel that takes time to build.
+
+3. **Different market position.** APM tools monitor *running software*. Evo monitors
+   *the process of building software*. These are complementary, not competing — evo runs
+   pre-production, APM runs post-deployment.
+
+4. **Local-first model is hard for SaaS incumbents.** New Relic's entire business model
+   requires your data on their servers. Evo runs on your machine.
+
+### 8.3 Strategic Recommendations
+
+1. **Don't publish algorithm details.** Open-source the adapters and CLI. Keep the phase
+   engines (statistical models, pattern discovery, advisory logic) proprietary. Publish
+   *what* evo finds, not *how* it finds it.
+
+2. **Prioritize universal pattern seeding (§7.4.2).** The pattern KB is the moat.
+   Run on 100+ repos across 5+ ecosystems. Bundle the results.
+
+3. **Build community sharing early (§8.6).** Anonymous pattern digest sharing creates
+   the network effect. The more repos that share, the better the KB.
+
+4. **Charge for engines, not data.** Free tier: git-only, 5 metrics. Pro tier: all
+   adapters, all metrics, pattern recognition. The value is in the analytical engine.
+
+### 8.4 Open‑Core Split
+
+| Open Source (MIT) | Proprietary (compiled .so) |
+|-------------------|---------------------------|
+| `evolution/adapters/*` | `evolution/phase2_engine.py` |
+| `evolution/registry.py` | `evolution/phase3_engine.py` |
+| `evolution/cli.py` | `evolution/phase4_engine.py` |
+| `evolution/orchestrator.py` | `evolution/phase5_engine.py` |
+| `evolution/phase1_engine.py` | `evolution/knowledge_store.py` |
+| `evolution/kb_export.py` | |
+| `evolution/kb_security.py` | |
+
+The open-source layer lets anyone inspect adapters, contribute parsers, and understand
+the data model. The proprietary layer (compiled via Cython) contains the statistical
+engines, pattern discovery, and knowledge base — the intellectual property.
+
+### 8.5 Adapter Ecosystem — Registry + Plugins + Validation ✅
+
+> **Status: ✅ Complete — `evolution/registry.py` + `evolution/adapter_validator.py` with 37 tests**
+
+Three-tier adapter detection. `evo analyze .` works without any configuration files.
+Third-party adapters auto-discovered via Python entry_points.
+
+**Tier 1 — File-based (built-in, always works offline):**
+
+| File Pattern | Adapter | Family |
+|-------------|---------|--------|
+| `.git/` | git | version_control |
+| `requirements.txt`, `pyproject.toml` | pip | dependency |
+| `package-lock.json`, `yarn.lock` | npm | dependency |
+| `go.mod` | go | dependency |
+| `Cargo.lock` | cargo | dependency |
+| `Gemfile.lock` | bundler | dependency |
+| `.github/workflows/*.yml` | github_actions_local | ci |
+| `*.tf` | terraform | config |
+| `Dockerfile`, `docker-compose.yml` | docker | config |
+
+**Tier 2 — API-enriched (optional tokens):**
+
+| Token | Adapters Unlocked |
+|-------|------------------|
+| `GITHUB_TOKEN` | github_actions, github_releases, github_security |
+| `GITLAB_TOKEN` | gitlab_pipelines |
+| `JENKINS_URL` | jenkins |
+
+**Tier 3 — Plugin adapters (community-contributed):**
+
+Third-party pip packages register adapters via Python `entry_points`:
+
+```toml
+# In evo-adapter-jenkins/pyproject.toml
+[project.entry-points."evo.adapters"]
+jenkins = "evo_jenkins:register"
+```
+
+```python
+# In evo_jenkins/__init__.py
+def register():
+    return [{
+        "pattern": "Jenkinsfile",
+        "adapter_name": "jenkins",
+        "family": "ci",
+        "adapter_class": "evo_jenkins.JenkinsAdapter",
+    }]
+```
+
+Users install: `pip install evo-adapter-jenkins` → `evo analyze .` auto-discovers it.
+
+**Adapter Certification (`evo adapter validate`):**
+
+Plugin adapters must pass 13 validation checks before publishing:
+- Required class attributes (`source_family`, `source_type`, `ordering_mode`, `attestation_tier`)
+- `source_family` is a recognized family
+- `iter_events()` yields valid SourceEvent dicts with correct structure
+- Event `source_family` matches class attribute
+- Events are strictly JSON-serializable
+
+```
+$ evo adapter validate evo_jenkins.JenkinsAdapter
+Adapter: evo_jenkins.JenkinsAdapter
+Result: PASSED (13/13 checks)
+Adapter is certified. Ready to publish as a pip package.
+```
+
+**Adapter distribution model:**
+
+| Path | Who Builds | How It Reaches Users |
+|------|-----------|---------------------|
+| Core (built-in) | Us | Shipped with `evolution-engine` pip package |
+| Plugin (community) | Any developer | `pip install evo-adapter-X`, auto-discovered |
+| Promoted | Community → Us | Popular plugin merged into core after quality proven |
+| Requested | Us, based on demand | Users request via GitHub Issues, we build popular ones |
+
+Missing tokens → advisory message, not error.
+
+### 8.6 CLI Tool (`evo`) ✅
+
+> **Status: ✅ Complete — `evolution/cli.py` + `evolution/orchestrator.py`**
+
+Primary user interface. Zero-config entry point.
+
+```
+evo analyze [path]               # Detect adapters, run Phase 1-5
+evo analyze . --token ghp_xxx    # Unlock Tier 2 API adapters
+evo analyze . --families git,ci  # Override detection
+evo status [path]                # Show detected adapters, last advisory
+evo report [path]                # HTML report from last run
+evo patterns list                # Show KB contents
+evo patterns export              # Export anonymized digests
+evo patterns import <file>       # Import community patterns
+evo verify [previous]            # Fix verification loop
+```
+
+**Entry point:** `pyproject.toml` → `evo = "evolution.cli:main"` (click-based)
+
+### 8.7 Pattern Export/Import & KB Security ✅
+
+> **Status: ✅ Complete — `evolution/kb_export.py` + `evolution/kb_security.py` with 40 tests**
+
+Anonymous pattern sharing without exposing raw data.
+
+**Export:** Strips pattern_id, signal_refs, event_refs, repo path, author info.
+Sets scope="community". Only exports confirmed knowledge + strong candidates.
+
+**Import:** ALL patterns validated through `kb_security.validate_pattern()` before storage.
+Blocks: XSS (`<script>`), template injection (`{{}}`), shell injection (``; rm``),
+path traversal (`../`), SQL injection (`; DROP TABLE`), reference injection (signal_refs stripped).
+
+**Pattern Scope Progression:**
+```
+local       → discovered on this repo
+community   → imported from another repo or registry
+confirmed   → discovered locally AND matches community
+universal   → 50+ repos, bundled in pip package
+```
+
+### 8.8 Community KB Sync (Not Started)
+
+> **Status: ⏳ Not Started | Next Priority**
+
+Opt-in sync with community pattern registry.
+
+**Three Sharing Levels:**
+
+| Level | What's Shared | Default? |
+|-------|--------------|----------|
+| 0 | Nothing | Yes |
+| 1 | Advisory metadata only | No |
+| 2 | Anonymized pattern digests | No |
+
+**New files needed:** `evolution/kb_sync.py`, `evolution/config.py`,
+`evolution/data/universal_patterns.json`
+
+### 8.9 Packaging & Distribution (Not Started)
+
+> **Status: ⏳ Not Started**
+
+Ship as pip package with proprietary engine compiled via Cython.
+
+- Cython compiles phase engines to `.so` / `.pyd`
+- CI builds wheels for Linux (x86_64, aarch64), macOS (arm64, x86_64), Windows
+- Open-source repo has type stubs (`.pyi`) but not source for proprietary modules
+- `pip install evolution-engine` → `evo analyze .` works
+
+### 8.10 License & Monetization (Not Started)
+
+> **Status: ⏳ Not Started**
+
+| Tier | Price | Adapters | Metrics | Patterns | Report |
+|------|-------|----------|---------|----------|--------|
+| Free | $0 | git only | 5 | No | No |
+| Pro | $29/mo | all | all | Yes | Yes |
+| Team | $99/mo/10 | all | all | Yes (shared) | Yes |
+| Enterprise | custom | all | all | Self-hosted sync | Yes |
+
+Signed JWT license validated locally. Weekly online check, 30-day offline grace.
+
+### 8.11 Future Enhancements
+
+- PostgreSQL + pgvector migration (multi-tenant, when SaaS tier exists)
+- Integrated AI Investigation (direct API call to coding assistant)
+- Additional vendor adapters (GitLab CI, Jenkins, npm, Cargo, etc.)
+- Real-time event streaming (webhooks vs batch polling)
+- IDE extensions (VS Code, JetBrains) — surfaces advisories where code is written
 
 ---
 
-## 9. Product Delivery — Go‑to‑Market Strategy
+## 9. Product Delivery — CLI‑First Strategy
 
-> The Evolution Engine is a **product**, not just an engine.
-> This section defines how the core capability reaches users,
-> in iterative delivery channels ordered by impact and feasibility.
+> **Updated (February 2026):** Delivery priority inverted from the original plan.
+> CLI is now **first**, not last. Local-first is the product identity.
 
-### Delivery Channel Priority
+### Delivery Channel Priority (Revised)
 
-| Priority | Channel | Effort | User Value | Reach |
-|----------|---------|--------|-----------|-------|
-| **1** | GitHub / GitLab CI Integration | Medium | Highest | Broadest |
-| **2** | API Service (SaaS) | Medium | High | Broad |
-| **3** | Web Dashboard | High | High | Broad |
-| **4** | IDE Extension (VS Code / JetBrains) | High | Medium | Developer‑focused |
-| **5** | CLI Tool (standalone) | Low | Medium | Power users |
+| Priority | Channel | Effort | Status |
+|----------|---------|--------|--------|
+| **1** | CLI Tool (`evo analyze .`) | Low | ✅ Complete |
+| **2** | pip package (compiled wheels) | Medium | ⏳ Not started |
+| **3** | GitHub Action (CI integration) | Medium | ⏳ Not started |
+| **4** | API Service / SaaS | High | Deprioritized |
+| **5** | Web Dashboard | High | Deprioritized |
 
-### 9.1 GitHub / GitLab CI Integration (Priority 1) 🎯
+### 9.1 CLI Tool ✅
 
-**Why first:** This is where the data already lives and where developers already work.
-A GitHub Action or GitLab CI component that runs in the pipeline gives immediate value
-with zero workflow change.
+**Already built.** See §8.6 for details.
 
-**Delivery model:**
-- GitHub Action (`uses: evolution-engine/analyze@v1`)
-- GitLab CI template (include from registry)
-- Runs after push / on schedule / on PR
+`evo analyze .` → detects adapters → ingests data → Phase 2-5 → advisory.
 
-**What it produces:**
+### 9.2 pip Package (Next)
+
+- `pip install evolution-engine`
+- Compiled Cython wheels (phase engines as `.so`)
+- Universal patterns bundled as `evolution/data/universal_patterns.json`
+- Works offline, no account required for free tier
+
+### 9.3 GitHub Action (After pip)
+
+- `uses: evolution-engine/analyze@v1`
 - PR comment with "normal vs now" summary
-- Advisory annotation on the PR (if significant changes detected)
-- Evidence package as a downloadable artifact
-- Slack / Telegram notification (optional webhook)
+- Advisory annotation (never blocking — purely informational)
+- Evidence package as downloadable artifact
+- Uses existing CLI under the hood
 
-**Why high value:**
-- Zero installation for the user — just add a workflow file
-- Accesses Git, CI, test, and dependency data natively
-- PR context is where developers make decisions
-- GitHub Actions marketplace provides organic discovery
+### 9.4 API Service / SaaS (Future, If Demand)
 
-**Implementation scope:**
-- [ ] Package engine as a Docker container / GitHub Action
-- [ ] GitHub PR comment renderer (Phase 5 format)
-- [ ] GitHub check annotation (pass-through, never blocking)
-- [ ] Webhook notification support (Slack, Telegram, Discord)
-- [ ] GitLab CI equivalent
+Deprioritized. May build for Team/Enterprise tiers if demand exists.
+The local-first model is the product identity — SaaS would be additive, not core.
 
-### 9.2 API Service / SaaS (Priority 2)
+### 9.5 Web Dashboard (Future, If Demand)
 
-**Why second:** Enables the web dashboard, IDE extensions, and third‑party integrations.
-All other channels consume this API.
-
-**Delivery model:**
-- REST API (hosted or self‑hosted)
-- Accepts webhook events from GitHub / GitLab / CI systems
-- Returns advisories and evidence packages on demand
-- Stores knowledge base for pattern learning (PostgreSQL)
-
-**Key endpoints:**
-- `POST /events` — ingest events from adapters
-- `GET /advisory/{repo}` — current advisory for a repo
-- `GET /evidence/{advisory_id}` — evidence package
-- `GET /patterns/{repo}` — known patterns for a repo
-- `POST /investigate` — generate investigation prompt (Level 2)
-
-**Implementation scope:**
-- [ ] FastAPI or Flask REST API
-- [ ] PostgreSQL + pgvector backend
-- [ ] Webhook receiver (GitHub / GitLab events)
-- [ ] Authentication and multi‑tenancy
-- [ ] Rate limiting and usage tracking
-
-### 9.3 Web Dashboard (Priority 3)
-
-**Why third:** Visual "normal vs now" comparisons, pattern history,
-and evidence browsing are most impactful in a dedicated UI.
-
-**Delivery model:**
-- Web application (React or similar)
-- Consumes the API service
-- Repository overview with family health bars
-- Timeline view of structural changes
-- Pattern library (what has the system learned?)
-
-**Key views:**
-- Repository dashboard ("3 things look different")
-- Change timeline (cross‑family event stream)
-- Pattern catalog (known patterns with statistics)
-- Evidence browser (drill into specific commits, tests, deps)
-- Investigation launcher ("Export to AI" button)
-
-### 9.4 IDE Extension (Priority 4)
-
-**Why fourth:** Surfaces advisories where code is written,
-but requires the API service to be running first.
-
-**Delivery model:**
-- VS Code extension
-- JetBrains plugin (IntelliJ, PyCharm, WebStorm)
-- Shows inline annotations on files flagged in advisories
-- Status bar indicator ("2 structural changes detected")
-- Quick action: "View evidence" / "Export for AI investigation"
-
-### 9.5 CLI Tool (Priority 5)
-
-**Why fifth:** Already partially exists. Useful for power users
-and CI environments that don't support GitHub Actions.
-
-**Delivery model:**
-- `evolution init` — initialize monitoring
-- `evolution ingest` — run all adapters
-- `evolution analyze` — Phase 1 → 2 → 3 → 4 → 5
-- `evolution report` — generate advisory
-- `evolution export` — export evidence package
+Deprioritized. The CLI + HTML report covers the core use case.
+A dashboard adds value for teams managing multiple repos — enterprise tier feature.
 
 ---
 
@@ -670,83 +809,74 @@ This plan explicitly excludes:
 
 ## 11. Execution Summary
 
-| Phase | Status | What It Does |
-|-------|--------|-------------|
+| Component | Status | What It Does |
+|-----------|--------|-------------|
 | **Phase 1** | ✅ Complete | Record immutable events from all sources |
-| **Phase 2** | ✅ Complete | Compute baselines, emit deviation signals (parallel families) |
-| **Phase 3** | ✅ Complete | Explain signals in human language (+ LLM) |
-| **Phase 3.1** | ✅ Complete | LLM-enhanced explanations with validation gate |
-| **Phase 4** | ✅ Complete | Discover, interpret, and remember patterns |
-| **Phase 5** | ✅ Complete | Advisory reports + evidence packages |
+| **Phase 2** | ✅ Complete | Compute baselines (MAD/IQR), emit deviation signals |
+| **Phase 3** | ✅ Complete | Explain signals in human language (+ LLM option) |
+| **Phase 4** | ✅ Complete | Discover cross-family patterns, KB learning |
+| **Phase 5** | ✅ Complete | Advisory reports + evidence + fix verification |
+| **Data Quality (6 waves)** | ✅ **Complete** | Robust deviation math, clean metric set |
 | **Git History Walker** | ✅ **Complete** | 8 lockfile formats, 3 families from git |
 | **GitHub API Adapters** | ✅ **Complete** | CI, deployment, security from GitHub API |
-| **Repo Search** | ✅ **Complete** | 120 repos found, top 20 ranked |
-| **LLM Resilience** | ✅ **Complete** | Retry/backoff/rate-limit handling + graceful fallback |
-| **Batch Calibration** | 🔄 **In Progress** | 120 repos queued, parallel Sonnet agents, fastapi validated |
-| **Fix Verification Loop** | ✅ **Complete** | Advisory diff engine in Phase 5 |
-| **Report Generator** | ⏳ **Priority 6** | HTML/PDF reports for consulting delivery |
-| **Marketing Materials** | ⏳ **Priority 7** | One‑pager, sample report, demo script |
-| **Consulting** | ⏳ **After P6** | Revenue + beta testing + real‑world calibration |
-| **Delivery 1** | ⏳ After readiness | GitHub / GitLab CI integration |
-| **Delivery 2** | ⏳ After D1 | API Service (SaaS) |
-| **Delivery 3** | ⏳ After D2 | Web Dashboard |
+| **Adapter Registry** | ✅ **Complete** | Zero-config detection (Tier 1 file, Tier 2 API) |
+| **CLI Tool (`evo`)** | ✅ **Complete** | `evo analyze .` — primary user interface |
+| **KB Security** | ✅ **Complete** | Validates all imported patterns (10+ attack vectors) |
+| **KB Export/Import** | ✅ **Complete** | Anonymous pattern sharing with security gate |
+| **Test Suite** | ✅ **Complete** | 148 tests, 0.68s, >80% core coverage |
+| **Batch Calibration** | 🔄 **Next** | Seed universal patterns from 20+ repos |
+| **Community KB Sync** | ⏳ Not started | Opt-in anonymous pattern sharing |
+| **Report Generator** | ⏳ Not started | HTML report for `evo report` |
+| **Packaging (Cython)** | ⏳ Not started | Compiled wheels for pip distribution |
+| **License System** | ⏳ Not started | Free/Pro/Team/Enterprise tier gating |
 
-### Full Execution Timeline
+### Execution Timeline
 
 ```
-Engine (Done)         Calibration Infrastructure    Calibration + Product     Delivery
-─────────────         ──────────────────────────    ──────────────────────    ──────────
-Phase 1-5 ✅
-     │
-     ├──▶ P1: Git History Walker ─────┐
-     │    (extract lockfiles from     │
-     │     past commits)              │
-     │                                ├──▶ P4: Multi-Family Calibration
-     ├──▶ P2: GitHub API Adapter ─────┘    (first real patterns!)
-     │    (CI runs, releases,              │
-     │     security advisories)            ├──▶ P5: Fix Verification Loop
-     │                                     │
-     ├──▶ P3: Repo Search                  ├──▶ P6: Report Generator
-     │    (find repos with 4+              │    (HTML/PDF for consulting)
-     │     family coverage)                │
-     │                                     ├──▶ P7: Marketing Materials
-     │                                     │    (one-pager, sample report)
-     │                                     │
-     │    ╔═════════════════════════════╗   │
-     │    ║ Pattern discovery unlocked  ║   ├──▶ Consulting Outreach
-     │    ║ by P1+P2. Calibration runs ║   │    (revenue + KB seeding)
-     │    ║ use real multi-family data. ║   │
-     │    ╚═════════════════════════════╝   │
-     │                                     │    Self-service        CLI (exists)
-     │                                     └──▶ readiness ────────▶ GitHub Action
-     │                                          (50+ patterns,      API Service
-     │                                           3+ clients,        Web Dashboard
-     │                                           fix verification   IDE Extension
-     │                                           validated)
-     └──▶ Consulting continues as premium tier
+Engine (Done)         Open-Core Infrastructure (Done)    Product Readiness        Distribution
+─────────────         ──────────────────────────────     ────────────────         ────────────
+Phase 1-5 ✅          Adapter Registry ✅                 Batch Calibration
+6-Wave Fix ✅         CLI (evo analyze .) ✅              (seed universal KB)
+Adapters ✅           KB Security ✅                            │
+Walker ✅             KB Export/Import ✅                       ├──▶ Report Generator
+GitHub API ✅         148 Tests ✅                              │    (HTML for evo report)
+                                                               │
+                      ╔═══════════════════════════════╗        ├──▶ Community KB Sync
+                      ║ Product infrastructure done.  ║        │    (evo patterns pull)
+                      ║ evo analyze . works end-to-   ║        │
+                      ║ end. Next: seed the KB and    ║        ├──▶ Packaging (Cython)
+                      ║ build the community flywheel. ║        │    (pip install evo)
+                      ╚═══════════════════════════════╝        │
+                                                               ├──▶ License System
+                                                               │    (Free/Pro/Team)
+                                                               │
+                                                               └──▶ GitHub Action
+                                                                    (CI integration)
 ```
 
 ### Immediate Next Actions
 
 1. ~~Build Git History Walker Adapter~~ ✅
 2. ~~Build GitHub API Adapters~~ ✅
-3. ~~Search and validate calibration repos~~ ✅
-4. ~~Fix Phase 4 cross-family alignment (commit-SHA based)~~ ✅
-5. ~~Implement Fix Verification Loop~~ ✅
-6. ~~Parallelize calibration pipeline~~ ✅
-7. **Batch calibration of 120 repos** (§7.4) — in progress
-   - ✅ fastapi: 4 families, 1 cross-family pattern (git × ci)
-   - ✅ LLM resilience: retry/backoff/rate-limit handling, graceful fallback (no more crashes)
-   - ✅ Batch runner: `examples/batch_calibrate.py` with parallel agent support
-   - ✅ Transition document: `.calibration/BATCH_CALIBRATION_PLAN.md`
-   - [ ] Run all 120 repos via parallel Sonnet 4.5 agents
-   - [ ] Aggregate and classify discovered patterns
-   - [ ] Tune parameters across profiles
-8. **Build Report Generator** (§7.6) — next after calibration confidence
-   - HTML/PDF from advisory.json
-   - Consulting-ready deliverable
-9. **Prepare marketing materials** (§7.7) — separate track
-   - One‑pager, sample report from calibrated repo, demo script
+3. ~~6-Wave Data Quality Fix~~ ✅
+4. ~~Adapter Auto-Detection Registry~~ ✅
+5. ~~CLI Tool (evo analyze .)~~ ✅
+6. ~~KB Security Validation~~ ✅
+7. ~~KB Export/Import~~ ✅
+8. ~~Test Suite (148 tests)~~ ✅
+9. **Seed Universal Patterns** (§7.4.2) — next priority
+   - Run on 20+ repos across 5+ ecosystems
+   - Aggregate patterns → `evolution/data/universal_patterns.json`
+   - Target: 10+ universal patterns bundled in pip package
+10. **Community KB Sync** (§8.8)
+    - `evo patterns pull` / push
+    - 3 sharing levels, staleness check
+11. **Report Generator** (§7.6)
+    - `evo report` → HTML output
+12. **Packaging** (§8.9)
+    - Cython compilation, multi-platform wheels
+13. **License System** (§8.10)
+    - Feature gating by tier
 
 ---
 
@@ -758,22 +888,23 @@ Phase 1-5 ✅
 
 ---
 
-> **Summary:**
-> **All 5 engine phases are complete** and validated across all 8 source families.
-> The full pipeline (observe → measure → explain → learn → inform) runs end‑to‑end.
+> **Summary (February 9, 2026):**
 >
-> **Wave 1 complete:** Git History Walker (8 lockfile formats), GitHub API Adapters
-> (CI, deployment, security), Repo Search (120 repos ranked), Fix Verification Loop,
-> Phase 4 cross-family alignment fix (commit-SHA based), pipeline parallelization,
-> LLM resilience (retry/backoff/rate-limit/fallback).
+> **All 5 engine phases complete.** 6-wave data quality fix validated. 148 tests passing.
+> The full pipeline runs end-to-end in 6.6 seconds on fastapi (27,390 signals, 2 patterns).
 >
-> **First cross-family pattern discovered:** `git.change_locality ↔ ci.run_duration` (r=-0.59)
-> on fastapi with 4 families (git, dependency, ci, deployment), 11,593 events, 41,427 signals.
+> **Open-core product infrastructure complete:**
+> - `evo analyze .` — zero-config CLI (adapter auto-detection, click-based)
+> - KB Security — validates all imported patterns (XSS, injection, traversal, etc.)
+> - KB Export/Import — anonymous pattern sharing with security gate
+> - Adapter Registry — Tier 1 (file-based) + Tier 2 (API tokens)
+> - Orchestrator — importable pipeline module (detect → ingest → Phase 2-5)
 >
-> **Next:** Batch calibration of all 120 repos via parallel Sonnet 4.5 agents
-> (`examples/batch_calibrate.py`, `.calibration/BATCH_CALIBRATION_PLAN.md`).
-> Target: 10+ validated cross-family patterns from 5+ languages to seed the Knowledge Base.
-> Then build Report Generator for consulting delivery.
+> **Competitive position:** Development Process Intelligence — complementary to APM tools
+> (New Relic/Datadog), not competing. Moat is the Pattern Knowledge Base, not the code.
+> Local-first model is hard for SaaS incumbents to replicate.
 >
-> The engagement flow: **Advisory → Investigation Prompt → User's AI Fixes → Verify Fix Worked → Repeat.**
-> The system doesn't just flag problems — it tracks outcomes.
+> **Next:** Seed universal patterns from 20+ repos → bundle in pip package → community sync
+> → compiled wheels → license system → GitHub Action → product launch.
+>
+> The engagement flow: **evo analyze . → Advisory → Investigation Prompt → Fix → evo verify → Repeat.**

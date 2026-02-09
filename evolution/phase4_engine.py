@@ -53,6 +53,8 @@ except ImportError:
 DEFAULT_PARAMS = {
     "min_support": 3,          # Lowered from 10 for early-stage use; raise for production
     "min_correlation": 0.3,    # Minimum pairwise correlation for co-occurrence
+    "min_lift": 1.5,           # Minimum lift for co-occurrence detection (alternative to correlation)
+    "min_effect_size": 0.2,    # Minimum Cohen's d for presence-based patterns
     "promotion_threshold": 10, # Occurrences to promote to knowledge (lowered for testing)
     "decay_window": 90,        # Days before unseen patterns decay
     "semantic_multiplier": 3,  # Extra evidence for LLM-only hypotheses
@@ -389,6 +391,7 @@ class Phase4Engine:
         threshold = self.params["direction_threshold"]
         min_support = self.params["min_support"]
         min_correlation = self.params["min_correlation"]
+        min_lift = self.params.get("min_lift", 1.5)
         confidence_full_at = self.params.get("confidence_full_at", 30)
         window_hours = self.params.get("temporal_window_hours", 24)
 
@@ -484,7 +487,22 @@ class Phase4Engine:
             confidence_weight = min(1.0, min_samples / confidence_full_at)
             effective_correlation = correlation * confidence_weight
 
-            if abs(effective_correlation) < min_correlation:
+            # Acceptance: Pearson correlation OR co-occurrence lift
+            accepted_via = None
+            lift = 0.0
+            if abs(effective_correlation) >= min_correlation:
+                accepted_via = "correlation"
+            else:
+                # Lift-based co-occurrence: do they deviate together more than chance?
+                rate_1 = sum(1 for c in shared_commits if commits1[c]["direction"] != "unchanged") / n
+                rate_2 = sum(1 for c in shared_commits if commits2[c]["direction"] != "unchanged") / n
+                expected_rate = rate_1 * rate_2
+                observed_rate = co_deviations / n
+                lift = observed_rate / expected_rate if expected_rate > 0 else 0.0
+                if lift >= min_lift:
+                    accepted_via = "lift"
+
+            if not accepted_via:
                 continue
 
             # Build fingerprint from predominant directions
@@ -502,6 +520,20 @@ class Phase4Engine:
             signal_refs = [commits1[c]["event_ref"] for c in shared_commits[:10]]
             signal_refs += [commits2[c]["event_ref"] for c in shared_commits[:10]]
 
+            # Build description based on acceptance method
+            if accepted_via == "correlation":
+                desc = (
+                    f"Signals {k1[0]}.{k1[1]} and {k2[0]}.{k2[1]} co-occur "
+                    f"with correlation {effective_correlation:.2f} across {co_deviations} "
+                    f"commit-aligned observations (of {n} shared commits)."
+                )
+            else:
+                desc = (
+                    f"Signals {k1[0]}.{k1[1]} and {k2[0]}.{k2[1]} co-deviate "
+                    f"{lift:.1f}x more than expected by chance across {co_deviations} "
+                    f"commit-aligned observations (of {n} shared commits, lift={lift:.2f})."
+                )
+
             candidates.append({
                 "fingerprint": fingerprint,
                 "scope": "local",
@@ -510,14 +542,12 @@ class Phase4Engine:
                 "pattern_type": "co_occurrence",
                 "sources": sorted(set([k1[0], k2[0]])),
                 "metrics": sorted([k1[1], k2[1]]),
-                "description_statistical": (
-                    f"Signals {k1[0]}.{k1[1]} and {k2[0]}.{k2[1]} co-occur "
-                    f"with correlation {effective_correlation:.2f} across {co_deviations} "
-                    f"commit-aligned observations (of {n} shared commits)."
-                ),
+                "description_statistical": desc,
                 "correlation_strength": round(effective_correlation, 4),
                 "raw_correlation": round(correlation, 4),
                 "confidence_weight": round(confidence_weight, 4),
+                "lift": round(lift, 4) if accepted_via == "lift" else None,
+                "accepted_via": accepted_via,
                 "occurrence_count": co_deviations,
                 "signal_refs": signal_refs,
                 "first_seen": datetime.utcnow().isoformat() + "Z",
@@ -567,7 +597,21 @@ class Phase4Engine:
             confidence_weight = min(1.0, min_samples / confidence_full_at)
             effective_correlation = correlation * confidence_weight
 
-            if abs(effective_correlation) < min_correlation:
+            # Acceptance: Pearson correlation OR co-occurrence lift
+            accepted_via = None
+            lift = 0.0
+            if abs(effective_correlation) >= min_correlation:
+                accepted_via = "correlation"
+            else:
+                rate_1 = sum(1 for b in shared_buckets if buckets1[b]["direction"] != "unchanged") / n
+                rate_2 = sum(1 for b in shared_buckets if buckets2[b]["direction"] != "unchanged") / n
+                expected_rate = rate_1 * rate_2
+                observed_rate = co_deviations / n
+                lift = observed_rate / expected_rate if expected_rate > 0 else 0.0
+                if lift >= min_lift:
+                    accepted_via = "lift"
+
+            if not accepted_via:
                 continue
 
             aligned_entries_1 = [buckets1[b] for b in shared_buckets]
@@ -583,6 +627,19 @@ class Phase4Engine:
             signal_refs = [buckets1[b]["event_ref"] for b in shared_buckets[:10]]
             signal_refs += [buckets2[b]["event_ref"] for b in shared_buckets[:10]]
 
+            if accepted_via == "correlation":
+                desc = (
+                    f"Signals {k1[0]}.{k1[1]} and {k2[0]}.{k2[1]} co-occur "
+                    f"with correlation {effective_correlation:.2f} across {co_deviations} "
+                    f"temporally-aligned observations (of {n} shared {window_hours}h windows)."
+                )
+            else:
+                desc = (
+                    f"Signals {k1[0]}.{k1[1]} and {k2[0]}.{k2[1]} co-deviate "
+                    f"{lift:.1f}x more than expected by chance across {co_deviations} "
+                    f"temporally-aligned observations (of {n} shared {window_hours}h windows, lift={lift:.2f})."
+                )
+
             candidates.append({
                 "fingerprint": fingerprint,
                 "scope": "local",
@@ -591,14 +648,12 @@ class Phase4Engine:
                 "pattern_type": "co_occurrence",
                 "sources": sorted(set([k1[0], k2[0]])),
                 "metrics": sorted([k1[1], k2[1]]),
-                "description_statistical": (
-                    f"Signals {k1[0]}.{k1[1]} and {k2[0]}.{k2[1]} co-occur "
-                    f"with correlation {effective_correlation:.2f} across {co_deviations} "
-                    f"temporally-aligned observations (of {n} shared {window_hours}h windows)."
-                ),
+                "description_statistical": desc,
                 "correlation_strength": round(effective_correlation, 4),
                 "raw_correlation": round(correlation, 4),
                 "confidence_weight": round(confidence_weight, 4),
+                "lift": round(lift, 4) if accepted_via == "lift" else None,
+                "accepted_via": accepted_via,
                 "occurrence_count": co_deviations,
                 "signal_refs": signal_refs,
                 "first_seen": datetime.utcnow().isoformat() + "Z",
@@ -610,6 +665,151 @@ class Phase4Engine:
 
         if temporal_count:
             log.info("Temporal alignment discovered %d additional candidate patterns", temporal_count)
+
+        return candidates
+
+    def _discover_presence_patterns(self, signals: list[dict]) -> list[dict]:
+        """Discover patterns where the presence of events from one family
+        systematically shifts metric distributions in another family.
+
+        For each non-git family F, compares git metrics between:
+          - Treated: commits that have events from family F (e.g. lockfile changed)
+          - Control: commits that only have git events (no family F involvement)
+
+        Uses Cohen's d (effect size) to detect meaningful distribution shifts.
+        This catches patterns like "dependency-changing commits touch more files"
+        that co-occurrence correlation misses.
+
+        Returns list of candidate pattern dicts (not yet stored).
+        """
+        min_support = self.params["min_support"]
+        threshold = self.params["direction_threshold"]
+        min_effect_size = self.params.get("min_effect_size", 0.3)
+
+        commit_index = self._build_commit_index()
+
+        # Map each signal to its commit SHA
+        # Build: {(engine_id, metric): {commit_sha: deviation_value}}
+        metric_deviations: dict[tuple, dict[str, float]] = defaultdict(dict)
+        # Track which commits have events from each engine
+        commits_by_engine: dict[str, set] = defaultdict(set)
+
+        for s in signals:
+            dev = s.get("deviation", {})
+            if dev.get("degenerate", False) or dev.get("measure") is None:
+                continue
+            event_ref = s.get("event_ref", "")
+            commit_sha = commit_index.get(event_ref)
+            if not commit_sha:
+                continue
+
+            engine = s["engine_id"]
+            metric = s["metric"]
+            deviation = dev["measure"]
+
+            metric_deviations[(engine, metric)][commit_sha] = deviation
+            commits_by_engine[engine].add(commit_sha)
+
+        # We need git + at least one non-git family
+        git_commits = commits_by_engine.get("git", set())
+        if not git_commits:
+            return []
+
+        non_git_engines = [e for e in commits_by_engine if e != "git"]
+        if not non_git_engines:
+            return []
+
+        git_metrics = [(e, m) for (e, m) in metric_deviations if e == "git"]
+        candidates = []
+
+        for other_engine in non_git_engines:
+            treated_commits = commits_by_engine[other_engine] & git_commits
+            control_commits = git_commits - commits_by_engine[other_engine]
+
+            min_control = max(min_support, 30)  # Need decent control group
+            if len(treated_commits) < min_support or len(control_commits) < min_control:
+                continue
+
+            for git_key in git_metrics:
+                git_devs = metric_deviations[git_key]
+
+                treated_vals = [git_devs[c] for c in treated_commits if c in git_devs]
+                control_vals = [git_devs[c] for c in control_commits if c in git_devs]
+
+                if len(treated_vals) < min_support or len(control_vals) < min_support:
+                    continue
+
+                # Cohen's d effect size
+                mean_t = mean(treated_vals)
+                mean_c = mean(control_vals)
+                std_t = pstdev(treated_vals)
+                std_c = pstdev(control_vals)
+
+                # Pooled standard deviation
+                nt = len(treated_vals)
+                nc = len(control_vals)
+                if std_t == 0 and std_c == 0:
+                    continue
+                pooled_std = ((std_t ** 2 * nt + std_c ** 2 * nc) / (nt + nc)) ** 0.5
+                if pooled_std == 0:
+                    continue
+
+                effect_size = (mean_t - mean_c) / pooled_std
+
+                if abs(effect_size) < min_effect_size:
+                    continue
+
+                # Direction of the effect
+                direction = "increased" if effect_size > 0 else "decreased"
+
+                # Build fingerprint
+                components = [
+                    ("git", git_key[1], direction),
+                    (other_engine, "_presence", "increased"),
+                ]
+                fingerprint = compute_fingerprint(components)
+
+                # Collect signal_refs from treated commits
+                signal_refs = []
+                for c in sorted(treated_commits)[:20]:
+                    for s in signals:
+                        if commit_index.get(s.get("event_ref", "")) == c:
+                            signal_refs.append(s.get("event_ref", ""))
+                            if len(signal_refs) >= 20:
+                                break
+                    if len(signal_refs) >= 20:
+                        break
+
+                desc = (
+                    f"When {other_engine} events occur, git.{git_key[1]} is "
+                    f"systematically {direction} (effect size d={effect_size:.2f}, "
+                    f"treated={nt}, control={nc})."
+                )
+
+                candidates.append({
+                    "fingerprint": fingerprint,
+                    "scope": "local",
+                    "discovery_method": "statistical",
+                    "alignment": "presence",
+                    "pattern_type": "co_occurrence",
+                    "sources": sorted(["git", other_engine]),
+                    "metrics": sorted([git_key[1], f"{other_engine}_presence"]),
+                    "description_statistical": desc,
+                    "correlation_strength": round(effect_size, 4),
+                    "raw_correlation": round(effect_size, 4),
+                    "confidence_weight": min(1.0, min(nt, nc) / self.params.get("confidence_full_at", 30)),
+                    "effect_size": round(effect_size, 4),
+                    "accepted_via": "presence",
+                    "occurrence_count": nt,
+                    "signal_refs": signal_refs,
+                    "first_seen": datetime.utcnow().isoformat() + "Z",
+                    "last_seen": datetime.utcnow().isoformat() + "Z",
+                    "confidence_tier": "statistical",
+                    "confidence_status": "emerging",
+                })
+
+        if candidates:
+            log.info("Presence-based discovery found %d candidate patterns", len(candidates))
 
         return candidates
 
@@ -856,9 +1056,10 @@ class Phase4Engine:
 
                 recognized = True
 
-        # Step 4: Co-occurrence discovery (if no batch match)
+        # Step 4: Co-occurrence + presence-based discovery (if no batch match)
         if not recognized:
             candidates = self._discover_cooccurrences(signals)
+            candidates += self._discover_presence_patterns(signals)
 
             for candidate in candidates:
                 # Check if this specific co-occurrence fingerprint already exists
