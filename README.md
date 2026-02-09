@@ -1,14 +1,14 @@
 # Evolution Engine
 
-**A deterministic, memory‑based system that observes how software evolves, learns what is structurally normal, and surfaces unexpected change with evidence to act.**
+**Development Process Intelligence — a local-first CLI tool that observes how software evolves, learns what is structurally normal, and surfaces unexpected change with evidence to act.**
 
 ---
 
 ## What It Does
 
-The Evolution Engine monitors software development across 8 source families — version control, CI, testing, dependencies, schemas, deployments, configuration, and security — and detects when a system's evolution deviates from its established patterns.
+Run `evo analyze .` on any git repository. The Evolution Engine detects adapters automatically, builds per-repo baselines, and reports when your development process deviates from its own historical norms — across commits, CI, dependencies, deployments, and more.
 
-It does not judge code quality or enforce rules. It **remembers**, **compares**, and **explains** — providing specific evidence (commits, files, tests, dependencies) so humans or their AI assistants can investigate immediately.
+No data leaves your machine. No configuration required. No accounts to create.
 
 ### The Pipeline
 
@@ -19,132 +19,176 @@ Sources → Phase 1 (Record) → Phase 2 (Measure) → Phase 3 (Explain)
                                            │
                                     Phase 5 (Inform)
                                            │
+                                      HTML Report
+                                           │
                                        HUMAN / AI
 ```
 
-| Phase | What It Does | Status |
-|-------|-------------|--------|
-| **Phase 1** | Records immutable events from truth sources | ✅ Complete |
-| **Phase 2** | Computes baselines and deviation signals | ✅ Complete |
-| **Phase 3** | Explains signals in human language (+ LLM) | ✅ Complete |
-| **Phase 4** | Discovers and remembers cross‑source patterns | ✅ Complete |
-| **Phase 5** | Advisory reports with evidence packages | ✅ Complete |
-
----
-
-## Source Families
-
-| Family | Adapter | What It Observes |
-|--------|---------|-----------------|
-| Version Control | Git | Commits, file changes, structural coupling |
-| CI / Build Pipeline | GitHub Actions | Build durations, failure rates, job topology |
-| Test Execution | JUnit XML | Test counts, failure rates, flake patterns |
-| Dependency Graph | pip | Dependency count, churn, transitive depth |
-| Schema / API | OpenAPI | Endpoint growth, field changes, schema churn |
-| Deployment | GitHub Releases | Deploy frequency, failure rate, rollbacks |
-| Configuration | Terraform | Resource count, config churn, drift |
-| Security Scanning | Trivy | Vulnerability count, severity, fix availability |
-
-### Historical Replay
-
-The **Git History Walker** meta-adapter extracts dependency, schema, and config files from git history, creating temporal evolution timelines (not just current state snapshots). This enables Phase 4 pattern learning to correlate dependency changes with test failures, deployments, and other cross-family events over time.
+| Phase | What It Does |
+|-------|-------------|
+| **Phase 1** | Records immutable events from truth sources |
+| **Phase 2** | Computes baselines and deviation signals (MAD/IQR robust statistics) |
+| **Phase 3** | Explains signals in human language (template + optional LLM) |
+| **Phase 4** | Discovers cross-source patterns (correlation, lift, presence-based) |
+| **Phase 5** | Advisory reports with evidence packages |
 
 ---
 
 ## Quick Start
 
 ```bash
-# Clone and set up
-git clone git@github.com:alpsla/evolution_monitor.git
-cd evolution_monitor
+# Install
+pip install evolution-engine
+
+# Analyze any git repository
+evo analyze .
+
+# With a GitHub token (unlocks CI, deployment, security data)
+evo analyze . --token ghp_xxx
+
+# Generate an HTML report
+evo report .
+
+# See what adapters were detected
+evo status
+```
+
+### From Source
+
+```bash
+git clone <repo-url>
+cd evolution-engine
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 
-# Run the full pipeline test (all families, all phases)
-python tests/test_all_families.py
-
-# Run Git History Walker to extract historical dependency/schema/config evolution
-python examples/run_git_history_walker.py
+# Run the test suite (246 tests)
+python -m pytest tests/ -v
 ```
 
-### Environment Variables (for Phase 3.1 LLM)
+### Environment Variables
 
 ```bash
-# .env file
-OPENROUTER_API_KEY=your-key-here
-PHASE31_ENABLED=true
-PHASE31_MODEL=anthropic/claude-3.5-haiku
+# .env file (all optional)
+GITHUB_TOKEN=ghp_xxx            # Unlocks CI, deployment, security adapters
+EVO_LICENSE_KEY=xxx              # Pro/Team features (free tier works without)
+OPENROUTER_API_KEY=xxx           # LLM-enhanced explanations (Phase 3.1)
+PHASE31_ENABLED=false            # LLM off by default
 ```
 
 ---
 
-## Calibration & Knowledge Base Seeding
+## Source Families & Auto-Detection
 
-The Evolution Engine includes an **automated search agent** that discovers, validates, and ranks 100+ repositories by multi-family data coverage.
+The adapter registry automatically detects available data sources in three tiers:
 
-### Automated Repository Discovery 🚀
+### Tier 1 — File-Based (zero config, always works offline)
 
-Find hundreds of calibration candidates with one command:
+| Family | Detected By | What It Observes |
+|--------|------------|-----------------|
+| Version Control | `.git/` | Commits, file changes, structural coupling, co-change novelty |
+| Dependency Graph | `requirements.txt`, `package-lock.json`, `go.mod`, `Cargo.lock`, `Gemfile.lock` | Dependency count, churn, transitive depth |
+| Configuration | `*.tf`, `docker-compose.yml` | Resource count, config churn |
+| Schema / API | `openapi.yaml`, `*.graphql` | Endpoint growth, field changes |
 
-```bash
-cd .calibration
+### Tier 2 — API-Enriched (optional token unlocks more)
 
-# Discover and rank 100+ repositories automatically
-python search_agent.py
+| Family | Token | What It Observes |
+|--------|-------|-----------------|
+| CI / Build Pipeline | `GITHUB_TOKEN` | Build durations, failure rates |
+| Deployment | `GITHUB_TOKEN` | Release cadence, pre-releases, asset count |
+| Security Scanning | `GITHUB_TOKEN` | Vulnerability count, severity, Dependabot alerts |
 
-# Custom search parameters
-python search_agent.py --min-stars 500 --max-repos 500
+### Tier 3 — Community Plugins (pip-installable)
 
-# Specific languages
-python search_agent.py --languages Python Go TypeScript
-```
-
-**Output:** `repos_ranked.csv` with 100+ repositories ranked by:
-- Family coverage (0-8 families available)
-- Calibration score (0-100 points)
-- Exact lockfile paths for Git History Walker
-- CI runs, test counts, schema files, etc.
-
-The search agent automatically checks each repository for:
-- ✅ Git history (500+ commits for stable baselines)
-- ✅ CI/CD data (GitHub Actions runs)
-- ✅ Dependency lockfiles (in git history for temporal tracking)
-- ✅ Test coverage (test files and frameworks)
-- ✅ Schema/API files (OpenAPI, GraphQL, migrations)
-- ✅ Deployment tracking (releases, tags)
-- ✅ Configuration (Terraform, Kubernetes, Docker)
-- ✅ Security data (advisories, Dependabot)
-
-**Runtime:** 30-60 minutes for 100-200 repositories
-
-### Calibration Workflow
+Already using tools like **Snyk**, **SonarQube**, **Jenkins**, **ArgoCD**, **GitLab CI**, **Datadog**, or **PagerDuty**? Evo doesn't replace them — it learns from them. Install or build an adapter to feed their data into the pipeline, and Evo will correlate it with your git history, dependencies, and other sources to discover cross-tool patterns.
 
 ```bash
-# 1. Discover candidates (automated)
-python search_agent.py --max-repos 200
-
-# 2. Review results
-cat repos_ranked.csv  # Top repos by score
-
-# 3. Select top 10 and run calibration
-python .calibration/run_calibration.py --repo SELECTED_REPO
-
-# 4. Inspect discovered patterns
-python -c "
-from pathlib import Path
-from evolution.knowledge_store import SQLiteKnowledgeStore
-kb = SQLiteKnowledgeStore(Path('.calibration/runs/REPO/phase4/knowledge.db'))
-for p in kb.list_patterns()[:10]:
-    print(f'{p['sources']} — {p['metrics']} (corr={p.get('correlation_strength',0):.2f})')
-kb.close()
-"
-
-# 5. Review Phase 5 advisory
-cat .calibration/runs/REPO/phase5/summary.txt
+pip install evo-adapter-jenkins    # Jenkins CI adapter
+pip install evo-adapter-snyk       # Snyk security adapter
+pip install evo-adapter-argocd     # ArgoCD deployment adapter
+evo analyze .                      # Auto-detected!
 ```
 
-**See:** [`.calibration/SEARCH_AGENT_GUIDE.md`](.calibration/SEARCH_AGENT_GUIDE.md) for complete documentation
+Plugins are auto-discovered via Python `entry_points`. If an adapter for your tool doesn't exist yet, you can [build one](#building-adapters) or [request one](#cli-commands) (`evo adapter request`).
+
+### Historical Replay
+
+The **Git History Walker** extracts dependency, schema, and config files from git history, creating temporal evolution timelines (not just current-state snapshots). This enables Phase 4 to correlate dependency changes with CI failures, deployments, and other events over time.
+
+---
+
+## CLI Commands
+
+```bash
+# Core
+evo analyze [path]               # Detect adapters, run full pipeline
+evo analyze . --families git,ci  # Override auto-detection
+evo report [path]                # Generate HTML report from last run
+evo status                       # Show detected adapters and event counts
+
+# Patterns & Knowledge Base
+evo patterns list                # Show discovered patterns
+evo patterns export              # Export anonymized pattern digests
+evo patterns import <file>       # Import community patterns
+evo patterns sync                # Sync universal patterns
+
+# Adapter Ecosystem
+evo adapter list                 # Show detected + installed adapters
+evo adapter validate <class>     # Run 13-check certification
+evo adapter guide                # How to build an adapter
+evo adapter new <name> --family ci   # Scaffold a pip-installable package
+evo adapter prompt <name> --family ci  # Generate AI prompt for building
+evo adapter request <description>     # Request an adapter from the community
+```
+
+---
+
+## Building Adapters
+
+The Evolution Engine supports a plugin ecosystem. Third-party adapters are pip-installable packages that auto-register via Python `entry_points`.
+
+### Quick Path
+
+```bash
+# Scaffold a complete pip package
+evo adapter new jenkins --family ci
+
+# Or generate an AI prompt and paste it into your coding assistant
+evo adapter prompt jenkins --family ci --copy
+```
+
+### Certification
+
+Before publishing, validate your adapter passes all 13 contract checks:
+
+```bash
+cd evo-adapter-jenkins
+pip install -e .
+evo adapter validate evo_jenkins.JenkinsAdapter
+```
+
+Checks include: required class attributes, valid family, iter_events yields valid events, JSON serialization, attestation structure, and more.
+
+### Learn More
+
+```bash
+evo adapter guide    # Full tutorial with contract details
+```
+
+---
+
+## Pattern Knowledge Base
+
+The Evolution Engine discovers cross-family patterns automatically:
+
+- **Pearson correlation**: deviation magnitudes track together (|r| >= 0.3)
+- **Lift-based co-occurrence**: deviations co-occur more than chance (lift >= 1.5)
+- **Presence-based**: metric distributions differ when events co-occur (Cohen's d >= 0.2)
+
+Patterns progress through scopes: **local** (this repo) -> **community** (shared anonymously) -> **confirmed** (local + community match) -> **universal** (bundled in package).
+
+Universal patterns ship with the pip package and are recognized instantly on new repositories.
 
 ---
 
@@ -153,33 +197,80 @@ cat .calibration/runs/REPO/phase5/summary.txt
 ```
 evolution-engine/
 ├── evolution/
-│   ├── phase1_engine.py          # Phase 1: Observation
-│   ├── phase2_engine.py          # Phase 2: Baselines (all families)
-│   ├── phase3_engine.py          # Phase 3: Explanations (all families)
-│   ├── phase3_1_renderer.py      # Phase 3.1: LLM enhancement
-│   ├── validation_gate.py        # LLM output validation
-│   ├── llm_openrouter.py         # OpenRouter LLM client
+│   ├── cli.py                     # Click-based CLI (evo command)
+│   ├── orchestrator.py            # Pipeline orchestration (detect → P1-P5)
+│   ├── registry.py                # 3-tier adapter auto-detection
+│   ├── phase1_engine.py           # Phase 1: Observation
+│   ├── phase2_engine.py           # Phase 2: Baselines (MAD/IQR)
+│   ├── phase3_engine.py           # Phase 3: Explanations
+│   ├── phase3_1_renderer.py       # Phase 3.1: LLM enhancement
+│   ├── phase4_engine.py           # Phase 4: Pattern discovery
+│   ├── phase5_engine.py           # Phase 5: Advisory
+│   ├── knowledge_store.py         # SQLite knowledge base
+│   ├── kb_export.py               # Anonymized pattern export/import
+│   ├── kb_security.py             # Import validation (XSS, injection, traversal)
+│   ├── report_generator.py        # Standalone HTML report generator
+│   ├── adapter_validator.py       # 13-check adapter certification
+│   ├── adapter_scaffold.py        # Package scaffolding + AI prompt gen
+│   ├── license.py                 # License tier gating
+│   ├── llm_openrouter.py          # OpenRouter LLM client
+│   ├── llm_anthropic.py           # Anthropic LLM client
+│   ├── validation_gate.py         # LLM output validation
+│   ├── data/
+│   │   └── universal_patterns.json  # Bundled universal patterns
 │   └── adapters/
-│       ├── git/                   # Version Control
-│       ├── ci/                    # CI / Build Pipeline
-│       ├── testing/               # Test Execution
-│       ├── dependency/            # Dependency Graph
-│       ├── schema/                # Schema / API
-│       ├── deployment/            # Deployment / Release
-│       ├── config/                # Configuration / IaC
-│       └── security/              # Security Scanning
+│       ├── git/                   # Version Control (+ Git History Walker)
+│       ├── ci/                    # CI / Build Pipeline (GitHub Actions)
+│       ├── testing/               # Test Execution (JUnit XML)
+│       ├── dependency/            # Dependency Graph (pip, npm, go, cargo, bundler)
+│       ├── schema/                # Schema / API (OpenAPI)
+│       ├── deployment/            # Deployment (GitHub Releases)
+│       ├── config/                # Configuration (Terraform)
+│       └── security/              # Security Scanning (Trivy, Dependabot)
+├── tests/
+│   ├── conftest.py                # Shared fixtures
+│   ├── unit/                      # 200+ unit tests
+│   │   ├── test_phase2_deviation.py
+│   │   ├── test_phase4_cooccurrence.py
+│   │   ├── test_phase5_advisory.py
+│   │   ├── test_knowledge_store.py
+│   │   ├── test_registry.py
+│   │   ├── test_adapter_validator.py
+│   │   ├── test_adapter_scaffold.py
+│   │   ├── test_kb_export.py
+│   │   ├── test_kb_security.py
+│   │   ├── test_license.py
+│   │   ├── test_report_generator.py
+│   │   └── adapters/              # Lockfile parser tests
+│   └── integration/
+│       └── test_pipeline_e2e.py   # Full pipeline integration test
+├── scripts/
+│   └── aggregate_calibration.py   # Cross-repo pattern aggregation
 ├── docs/
 │   ├── ARCHITECTURE_VISION.md     # Constitution
-│   ├── PHASE_*_CONTRACT.md        # Binding contracts (2, 3, 4, 5)
-│   ├── PHASE_*_DESIGN.md          # Design documents (2, 3, 4, 5)
+│   ├── IMPLEMENTATION_PLAN.md     # Roadmap
+│   ├── PHASE_*_CONTRACT.md        # Phase contracts (2, 3, 4, 5)
+│   ├── PHASE_*_DESIGN.md          # Phase designs (2, 3, 4, 5)
 │   ├── ADAPTER_CONTRACT.md        # Universal adapter contract
-│   ├── IMPLEMENTATION_PLAN.md     # Roadmap & next actions
-│   ├── adapters/                  # 8 family contracts
-│   └── Research/                  # Exploratory documents
-├── tests/
-│   └── test_all_families.py       # End-to-end pipeline test
-└── .env                           # Environment config
+│   └── adapters/                  # 8 family contracts
+├── pyproject.toml                 # Package config (entry point: evo)
+└── .env                           # Environment config (optional)
 ```
+
+---
+
+## Open-Core Model
+
+| Open Source (MIT) | Proprietary |
+|-------------------|-------------|
+| All adapters | Phase 2-5 engines |
+| CLI, registry, orchestrator | Knowledge store |
+| Phase 1 engine | |
+| KB export/import/security | |
+| Report generator | |
+| Adapter scaffold & validator | |
+
+The open adapter ecosystem ensures anyone can connect new data sources. The analysis engines are the proprietary core.
 
 ---
 
@@ -209,4 +300,4 @@ Key documents:
 
 ## License
 
-Private — all rights reserved.
+Open-core: adapters and CLI under MIT, analysis engines proprietary.
