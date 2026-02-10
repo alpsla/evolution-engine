@@ -261,6 +261,6 @@ class TestHelpers:
         assert _fmt_num(1234.5) == "1,234.5"
 
     def test_format_date(self):
-        assert _format_date("2026-02-09T12:30:00Z") == "2026-02-09 12:30"
+        assert _format_date("2026-02-09T12:30:00Z") == "Feb 09, 2026 at 12:30 PM"
         assert _format_date("") == ""
         assert _format_date("not-a-date") == "not-a-date"

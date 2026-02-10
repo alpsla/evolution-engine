@@ -943,7 +943,9 @@ def report(path, output, evo_dir, title, open_browser):
 
     output_path = Path(output) if output else evo_path / "report.html"
     output_path.write_text(html)
-    click.echo(f"Report generated: {output_path}")
+    file_url = f"file://{output_path.resolve()}"
+    # OSC 8 hyperlink: clickable in modern terminals (iTerm2, VS Code, etc.)
+    click.echo(f"Report generated: \033]8;;{file_url}\033\\{output_path}\033]8;;\033\\")
 
     from evolution.telemetry import track_event
     track_event("cli_command", {"command": "report"})
