@@ -60,6 +60,8 @@ SKIP_DIRS = {
     "node_modules", "vendor", "venv", ".venv", "__pycache__",
     ".git", ".evo", "dist", "build", ".tox", ".mypy_cache",
     "target", "pkg", "bin", "obj",
+    "tests", "test", "spec", "specs", "__tests__",
+    ".calibration",
 }
 
 
@@ -299,10 +301,16 @@ class SourcePrescan:
             return
 
         # Walk source files (bounded)
+        # Also skip the evolution engine's own package directory
+        evo_pkg_dir = str(Path(__file__).parent.resolve())
         files_scanned = 0
         for dirpath, dirnames, filenames in os.walk(self.repo_path):
-            # Prune skip directories
-            dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+            # Prune skip directories and EE's own package
+            dirnames[:] = [
+                d for d in dirnames
+                if d not in SKIP_DIRS
+                and os.path.join(dirpath, d) != evo_pkg_dir
+            ]
 
             for fname in filenames:
                 if files_scanned >= self.max_import_files:
