@@ -197,8 +197,11 @@ def validate_pattern(pattern: dict, *, require_external_scope: bool = True) -> d
     if corr is not None:
         if not isinstance(corr, (int, float)):
             raise PatternValidationError("correlation_strength", "must be numeric")
-        if not -1.0 <= corr <= 1.0:
-            raise PatternValidationError("correlation_strength", "must be in [-1, 1]")
+        # Pearson r is bounded [-1, 1] but presence-based patterns use Cohen's d
+        # which can exceed 1.0 (e.g., d=2.0 means 2 std deviations apart).
+        # Allow [-5, 5] to accommodate both measures.
+        if not -5.0 <= corr <= 5.0:
+            raise PatternValidationError("correlation_strength", "must be in [-5, 5]")
         validated["correlation_strength"] = round(float(corr), 4)
 
     occ = pattern.get("occurrence_count")

@@ -130,7 +130,7 @@ class TestFieldTypeValidation:
 
     def test_rejects_out_of_range_correlation(self):
         with pytest.raises(PatternValidationError, match="correlation_strength"):
-            validate_pattern(_valid_pattern(correlation_strength=5.0))
+            validate_pattern(_valid_pattern(correlation_strength=10.0))
 
     def test_rejects_negative_occurrence_count(self):
         with pytest.raises(PatternValidationError, match="occurrence_count"):

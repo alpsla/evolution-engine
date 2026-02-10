@@ -62,7 +62,8 @@ class TestTier1Detection:
         pip_configs = [c for c in configs if c.adapter_name == "pip"]
         assert len(pip_configs) == 1
 
-    def test_minimal_repo_detects_git_only(self, minimal_repo):
+    def test_minimal_repo_detects_git_only(self, minimal_repo, monkeypatch):
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
         registry = AdapterRegistry(minimal_repo)
         configs = registry.detect()
         assert len(configs) == 1
