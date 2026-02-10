@@ -8,12 +8,19 @@ license = { text = "MIT" }
 authors = [
   { name = "Slava" }
 ]
+keywords = ["git", "devops", "ci-cd", "code-quality", "evolution", "drift-detection", "codebase-analysis"]
 classifiers = [
   "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Testing",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
 ]
 
 dependencies = [
@@ -34,7 +41,9 @@ dev = [
 ]
 
 [project.urls]
+Homepage = "https://evo.dev"
 Repository = "https://github.com/openclaw/evolution-engine"
+"Bug Tracker" = "https://github.com/openclaw/evolution-engine/issues"
 
 [project.scripts]
 evo = "evolution.cli:main"
@@ -44,7 +53,7 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.setuptools]
-packages = ["evolution", "evolution.adapters", "evolution.adapters.git", "evolution.adapters.ci", "evolution.adapters.testing", "evolution.adapters.dependency", "evolution.adapters.config", "evolution.adapters.schema", "evolution.adapters.security", "evolution.adapters.deployment", "evolution.report"]
+packages = ["evolution", "evolution.adapters", "evolution.adapters.git", "evolution.adapters.ci", "evolution.adapters.testing", "evolution.adapters.dependency", "evolution.adapters.config", "evolution.adapters.schema", "evolution.adapters.security", "evolution.adapters.deployment", "evolution.agents"]
 
 [tool.setuptools.package-data]
 evolution = ["data/*.json"]

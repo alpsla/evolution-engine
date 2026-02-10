@@ -177,6 +177,7 @@ class Phase5Engine:
         - deviation exceeds ±threshold stddev
         - confidence is at least accumulating
         Skips degenerate signals (constant baselines) and None measures.
+        Also filters: deprecated metrics, CI runner noise (deviation > 100K).
         """
         significant = []
         for s in signals:
@@ -185,6 +186,13 @@ class Phase5Engine:
                 continue
             measure = dev_info.get("measure")
             if measure is None:
+                continue
+            # Skip deprecated metrics
+            metric = s.get("metric_name", "")
+            if metric == "direct_count":
+                continue
+            # Skip CI runner noise (extreme duration deviations are infrastructure, not code)
+            if metric == "run_duration" and abs(measure) > 100000:
                 continue
             if abs(measure) >= self.significance_threshold:
                 significant.append(s)

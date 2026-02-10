@@ -1,0 +1,14 @@
+Batch 2: repos 46-68 (23 repos)
+  [clone] spring-projects/spring-boot — already exists at /Users/Shared/OpenClaw-Workspace/repos/evolution-engine/.calibration/repos/spring-projects--spring-boot
+
+============================================================
+Calibrating: spring-projects/spring-boot
+============================================================
+======================================================================
+Calibration: spring-projects/spring-boot
+Repo path:   /Users/Shared/OpenClaw-Workspace/repos/evolution-engine/.calibration/repos/spring-projects--spring-boot
+Output:      /Users/Shared/OpenClaw-Workspace/repos/evolution-engine/.calibration/runs/spring-projects--spring-boot
+Started:     2026-02-08T22:43:02.402226
+======================================================================
+
+[Phase 1] Ingesting git commits...

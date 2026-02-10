@@ -21,8 +21,16 @@ from pathlib import Path
 from typing import Optional
 
 
-# Hardcoded signing key (v1 only — will move to proper key management later)
-_SIGNING_KEY = b"evo-license-v1-dev-key-replace-in-production"
+_DEV_SIGNING_KEY = b"evo-license-v1-dev-key-replace-in-production"
+
+
+def _get_signing_key() -> bytes:
+    """Get the license signing key from environment or fall back to dev key."""
+    import os
+    custom = os.environ.get("EVO_LICENSE_SIGNING_KEY")
+    if custom:
+        return custom.encode("utf-8") if isinstance(custom, str) else custom
+    return _DEV_SIGNING_KEY
 
 
 class ProFeatureError(Exception):
@@ -223,7 +231,7 @@ def _validate_key(key: str) -> Optional[dict]:
 
         # Verify HMAC signature
         expected_sig = hmac.new(
-            _SIGNING_KEY,
+            _get_signing_key(),
             payload_str.encode("utf-8"),
             hashlib.sha256,
         ).hexdigest()
@@ -272,7 +280,7 @@ def generate_key(
 
     payload_str = json.dumps(payload, sort_keys=True)
     signature = hmac.new(
-        _SIGNING_KEY,
+        _get_signing_key(),
         payload_str.encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()

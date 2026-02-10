@@ -1,0 +1,14 @@
+Batch 0: repos 0-22 (23 repos)
+  [clone] Significant-Gravitas/AutoGPT — already exists at /Users/Shared/OpenClaw-Workspace/repos/evolution-engine/.calibration/repos/Significant-Gravitas--AutoGPT
+
+============================================================
+Calibrating: Significant-Gravitas/AutoGPT
+============================================================
+======================================================================
+Calibration: Significant-Gravitas/AutoGPT
+Repo path:   /Users/Shared/OpenClaw-Workspace/repos/evolution-engine/.calibration/repos/Significant-Gravitas--AutoGPT
+Output:      /Users/Shared/OpenClaw-Workspace/repos/evolution-engine/.calibration/runs/Significant-Gravitas--AutoGPT
+Started:     2026-02-08T22:43:02.402232
+======================================================================
+
+[Phase 1] Ingesting git commits...

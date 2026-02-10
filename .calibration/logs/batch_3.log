@@ -1,0 +1,14 @@
+Batch 3: repos 69-91 (23 repos)
+  [clone] unionlabs/union — already exists at /Users/Shared/OpenClaw-Workspace/repos/evolution-engine/.calibration/repos/unionlabs--union
+
+============================================================
+Calibrating: unionlabs/union
+============================================================
+======================================================================
+Calibration: unionlabs/union
+Repo path:   /Users/Shared/OpenClaw-Workspace/repos/evolution-engine/.calibration/repos/unionlabs--union
+Output:      /Users/Shared/OpenClaw-Workspace/repos/evolution-engine/.calibration/runs/unionlabs--union
+Started:     2026-02-08T22:43:02.402226
+======================================================================
+
+[Phase 1] Ingesting git commits...

@@ -1,0 +1,222 @@
+name: "Evolution Engine Analyze"
+description: "Analyze repository for development process anomalies, post PR comments, and optionally investigate findings with AI."
+author: "Evolution Engine"
+
+branding:
+  icon: "activity"
+  color: "blue"
+
+inputs:
+  github-token:
+    description: "GitHub token for API access (CI, releases, security data)"
+    required: false
+    default: ${{ github.token }}
+  comment:
+    description: "Post analysis results as a PR comment"
+    required: false
+    default: "true"
+  investigate:
+    description: "Run AI investigation on High/Critical findings"
+    required: false
+    default: "false"
+  anthropic-api-key:
+    description: "Anthropic API key for AI investigation (required if investigate=true)"
+    required: false
+  suggest-fixes:
+    description: "Add fix suggestions as inline review comments"
+    required: false
+    default: "false"
+  families:
+    description: "Comma-separated family override (e.g. git,ci,dependency)"
+    required: false
+  evo-version:
+    description: "Evolution Engine version to install (default: latest)"
+    required: false
+    default: "latest"
+  python-version:
+    description: "Python version to use"
+    required: false
+    default: "3.11"
+
+outputs:
+  status:
+    description: "Analysis status (complete, no_events, error)"
+    value: ${{ steps.analyze.outputs.status }}
+  significant-changes:
+    description: "Number of significant changes detected"
+    value: ${{ steps.analyze.outputs.significant_changes }}
+  advisory-json:
+    description: "Path to the advisory JSON file"
+    value: ${{ steps.analyze.outputs.advisory_json }}
+  comment-id:
+    description: "ID of the PR comment (for updates)"
+    value: ${{ steps.comment.outputs.comment_id }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install Evolution Engine
+      shell: bash
+      run: |
+        if [ "${{ inputs.evo-version }}" = "latest" ]; then
+          pip install evolution-engine
+        else
+          pip install "evolution-engine==${{ inputs.evo-version }}"
+        fi
+
+    - name: Run analysis
+      id: analyze
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        EVO_LICENSE_KEY: ${{ env.EVO_LICENSE_KEY || '' }}
+      run: |
+        ARGS="--json --quiet"
+        if [ -n "${{ inputs.families }}" ]; then
+          ARGS="$ARGS --families ${{ inputs.families }}"
+        fi
+        if [ -n "${{ inputs.github-token }}" ]; then
+          ARGS="$ARGS --token ${{ inputs.github-token }}"
+        fi
+
+        # Run analysis
+        RESULT=$(evo analyze . $ARGS 2>/dev/null || echo '{"status":"error"}')
+        echo "$RESULT" > .evo/analysis_result.json
+
+        # Extract outputs
+        STATUS=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','error'))")
+        CHANGES=$(echo "$RESULT" | python3 -c "import sys,json; r=json.load(sys.stdin); print(r.get('advisory',{}).get('significant_changes',0))")
+
+        echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+        echo "significant_changes=$CHANGES" >> "$GITHUB_OUTPUT"
+        echo "advisory_json=$(pwd)/.evo/phase5/advisory.json" >> "$GITHUB_OUTPUT"
+
+    - name: Run AI investigation
+      if: inputs.investigate == 'true' && steps.analyze.outputs.significant_changes != '0'
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+      run: |
+        if [ -n "$ANTHROPIC_API_KEY" ]; then
+          evo investigate . --agent anthropic 2>/dev/null || true
+        else
+          echo "Skipping AI investigation: no ANTHROPIC_API_KEY provided"
+        fi
+
+    - name: Format and post PR comment
+      id: comment
+      if: inputs.comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        python3 "${{ github.action_path }}/format_comment.py" \
+          --advisory .evo/phase5/advisory.json \
+          --investigation .evo/investigation/investigation.json \
+          --output .evo/pr_comment.md \
+          2>/dev/null || true
+
+        if [ ! -f .evo/pr_comment.md ]; then
+          echo "No comment to post (analysis may have found no issues)"
+          exit 0
+        fi
+
+        # Check for existing EE comment to update
+        EXISTING=$(gh pr view "${{ github.event.pull_request.number }}" \
+          --json comments \
+          --jq '.comments[] | select(.body | startswith("## Evolution Engine")) | .id' \
+          2>/dev/null | head -1)
+
+        if [ -n "$EXISTING" ]; then
+          # Update existing comment
+          gh api \
+            --method PATCH \
+            "/repos/${{ github.repository }}/issues/comments/$EXISTING" \
+            -f body="$(cat .evo/pr_comment.md)" \
+            2>/dev/null || true
+          echo "comment_id=$EXISTING" >> "$GITHUB_OUTPUT"
+        else
+          # Create new comment
+          COMMENT_ID=$(gh pr comment "${{ github.event.pull_request.number }}" \
+            --body-file .evo/pr_comment.md \
+            2>/dev/null | grep -oP 'comment/\K\d+' || echo "")
+          echo "comment_id=$COMMENT_ID" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Post inline fix suggestions
+      if: inputs.suggest-fixes == 'true' && inputs.investigate == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        # Only if investigation produced results
+        if [ ! -f .evo/investigation/investigation.json ]; then
+          echo "No investigation results — skipping fix suggestions"
+          exit 0
+        fi
+
+        python3 -c "
+        import json, sys
+        sys.path.insert(0, '${{ github.action_path }}/..')
+        from evolution.inline_suggestions import extract_suggestions, format_review_payload
+
+        investigation = json.load(open('.evo/investigation/investigation.json'))
+        advisory = json.load(open('.evo/phase5/advisory.json'))
+        suggestions = extract_suggestions(investigation, advisory)
+
+        if not suggestions:
+            print('No inline suggestions to post')
+            sys.exit(0)
+
+        sha = '${{ github.event.pull_request.head.sha }}'
+        payload = format_review_payload(suggestions, commit_sha=sha)
+        json.dump(payload, open('.evo/review_payload.json', 'w'), indent=2)
+        print(f'Prepared {len(suggestions)} inline suggestion(s)')
+        " 2>/dev/null || true
+
+        if [ -f .evo/review_payload.json ]; then
+          gh api \
+            --method POST \
+            "/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews" \
+            --input .evo/review_payload.json \
+            2>/dev/null || true
+        fi
+
+    - name: Verify against previous (on subsequent pushes)
+      if: inputs.comment == 'true' && github.event_name == 'pull_request' && github.event.action == 'synchronize'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        # Check if we have a previous advisory to compare against
+        if [ -f .evo/phase5/advisory.json.prev ]; then
+          evo verify .evo/phase5/advisory.json.prev --path . --quiet 2>/dev/null || true
+
+          python3 "${{ github.action_path }}/format_comment.py" \
+            --verification .evo/phase5/verification.json \
+            --output .evo/pr_comment.md \
+            2>/dev/null || true
+
+          if [ -f .evo/pr_comment.md ]; then
+            EXISTING=$(gh pr view "${{ github.event.pull_request.number }}" \
+              --json comments \
+              --jq '.comments[] | select(.body | startswith("## Evolution Engine")) | .id' \
+              2>/dev/null | head -1)
+
+            if [ -n "$EXISTING" ]; then
+              gh api \
+                --method PATCH \
+                "/repos/${{ github.repository }}/issues/comments/$EXISTING" \
+                -f body="$(cat .evo/pr_comment.md)" \
+                2>/dev/null || true
+            fi
+          fi
+        fi
+
+        # Save current advisory for next push comparison
+        cp .evo/phase5/advisory.json .evo/phase5/advisory.json.prev 2>/dev/null || true

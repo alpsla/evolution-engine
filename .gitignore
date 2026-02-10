@@ -37,5 +37,9 @@ venv/
 tests/test_evo/
 tests/test_walker/
 
+# Coverage
+.coverage
+
 # Auto Claude data directory
 .auto-claude/
+.vercel

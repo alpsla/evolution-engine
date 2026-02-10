@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Docs — Evolution Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="assets/codequal-logo.svg" type="image/svg+xml">
+  <style>
+    .docs { padding: 120px 0 80px; max-width: 800px; margin: 0 auto; }
+    .docs h1 { font-size: 2.2rem; margin-bottom: 8px; }
+    .docs .lead { color: var(--text-muted); font-size: 1.1rem; margin-bottom: 48px; }
+    .docs h2 { font-size: 1.5rem; margin-top: 48px; margin-bottom: 16px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .docs h2:first-of-type { border-top: none; margin-top: 0; }
+    .docs h3 { font-size: 1.1rem; margin-top: 32px; margin-bottom: 12px; }
+    .docs p { color: var(--text-muted); margin-bottom: 16px; line-height: 1.7; }
+    .docs ul, .docs ol { color: var(--text-muted); margin-bottom: 16px; padding-left: 24px; line-height: 1.8; }
+    .docs li { margin-bottom: 4px; }
+    .docs code {
+      background: var(--surface);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--secondary);
+    }
+    .docs pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+    .docs pre code { background: none; padding: 0; }
+    .docs .toc { margin-bottom: 48px; }
+    .docs .toc ul { list-style: none; padding: 0; }
+    .docs .toc li { margin-bottom: 8px; }
+    .docs .toc a { color: var(--secondary); font-size: 0.95rem; }
+    .docs .callout {
+      background: rgba(44, 165, 141, 0.08);
+      border-left: 3px solid var(--secondary);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    }
+    .docs .callout p { margin-bottom: 0; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">
+      <img src="assets/codequal-logo.svg" alt="CodeQual" width="28" height="32">
+      evo <span>by CodeQual</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="/#features">Features</a></li>
+      <li><a href="/#pricing">Pricing</a></li>
+      <li><a href="/#adapters">Adapters</a></li>
+      <li><a href="docs.html">Docs</a></li>
+    </ul>
+    <button class="mobile-toggle" aria-label="Menu">&#9776;</button>
+  </div>
+</nav>
+
+<div class="docs container">
+  <h1>Documentation</h1>
+  <p class="lead">Everything you need to get started with Evolution Engine.</p>
+
+  <div class="toc">
+    <ul>
+      <li><a href="#quickstart">Quickstart</a></li>
+      <li><a href="#commands">CLI Commands</a></li>
+      <li><a href="#build-adapter">Build Your Own Adapter</a></li>
+      <li><a href="#adapter-contract">Adapter Contract</a></li>
+      <li><a href="#submit-adapter">Submit Your Adapter</a></li>
+    </ul>
+  </div>
+
+  <!-- Quickstart -->
+  <h2 id="quickstart">Quickstart</h2>
+
+  <h3>Install</h3>
+  <pre><code>pip install evolution-engine</code></pre>
+
+  <h3>Analyze a repository</h3>
+  <pre><code>cd your-repo
+evo analyze .</code></pre>
+  <p>EE auto-detects your tools (git history, lockfiles, CI configs) and runs the full 5-phase pipeline: events, signals, explanations, patterns, and advisory.</p>
+
+  <h3>See what data sources are available</h3>
+  <pre><code>evo sources .</code></pre>
+  <p>Shows connected adapters and tools detected in your repo that could provide additional signals.</p>
+
+  <h3>Unlock CI and deployment data (Pro)</h3>
+  <pre><code>evo analyze . --token ghp_your_github_token</code></pre>
+
+  <!-- Commands -->
+  <h2 id="commands">CLI Commands</h2>
+
+  <h3>Core</h3>
+  <ul>
+    <li><code>evo analyze [path]</code> — Run the full pipeline (detect adapters, compute signals, generate advisory)</li>
+    <li><code>evo sources [path]</code> — Show connected and detected data sources</li>
+    <li><code>evo sources --what-if datadog</code> — Estimate impact of adding an adapter</li>
+    <li><code>evo status [path]</code> — Show detected adapters and last run info</li>
+    <li><code>evo report [path]</code> — Generate an HTML report</li>
+  </ul>
+
+  <h3>AI Investigation (Pro)</h3>
+  <ul>
+    <li><code>evo investigate [path]</code> — AI investigation of advisory findings</li>
+    <li><code>evo investigate . --show-prompt</code> — Print the prompt for manual use</li>
+    <li><code>evo fix [path]</code> — AI fix loop (iterate until advisory clears)</li>
+    <li><code>evo fix . --dry-run</code> — Preview fix prompt without modifying files</li>
+  </ul>
+
+  <h3>Patterns &amp; Knowledge Base</h3>
+  <ul>
+    <li><code>evo patterns list</code> — Show patterns in the knowledge base</li>
+    <li><code>evo patterns sync</code> — Import bundled universal patterns</li>
+    <li><code>evo patterns export</code> — Export anonymized pattern digests</li>
+    <li><code>evo patterns import &lt;file&gt;</code> — Import community patterns</li>
+  </ul>
+
+  <h3>Adapters</h3>
+  <ul>
+    <li><code>evo adapter list</code> — List all detected adapters and plugins</li>
+    <li><code>evo adapter new &lt;name&gt; --family ci</code> — Scaffold a new adapter package</li>
+    <li><code>evo adapter validate &lt;path&gt;</code> — Validate an adapter against the contract</li>
+    <li><code>evo adapter guide</code> — Show the full adapter building guide</li>
+    <li><code>evo adapter prompt &lt;name&gt; --family ci</code> — Generate an AI prompt to build an adapter</li>
+  </ul>
+
+  <h3>Configuration</h3>
+  <ul>
+    <li><code>evo config list</code> — Show all settings</li>
+    <li><code>evo config set &lt;key&gt; &lt;value&gt;</code> — Set a config value</li>
+    <li><code>evo license status</code> — Show current license tier</li>
+    <li><code>evo license activate &lt;key&gt;</code> — Activate a Pro license</li>
+    <li><code>evo telemetry on|off|status</code> — Manage anonymous usage telemetry</li>
+  </ul>
+
+  <!-- Build Your Own Adapter -->
+  <h2 id="build-adapter">Build Your Own Adapter</h2>
+
+  <p>Adapters connect external data sources to the Evolution Engine pipeline. Each adapter produces <strong>events</strong> that EE processes through its 5-phase analysis. You can build an adapter for any tool — CI systems, monitoring platforms, issue trackers, deployment tools, etc.</p>
+
+  <div class="callout">
+    <p>Adapters you build and submit are reviewed by the EE team and, if approved, bundled for all users in future releases.</p>
+  </div>
+
+  <h3>Step 1: Scaffold</h3>
+  <p>Use the built-in scaffold tool to create a ready-to-publish pip package:</p>
+  <pre><code>evo adapter new jenkins --family ci</code></pre>
+  <p>This creates a package directory with:</p>
+  <ul>
+    <li><code>evo_jenkins/adapter.py</code> — Your adapter class (fill in the logic)</li>
+    <li><code>pyproject.toml</code> — Package metadata with the EE plugin entry point</li>
+    <li><code>tests/</code> — Test scaffolding</li>
+    <li><code>README.md</code> — Documentation template</li>
+  </ul>
+
+  <h3>Step 2: Implement</h3>
+  <p>Your adapter must implement the <a href="#adapter-contract">Adapter Contract</a>. The key method is <code>fetch_events()</code>, which yields event dicts:</p>
+  <pre><code>class JenkinsAdapter:
+    FAMILY = "ci"
+    ADAPTER_NAME = "jenkins"
+
+    def __init__(self, repo_path, **kwargs):
+        self.repo_path = repo_path
+        self.url = kwargs.get("url", "http://localhost:8080")
+
+    def detect(self):
+        """Return True if this adapter's data source is available."""
+        # Check for Jenkinsfile, .jenkins config, etc.
+        return (Path(self.repo_path) / "Jenkinsfile").exists()
+
+    def fetch_events(self, since=None, limit=100):
+        """Yield event dicts from the data source."""
+        for build in self._get_builds(since, limit):
+            yield {
+                "event_type": "ci_run",
+                "source_type": "jenkins",
+                "timestamp": build["timestamp"],
+                "payload": {
+                    "run_id": build["number"],
+                    "status": build["result"],
+                    "duration_seconds": build["duration"] / 1000,
+                    "trigger": {
+                        "commit_sha": build.get("commit", ""),
+                    },
+                },
+            }</code></pre>
+
+  <h3>Step 3: Test locally</h3>
+  <pre><code># Install your adapter in development mode
+cd evo-adapter-jenkins
+pip install -e .
+
+# Verify it passes the contract
+evo adapter validate evo_jenkins.JenkinsAdapter
+
+# Run EE — your adapter will be auto-detected
+evo analyze /path/to/repo-with-jenkinsfile</code></pre>
+
+  <h3>Step 4: Publish</h3>
+  <pre><code># Build the package
+pip install build
+python -m build
+
+# Upload to PyPI
+pip install twine
+twine upload dist/*</code></pre>
+  <p>Once published, anyone can install it with <code>pip install evo-adapter-jenkins</code> and EE will auto-detect it via the plugin entry point.</p>
+
+  <h3>Need help? Use AI</h3>
+  <p>Generate a complete prompt for your AI coding assistant:</p>
+  <pre><code>evo adapter prompt jenkins --family ci -d "Fetch builds from Jenkins REST API"</code></pre>
+  <p>This produces a detailed prompt with the full adapter contract, examples, and a validation checklist. Paste it into Claude, ChatGPT, Cursor, or any AI tool.</p>
+
+  <!-- Adapter Contract -->
+  <h2 id="adapter-contract">Adapter Contract</h2>
+
+  <p>Every adapter must satisfy these requirements to pass <code>evo adapter validate</code>:</p>
+
+  <h3>Required class attributes</h3>
+  <ul>
+    <li><code>FAMILY</code> — One of: <code>ci</code>, <code>testing</code>, <code>dependency</code>, <code>schema</code>, <code>deployment</code>, <code>config</code>, <code>security</code></li>
+    <li><code>ADAPTER_NAME</code> — Unique identifier (e.g. <code>"jenkins"</code>, <code>"datadog"</code>)</li>
+  </ul>
+
+  <h3>Required methods</h3>
+  <ul>
+    <li><code>__init__(self, repo_path, **kwargs)</code> — Constructor. Must accept <code>repo_path</code> as first argument.</li>
+    <li><code>detect(self) -&gt; bool</code> — Returns True if this adapter's data source is available in the repo.</li>
+    <li><code>fetch_events(self, since=None, limit=100) -&gt; Iterator[dict]</code> — Yields event dicts.</li>
+  </ul>
+
+  <h3>Event dict format</h3>
+  <pre><code>{
+    "event_type": str,       # e.g. "ci_run", "deploy", "alert"
+    "source_type": str,      # matches ADAPTER_NAME
+    "timestamp": str,        # ISO 8601 format
+    "payload": {
+        # Family-specific fields
+        "trigger": {
+            "commit_sha": str  # Git commit that triggered this event
+        }
+    }
+}</code></pre>
+
+  <h3>Plugin entry point</h3>
+  <p>In your <code>pyproject.toml</code>, register the entry point so EE can auto-discover your adapter:</p>
+  <pre><code>[project.entry-points."evolution.adapters"]
+jenkins = "evo_jenkins.adapter:JenkinsAdapter"</code></pre>
+
+  <!-- Submit -->
+  <h2 id="submit-adapter">Submit Your Adapter</h2>
+
+  <p>Once your adapter passes validation and is published on PyPI:</p>
+  <ol>
+    <li>Test it on at least one real repository</li>
+    <li>Ensure <code>evo adapter validate</code> passes with no errors</li>
+    <li>Email us at <strong>info@codequal.dev</strong> with:
+      <ul>
+        <li>Your PyPI package name</li>
+        <li>A brief description of what it does</li>
+        <li>Which family it belongs to</li>
+      </ul>
+    </li>
+    <li>We review the adapter, run our test suite against it, and if approved, bundle it in a future EE release for all users</li>
+  </ol>
+
+  <div class="callout">
+    <p>Accepted adapters get a "Community" badge in the adapter catalog and credit in the release notes.</p>
+  </div>
+
+</div>
+
+<footer>
+  <div class="container">
+    <ul class="footer-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="docs.html">Docs</a></li>
+      <li>info@codequal.dev</li>
+    </ul>
+    <p class="footer-tagline">Your code never leaves your machine.</p>
+    <p class="footer-brand">Evolution Engine by CodeQual</p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

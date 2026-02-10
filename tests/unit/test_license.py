@@ -11,6 +11,7 @@ import pytest
 from evolution.license import (
     License,
     ProFeatureError,
+    _get_signing_key,
     generate_key,
     get_license,
     is_pro,
@@ -235,6 +236,50 @@ class TestKeyGeneration:
         assert lic.tier == "pro"
         assert lic.valid is True
         assert lic.expires == "2099-12-31"
+
+
+class TestSigningKeyConfig:
+    """Test configurable signing key."""
+
+    def test_default_key_backward_compatible(self, monkeypatch):
+        """Default key should work the same as before."""
+        monkeypatch.delenv("EVO_LICENSE_SIGNING_KEY", raising=False)
+        key = generate_key("pro", "test@example.com")
+        monkeypatch.setenv("EVO_LICENSE_KEY", key)
+        lic = get_license()
+        assert lic.tier == "pro"
+        assert lic.valid is True
+
+    def test_custom_signing_key_works(self, monkeypatch):
+        """Custom signing key should generate valid keys."""
+        monkeypatch.setenv("EVO_LICENSE_SIGNING_KEY", "my-production-secret-key")
+        key = generate_key("pro", "user@example.com")
+        # Should validate with same custom key
+        monkeypatch.setenv("EVO_LICENSE_KEY", key)
+        lic = get_license()
+        assert lic.tier == "pro"
+        assert lic.valid is True
+        assert lic.email == "user@example.com"
+
+    def test_mismatched_key_rejects(self, monkeypatch):
+        """Key generated with one signing key should not validate with another."""
+        monkeypatch.setenv("EVO_LICENSE_SIGNING_KEY", "key-one")
+        key = generate_key("pro", "user@example.com")
+        # Switch to different signing key
+        monkeypatch.setenv("EVO_LICENSE_SIGNING_KEY", "key-two")
+        monkeypatch.setenv("EVO_LICENSE_KEY", key)
+        lic = get_license()
+        assert lic.tier == "free"  # Falls back to free
+        assert lic.source == "default"
+
+    def test_get_signing_key_returns_bytes(self, monkeypatch):
+        """_get_signing_key should always return bytes."""
+        monkeypatch.delenv("EVO_LICENSE_SIGNING_KEY", raising=False)
+        assert isinstance(_get_signing_key(), bytes)
+
+        monkeypatch.setenv("EVO_LICENSE_SIGNING_KEY", "custom-key")
+        assert isinstance(_get_signing_key(), bytes)
+        assert _get_signing_key() == b"custom-key"
 
 
 class TestProFeatureError:

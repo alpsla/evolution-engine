@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy &amp; Telemetry — Evolution Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="assets/codequal-logo.svg" type="image/svg+xml">
+  <style>
+    .docs { padding: 120px 0 80px; max-width: 800px; margin: 0 auto; }
+    .docs h1 { font-size: 2.2rem; margin-bottom: 8px; }
+    .docs .lead { color: var(--text-muted); font-size: 1.1rem; margin-bottom: 48px; }
+    .docs h2 { font-size: 1.5rem; margin-top: 48px; margin-bottom: 16px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .docs h2:first-of-type { border-top: none; margin-top: 0; }
+    .docs h3 { font-size: 1.1rem; margin-top: 32px; margin-bottom: 12px; }
+    .docs p { color: var(--text-muted); margin-bottom: 16px; line-height: 1.7; }
+    .docs ul, .docs ol { color: var(--text-muted); margin-bottom: 16px; padding-left: 24px; line-height: 1.8; }
+    .docs li { margin-bottom: 4px; }
+    .docs code {
+      background: var(--surface);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--secondary);
+    }
+    .docs pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+    .docs pre code { background: none; padding: 0; }
+    .docs .callout {
+      background: rgba(44, 165, 141, 0.08);
+      border-left: 3px solid var(--secondary);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    }
+    .docs .callout p { margin-bottom: 0; }
+    .docs .callout-warning {
+      background: rgba(255, 107, 107, 0.08);
+      border-left: 3px solid var(--accent);
+    }
+    .comparison-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    .comparison-table th, .comparison-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .comparison-table th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .comparison-table td { color: var(--text-muted); }
+    .yes { color: var(--secondary); }
+    .no { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">
+      <img src="assets/codequal-logo.svg" alt="CodeQual" width="28" height="32">
+      evo <span>by CodeQual</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="/#features">Features</a></li>
+      <li><a href="/#pricing">Pricing</a></li>
+      <li><a href="/#adapters">Adapters</a></li>
+      <li><a href="docs.html">Docs</a></li>
+    </ul>
+    <button class="mobile-toggle" aria-label="Menu">&#9776;</button>
+  </div>
+</nav>
+
+<div class="docs container">
+  <h1>Privacy &amp; Telemetry</h1>
+  <p class="lead">Your code never leaves your machine. Here's exactly what we collect, what we don't, and how to control it.</p>
+
+  <!-- Core Principle -->
+  <h2>Core Principle</h2>
+  <p>Evolution Engine is <strong>local-first</strong>. All analysis — git history, dependency graphs, CI data, pattern matching — runs entirely on your machine. No code, file contents, or repository data is ever transmitted anywhere.</p>
+
+  <div class="callout">
+    <p>Telemetry is <strong>opt-in only</strong>. It is disabled by default. EE asks once on your first <code>evo analyze</code> run, and "No" is the default — pressing Enter without typing anything means no data is collected.</p>
+  </div>
+
+  <!-- What We Collect -->
+  <h2>What We Collect (when opted in)</h2>
+
+  <p>If you choose to enable telemetry, here is the <strong>complete list</strong> of data points collected:</p>
+
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th>Data Point</th>
+        <th>Example Value</th>
+        <th>Why</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Command name</td>
+        <td><code>"analyze"</code></td>
+        <td>Know which features are used</td>
+      </tr>
+      <tr>
+        <td>Adapter count</td>
+        <td><code>4</code></td>
+        <td>Understand typical setup complexity</td>
+      </tr>
+      <tr>
+        <td>Family list</td>
+        <td><code>["git", "dependency"]</code></td>
+        <td>Prioritize adapter development</td>
+      </tr>
+      <tr>
+        <td>Signal count</td>
+        <td><code>12</code></td>
+        <td>Measure analysis depth</td>
+      </tr>
+      <tr>
+        <td>Pattern count</td>
+        <td><code>3</code></td>
+        <td>Track pattern library effectiveness</td>
+      </tr>
+      <tr>
+        <td>Error type (if any)</td>
+        <td><code>"FileNotFoundError"</code></td>
+        <td>Fix bugs proactively</td>
+      </tr>
+      <tr>
+        <td>EE version</td>
+        <td><code>"0.1.0"</code></td>
+        <td>Understand version distribution</td>
+      </tr>
+      <tr>
+        <td>Anonymous ID</td>
+        <td><code>"a1b2c3d4-..."</code></td>
+        <td>Count unique users (random UUID, no PII)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Sample event payload</h3>
+  <p>This is the exact JSON sent when you run <code>evo analyze</code> with telemetry enabled:</p>
+  <pre><code>{
+  "event": "analyze_complete",
+  "properties": {
+    "adapter_count": 4,
+    "families": ["git", "dependency", "ci", "deployment"],
+    "signal_count": 12,
+    "pattern_count": 3
+  },
+  "anon_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "version": "0.1.0"
+}</code></pre>
+
+  <!-- What We NEVER Collect -->
+  <h2>What We NEVER Collect</h2>
+
+  <div class="callout-warning callout">
+    <p>These items are <strong>never</strong> collected regardless of your telemetry setting:</p>
+  </div>
+
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Collected?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Source code or file contents</td><td class="no">Never</td></tr>
+      <tr><td>File paths or directory names</td><td class="no">Never</td></tr>
+      <tr><td>Repository names or URLs</td><td class="no">Never</td></tr>
+      <tr><td>Git commit messages or hashes</td><td class="no">Never</td></tr>
+      <tr><td>Usernames, emails, or real names</td><td class="no">Never</td></tr>
+      <tr><td>IP addresses (not logged server-side)</td><td class="no">Never</td></tr>
+      <tr><td>Advisory content or signal values</td><td class="no">Never</td></tr>
+      <tr><td>Dependency names or versions</td><td class="no">Never</td></tr>
+      <tr><td>Error stack traces</td><td class="no">Never</td></tr>
+    </tbody>
+  </table>
+
+  <!-- How to Control -->
+  <h2>How to Control Telemetry</h2>
+
+  <h3>Check current status</h3>
+  <pre><code>evo telemetry status</code></pre>
+
+  <h3>Enable</h3>
+  <pre><code>evo telemetry on</code></pre>
+
+  <h3>Disable</h3>
+  <pre><code>evo telemetry off</code></pre>
+
+  <h3>Or use the config directly</h3>
+  <pre><code>evo config set telemetry.enabled false</code></pre>
+
+  <h3>Environment variable override</h3>
+  <p>Set the standard <code>DO_NOT_TRACK=1</code> environment variable to disable telemetry globally, overriding any config setting. This is respected even if telemetry is enabled in config.</p>
+  <pre><code>export DO_NOT_TRACK=1</code></pre>
+
+  <!-- Where Data Goes -->
+  <h2>Where Telemetry Data Goes</h2>
+
+  <p>Events are sent to <code>https://evo.dev/api/telemetry</code>, a Vercel serverless function that:</p>
+  <ol>
+    <li>Validates the event structure (rejects malformed or oversized payloads)</li>
+    <li>Logs it as structured JSON to Vercel's built-in log viewer</li>
+    <li>Returns a success response</li>
+  </ol>
+
+  <p>There is no database. Events are stored as log entries in Vercel's infrastructure. We use them to understand usage patterns, prioritize features, and detect common errors. That's it.</p>
+
+  <h3>Rate limiting</h3>
+  <p>The telemetry endpoint accepts a maximum of 100 events per hour per anonymous ID. The CLI client has a 2-second timeout — if the request doesn't complete in time, it's silently dropped. Telemetry never blocks or slows down your workflow.</p>
+
+  <!-- Open Source -->
+  <h2>Verify It Yourself</h2>
+
+  <p>The telemetry implementation is in the EE source code:</p>
+  <ul>
+    <li><code>evolution/telemetry.py</code> — Client-side: what data is collected and how it's sent</li>
+    <li><code>website/api/telemetry.py</code> — Server-side: what happens when data is received</li>
+  </ul>
+  <p>Both files are short and readable. You can inspect exactly what is sent before enabling telemetry.</p>
+
+  <!-- Payment Data -->
+  <h2>Payment &amp; License Data</h2>
+
+  <p>If you purchase Evolution Engine Pro:</p>
+  <ul>
+    <li>Payment is handled entirely by <strong>Stripe</strong>. We never see or store your credit card number.</li>
+    <li>Your license key is generated server-side and stored in your Stripe customer metadata.</li>
+    <li>The license key is an HMAC-signed token containing only: tier (<code>"pro"</code>), email, and issue date. It is validated locally by the CLI — no server call needed to check your license.</li>
+    <li>You can retrieve your license key anytime from the Stripe billing portal or by contacting info@codequal.dev.</li>
+  </ul>
+
+  <h2>Contact</h2>
+  <p>Questions about privacy or data handling? Email <strong>info@codequal.dev</strong>.</p>
+
+</div>
+
+<footer>
+  <div class="container">
+    <ul class="footer-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="docs.html">Docs</a></li>
+      <li><a href="privacy.html">Privacy</a></li>
+      <li>info@codequal.dev</li>
+    </ul>
+    <p class="footer-tagline">Your code never leaves your machine.</p>
+    <p class="footer-brand">Evolution Engine by CodeQual</p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

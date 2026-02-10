@@ -1,0 +1,66 @@
+{
+  "ci": {
+    "run_duration": {
+      "median_of_medians": 59.25,
+      "repos_with_data": 32,
+      "range": [
+        1.0,
+        1115.0
+      ]
+    }
+  },
+  "dependency": {
+    "dependency_count": {
+      "median_of_medians": 256.5,
+      "repos_with_data": 52,
+      "range": [
+        2.0,
+        4776.5
+      ]
+    }
+  },
+  "deployment": {
+    "release_cadence_hours": {
+      "median_of_medians": 170.0118,
+      "repos_with_data": 35,
+      "range": [
+        0.9431,
+        2416.0506
+      ]
+    }
+  },
+  "git": {
+    "change_locality": {
+      "median_of_medians": 0.005,
+      "repos_with_data": 66,
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    "cochange_novelty_ratio": {
+      "median_of_medians": 1.0,
+      "repos_with_data": 63,
+      "range": [
+        0.9861,
+        1.0
+      ]
+    },
+    "dispersion": {
+      "median_of_medians": 0.0,
+      "repos_with_data": 63,
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    "files_touched": {
+      "median_of_medians": 2.0,
+      "repos_with_data": 66,
+      "range": [
+        1.0,
+        3.0
+      ]
+    }
+  }
+}

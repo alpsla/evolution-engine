@@ -4,11 +4,22 @@ CLI Tool — Primary user interface for Evolution Engine.
 Usage:
     evo analyze [path]               # Detect adapters, run Phases 1-5
     evo analyze . --token ghp_xxx    # Unlock Tier 2 (CI, releases, security)
-    evo analyze . --families git,ci  # Override auto-detected families
+    evo analyze . --show-prompt      # Print investigation prompt after analysis
+    evo sources [path]               # Show connected + detected data sources
+    evo sources --what-if datadog    # Estimate impact of adding adapters
+    evo investigate [path]           # AI investigation of advisory findings
+    evo fix [path]                   # AI fix loop (iterate until EE confirms clear)
+    evo fix . --dry-run              # Preview fix prompt without modifying files
     evo status [path]                # Show detected adapters and last run info
+    evo report [path]                # Generate HTML report
     evo patterns list                # Show KB contents
     evo patterns export              # Export anonymized pattern digests
     evo patterns import <file>       # Import community patterns
+    evo patterns pull                # Fetch community patterns from registry
+    evo patterns push                # Share patterns (requires privacy_level >= 1)
+    evo config list                  # Show all config settings
+    evo config get <key>             # Get a config value
+    evo config set <key> <value>     # Set a config value
     evo license status               # Show current license status
     evo license activate <key>       # Save license key
     evo verify <previous>            # Fix verification loop
@@ -41,7 +52,8 @@ def main():
 @click.option("--llm", is_flag=True, help="Enable LLM-enhanced explanations")
 @click.option("--scope", "-s", help="Scope identifier for the advisory")
 @click.option("--quiet", "-q", is_flag=True, help="Suppress progress output")
-def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet):
+@click.option("--show-prompt", is_flag=True, help="Print investigation prompt after analysis")
+def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, show_prompt):
     """Analyze a repository. Detects adapters automatically."""
     from evolution.orchestrator import Orchestrator
 
@@ -65,11 +77,178 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet):
         quiet=quiet,
     )
 
+    # Telemetry: prompt on first analyze, track completion
+    from evolution.telemetry import prompt_consent, track_event
+    prompt_consent()
+
     if json_output:
         click.echo(json.dumps(result, indent=2))
     elif result["status"] == "no_events":
         click.echo(result["message"])
         sys.exit(1)
+
+    # Track analyze completion
+    if result["status"] == "complete":
+        summary = result.get("summary", {})
+        track_event("analyze_complete", {
+            "adapter_count": summary.get("adapters_detected", 0),
+            "families": summary.get("families_affected", []),
+            "signal_count": summary.get("significant_changes", 0),
+            "pattern_count": summary.get("known_patterns_matched", 0),
+        })
+
+    if show_prompt and result["status"] == "complete":
+        evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
+        prompt_path = evo_path / "phase5" / "investigation_prompt.txt"
+        if prompt_path.exists():
+            click.echo("\n" + "=" * 60)
+            click.echo("INVESTIGATION PROMPT (paste into any AI coding tool)")
+            click.echo("=" * 60)
+            click.echo(prompt_path.read_text())
+
+
+# ─────────────────── evo investigate ───────────────────
+
+
+@main.command()
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--evo-dir", help="Override .evo directory path")
+@click.option("--show-prompt", is_flag=True, help="Just print the prompt (no AI call)")
+@click.option("--agent", "agent_type",
+              type=click.Choice(["anthropic", "cli", "show-prompt"]),
+              help="Force a specific AI backend")
+@click.option("--model", help="Override AI model name")
+def investigate(path, evo_dir, show_prompt, agent_type, model):
+    """Run AI investigation on the latest advisory.
+
+    Feeds the Phase 5 advisory into an AI agent to identify root causes,
+    assess risk, and suggest fixes.
+
+    Examples:
+        evo investigate .                    # auto-detect AI backend
+        evo investigate . --show-prompt      # print prompt for manual use
+        evo investigate . --agent anthropic  # force Anthropic API
+    """
+    from evolution.agents.base import get_agent
+    from evolution.investigator import Investigator
+
+    evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
+
+    try:
+        inv = Investigator(evo_dir=evo_path)
+    except FileNotFoundError as e:
+        click.echo(str(e))
+        sys.exit(1)
+
+    if show_prompt:
+        report = inv.run(show_prompt=True)
+        click.echo(report.text)
+        return
+
+    agent = get_agent(prefer=agent_type, model=model) if agent_type else None
+    report = inv.run(agent=agent)
+
+    if not report.success:
+        click.echo(f"Investigation failed: {report.error}")
+        sys.exit(1)
+
+    click.echo(f"Investigation complete (agent: {report.agent_name})")
+    click.echo(f"Saved to: {evo_path / 'investigation'}")
+    click.echo()
+    click.echo(report.text)
+
+    from evolution.telemetry import track_event
+    track_event("cli_command", {"command": "investigate", "agent": report.agent_name})
+
+
+# ─────────────────── evo fix ───────────────────
+
+
+@main.command()
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--evo-dir", help="Override .evo directory path")
+@click.option("--dry-run", is_flag=True, help="Preview fix prompt without modifying files")
+@click.option("--max-iterations", default=3, help="Max fix-verify cycles (default: 3)")
+@click.option("--branch", help="Branch name for fixes (default: evo/fix-<timestamp>)")
+@click.option("--agent", "agent_type",
+              type=click.Choice(["cli", "show-prompt"]),
+              help="Force a specific AI backend (must support file editing)")
+@click.option("--scope", "-s", help="Scope identifier")
+def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope):
+    """Apply AI fixes and verify with EE in a loop.
+
+    Creates a branch, asks an AI agent to fix the flagged issues,
+    re-runs EE to verify, and iterates until the advisory clears
+    or max iterations are reached.
+
+    Examples:
+        evo fix . --dry-run              # preview what would be fixed
+        evo fix .                        # fix with auto-detected agent
+        evo fix . --max-iterations 5     # allow more attempts
+        evo fix . --branch my-fix        # custom branch name
+    """
+    from evolution.agents.base import get_agent
+    from evolution.fixer import Fixer
+
+    evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
+
+    fixer = Fixer(repo_path=path, evo_dir=evo_path)
+
+    agent = None
+    if agent_type:
+        agent = get_agent(prefer=agent_type)
+    elif dry_run:
+        agent = get_agent(prefer="show-prompt")
+
+    result = fixer.run(
+        agent=agent,
+        max_iterations=max_iterations,
+        dry_run=dry_run,
+        branch_name=branch,
+        scope=scope,
+    )
+
+    if dry_run:
+        click.echo("DRY RUN — no files modified\n")
+        if result.iterations:
+            click.echo(result.iterations[0].agent_response)
+        return
+
+    # Report results
+    status_messages = {
+        "all_clear": "All advisory items resolved!",
+        "partial": "Some issues resolved, some remain.",
+        "no_progress": "Fix loop stopped — no progress detected.",
+        "max_iterations": f"Max iterations ({max_iterations}) reached.",
+        "error": "Fix loop encountered an error.",
+    }
+    click.echo(status_messages.get(result.status, f"Status: {result.status}"))
+
+    if result.branch:
+        click.echo(f"Branch: {result.branch}")
+    click.echo(f"Iterations: {len(result.iterations)}")
+    click.echo(f"Resolved: {result.total_resolved}")
+    click.echo(f"Remaining: {result.total_remaining}")
+
+    for it in result.iterations:
+        click.echo(f"\n--- Iteration {it.iteration} ---")
+        click.echo(f"  Resolved: {it.resolved}, Persisting: {it.persisting}, "
+                    f"New: {it.new_issues}, Regressions: {it.regressions}")
+
+    from evolution.telemetry import track_event
+    track_event("cli_command", {
+        "command": "fix",
+        "iterations": len(result.iterations),
+        "resolved": result.total_resolved,
+        "status": result.status,
+    })
+
+    # Save fix result
+    output_dir = evo_path / "fix"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with open(output_dir / "fix_result.json", "w") as f:
+        json.dump(result.to_dict(), f, indent=2)
+    click.echo(f"\nFull results saved to: {output_dir / 'fix_result.json'}")
 
 
 # ─────────────────── evo status ───────────────────
@@ -263,6 +442,155 @@ def patterns_sync(path):
         click.echo("\nKnowledge base is up to date.")
 
 
+# ─────────────────── evo sources ───────────────────
+
+
+@main.command()
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--token", "-t", help="GitHub token for Tier 2 adapters")
+@click.option("--what-if", "what_if_adapters", multiple=True,
+              help="Estimate impact of adding adapters (e.g. --what-if datadog --what-if pagerduty)")
+@click.option("--json", "json_output", is_flag=True, help="Output machine-readable JSON")
+def sources(path, token, what_if_adapters, json_output):
+    """Show connected and detected data sources.
+
+    Scans your repo for tools you already use (CI configs, SDK packages
+    in lockfiles, import statements) and shows what connecting them would add.
+
+    Examples:
+        evo sources
+        evo sources --what-if datadog --what-if pagerduty
+        evo sources --json
+    """
+    from evolution.prescan import SourcePrescan
+    from evolution.registry import AdapterRegistry
+
+    tokens = {"github_token": token} if token else {}
+    registry = AdapterRegistry(path)
+    prescan = SourcePrescan(path)
+
+    # Get connected families from registry
+    connected = registry.detect(tokens)
+    connected_families = sorted(set(c.family for c in connected))
+
+    # Get detected services from prescan
+    detected = prescan.scan()
+
+    # Filter out services whose family is already connected
+    connected_family_set = set(connected_families)
+    unconnected = [s for s in detected if s.family not in connected_family_set]
+
+    if what_if_adapters:
+        result = prescan.what_if(
+            current_families=connected_families,
+            additional_adapters=list(what_if_adapters),
+        )
+        if json_output:
+            click.echo(json.dumps(result, indent=2))
+            return
+
+        click.echo(f"Current:   {len(result['current_families'])} families "
+                    f"→ {result['current_combinations']} cross-family combination(s)")
+        click.echo(f"Proposed:  {len(result['proposed_families'])} families "
+                    f"→ {result['proposed_combinations']} cross-family combination(s)")
+        if result["added_families"]:
+            click.echo(f"New families: {', '.join(result['added_families'])}")
+        click.echo()
+        if result["new_questions"]:
+            click.echo("New questions EE could answer:")
+            for q in result["new_questions"]:
+                fams = " × ".join(q["families"])
+                click.echo(f"  ? {fams:30s} {q['question']}")
+        else:
+            click.echo("No new cross-family combinations from these adapters.")
+        click.echo()
+        click.echo("Try it and compare — you can always disconnect adapters later.")
+        return
+
+    if json_output:
+        click.echo(json.dumps({
+            "connected": [
+                {"family": c.family, "adapter": c.adapter_name, "tier": c.tier}
+                for c in connected
+            ],
+            "detected": [
+                {
+                    "service": s.service,
+                    "display_name": s.display_name,
+                    "family": s.family,
+                    "adapter": s.adapter,
+                    "detection_layers": s.detection_layers,
+                    "evidence": s.evidence,
+                }
+                for s in detected
+            ],
+            "current_families": connected_families,
+            "current_combinations": len(connected_families) * (len(connected_families) - 1) // 2,
+        }, indent=2))
+        return
+
+    # Connected families
+    click.echo("CONNECTED (active signal families):")
+    if connected:
+        for c in connected:
+            source = f" ({c.source_file})" if c.source_file else ""
+            click.echo(f"  \u2705 {c.family:20s} {c.adapter_name}{source}")
+    else:
+        click.echo("  (none)")
+
+    # Detected but not connected
+    click.echo()
+    if unconnected:
+        click.echo("DETECTED (found in your repo — not yet connected):")
+        for s in unconnected:
+            evidence_str = "; ".join(s.evidence[:2])
+            hint = _install_hint(s)
+            click.echo(f"  \U0001f50d {s.display_name:20s} {evidence_str}")
+            if hint:
+                click.echo(f"     {hint}")
+    else:
+        if detected:
+            click.echo("All detected tools are already connected.")
+        else:
+            click.echo("No additional tools detected in this repo.")
+
+    # Summary
+    click.echo()
+    n_current = len(set(connected_families))
+    n_detected = len(set(s.family for s in unconnected))
+    n_total = n_current + n_detected
+    combos_current = n_current * (n_current - 1) // 2
+    combos_total = n_total * (n_total - 1) // 2
+
+    click.echo(f"Current: {n_current} families → {combos_current} cross-family combination(s)")
+    if n_detected > 0:
+        click.echo(f"With all detected: {n_total} families "
+                    f"→ {combos_total} combination(s) "
+                    f"({combos_total}x more patterns)" if combos_current > 0
+                    else f"With all detected: {n_total} families "
+                         f"→ {combos_total} combination(s)")
+
+    # Missing tokens hint
+    missing = registry.explain_missing(tokens)
+    if missing:
+        click.echo()
+        for msg in missing:
+            click.echo(f"  {msg}")
+
+
+def _install_hint(svc) -> str:
+    """Generate install hint for a detected service."""
+    # Built-in adapters that just need a token
+    builtin_token = {
+        "ci": "Set GITHUB_TOKEN to connect",
+        "deployment": "Set GITHUB_TOKEN to connect",
+        "security": "Set GITHUB_TOKEN to connect",
+    }
+    if svc.family in builtin_token:
+        return builtin_token[svc.family]
+    return f"Install: pip install {svc.adapter}"
+
+
 # ─────────────────── evo adapter ───────────────────
 
 
@@ -274,20 +602,31 @@ def adapter():
 
 @adapter.command("list")
 @click.argument("path", default=".", type=click.Path(exists=True))
-def adapter_list(path):
-    """List all detected adapters including plugins."""
+@click.option("--token", "-t", help="GitHub token for Tier 2 adapters")
+def adapter_list(path, token):
+    """List all detected adapters including plugins and prescanned tools."""
+    from evolution.prescan import SourcePrescan
     from evolution.registry import AdapterRegistry
 
+    tokens = {"github_token": token} if token else {}
     registry = AdapterRegistry(path)
-    configs = registry.detect()
+    configs = registry.detect(tokens)
     plugins = registry.list_plugins()
+    prescan = SourcePrescan(path)
+    detected_services = prescan.scan()
 
-    click.echo("Detected adapters:")
-    for c in configs:
-        tier_label = {1: "built-in", 2: "API", 3: "plugin"}
-        badge = tier_label.get(c.tier, f"tier-{c.tier}")
-        plugin_note = f" (from {c.plugin_name})" if c.plugin_name else ""
-        click.echo(f"  [{badge}] {c.family}/{c.adapter_name}{plugin_note}")
+    # Build a set of connected families for status display
+    connected_families = set(c.family for c in configs)
+
+    click.echo("Connected adapters:")
+    if configs:
+        for c in configs:
+            tier_label = {1: "built-in", 2: "API", 3: "plugin"}
+            badge = tier_label.get(c.tier, f"tier-{c.tier}")
+            plugin_note = f" (from {c.plugin_name})" if c.plugin_name else ""
+            click.echo(f"  \u2705 [{badge}] {c.family}/{c.adapter_name}{plugin_note}")
+    else:
+        click.echo("  (none)")
 
     if plugins:
         click.echo()
@@ -295,6 +634,17 @@ def adapter_list(path):
         for p in plugins:
             status = "detected" if p["detected"] else "not detected"
             click.echo(f"  {p['plugin_name']}: {p['family']}/{p['adapter_name']} ({status})")
+
+    # Show prescan-detected tools not yet connected
+    unconnected = [s for s in detected_services if s.family not in connected_families]
+    if unconnected:
+        click.echo()
+        click.echo("Detected in repo (not yet connected):")
+        for s in unconnected:
+            layers = ", ".join(s.detection_layers)
+            click.echo(f"  \U0001f50d {s.display_name:20s} [{layers}] → {s.adapter}")
+            for ev in s.evidence[:2]:
+                click.echo(f"     {ev}")
 
 
 @adapter.command("validate")
@@ -593,6 +943,9 @@ def report(path, output, evo_dir, title, open_browser):
     output_path.write_text(html)
     click.echo(f"Report generated: {output_path}")
 
+    from evolution.telemetry import track_event
+    track_event("cli_command", {"command": "report"})
+
     if open_browser:
         import webbrowser
         webbrowser.open(f"file://{output_path.resolve()}")
@@ -620,6 +973,185 @@ def verify(previous, path, scope):
     else:
         click.echo(f"Status: {result['status']}")
         click.echo(result.get("message", ""))
+
+
+# ─────────────────── evo config ───────────────────
+
+
+@main.group()
+def config():
+    """Manage Evolution Engine settings."""
+    pass
+
+
+@config.command("list")
+def config_list():
+    """Show all configuration settings with defaults."""
+    from evolution.config import EvoConfig
+
+    cfg = EvoConfig()
+    overrides = cfg.user_overrides()
+
+    click.echo(f"Config file: {cfg.path}")
+    click.echo()
+    for key, value in sorted(cfg.all().items()):
+        marker = " *" if key in overrides else ""
+        click.echo(f"  {key} = {value}{marker}")
+    click.echo()
+    click.echo("  (* = user override, all others are defaults)")
+
+
+@config.command("get")
+@click.argument("key")
+def config_get(key):
+    """Get a configuration value."""
+    from evolution.config import EvoConfig
+
+    cfg = EvoConfig()
+    value = cfg.get(key)
+    if value is None:
+        click.echo(f"Unknown key: {key}")
+        sys.exit(1)
+    click.echo(value)
+
+
+@config.command("set")
+@click.argument("key")
+@click.argument("value")
+def config_set(key, value):
+    """Set a configuration value."""
+    from evolution.config import EvoConfig, _parse_value
+
+    cfg = EvoConfig()
+    parsed = _parse_value(value)
+    cfg.set(key, parsed)
+    click.echo(f"{key} = {parsed}")
+
+
+@config.command("reset")
+@click.argument("key")
+def config_reset(key):
+    """Reset a configuration value to its default."""
+    from evolution.config import EvoConfig
+
+    cfg = EvoConfig()
+    if cfg.delete(key):
+        click.echo(f"Reset {key} to default")
+    else:
+        click.echo(f"{key} was already at default")
+
+
+# ─────────────────── evo patterns pull/push ───────────────────
+
+
+@patterns.command("pull")
+@click.argument("path", default=".", type=click.Path(exists=True))
+def patterns_pull(path):
+    """Fetch community patterns from the remote registry.
+
+    Downloads new patterns and imports them through the security
+    validation pipeline. Safe to run at any time.
+    """
+    from evolution.kb_sync import KBSync
+
+    evo_dir = Path(path) / ".evo"
+    sync = KBSync(evo_dir=evo_dir)
+
+    click.echo(f"Pulling from {sync.registry_url}...")
+    result = sync.pull()
+
+    if not result.success:
+        click.echo(f"Error: {result.error}")
+        sys.exit(1)
+
+    click.echo(f"  New patterns: {result.pulled}")
+    click.echo(f"  Already present: {result.skipped}")
+    if result.rejected:
+        click.echo(f"  Rejected (security): {result.rejected}")
+
+
+@patterns.command("push")
+@click.argument("path", default=".", type=click.Path(exists=True))
+def patterns_push(path):
+    """Share anonymized patterns with the community registry.
+
+    Requires sync.privacy_level >= 1. Configure with:
+        evo config set sync.privacy_level 2
+
+    Privacy levels:
+        0 = Nothing shared (default)
+        1 = Advisory metadata only
+        2 = Anonymized pattern digests
+    """
+    from evolution.kb_sync import KBSync
+
+    evo_dir = Path(path) / ".evo"
+    sync = KBSync(evo_dir=evo_dir)
+
+    if sync.privacy_level < 1:
+        click.echo("Sharing is disabled (privacy_level=0).")
+        click.echo()
+        click.echo("To enable, set your privacy level:")
+        click.echo("  evo config set sync.privacy_level 1   # metadata only")
+        click.echo("  evo config set sync.privacy_level 2   # anonymized patterns")
+        sys.exit(1)
+
+    click.echo(f"Pushing to {sync.registry_url} (level {sync.privacy_level})...")
+    result = sync.push()
+
+    if not result.success:
+        click.echo(f"Error: {result.error}")
+        sys.exit(1)
+
+    click.echo(f"  Patterns shared: {result.pushed}")
+
+
+# ─────────────────── evo telemetry ───────────────────
+
+
+@main.group()
+def telemetry():
+    """Manage anonymous usage telemetry."""
+    pass
+
+
+@telemetry.command("on")
+def telemetry_on():
+    """Enable anonymous usage telemetry."""
+    from evolution.config import EvoConfig
+
+    cfg = EvoConfig()
+    cfg.set("telemetry.enabled", True)
+    cfg.set("telemetry.prompted", True)
+    click.echo("Telemetry enabled. Anonymous usage stats will be collected.")
+    click.echo("Disable anytime with: evo telemetry off")
+
+
+@telemetry.command("off")
+def telemetry_off():
+    """Disable anonymous usage telemetry."""
+    from evolution.config import EvoConfig
+
+    cfg = EvoConfig()
+    cfg.set("telemetry.enabled", False)
+    cfg.set("telemetry.prompted", True)
+    click.echo("Telemetry disabled. No usage stats will be collected.")
+
+
+@telemetry.command("status")
+def telemetry_status():
+    """Show current telemetry status."""
+    from evolution.config import EvoConfig
+
+    cfg = EvoConfig()
+    enabled = cfg.get("telemetry.enabled", False)
+    click.echo(f"Telemetry: {'enabled' if enabled else 'disabled'}")
+    if enabled:
+        click.echo("Anonymous usage stats are being collected.")
+        click.echo("Disable with: evo telemetry off")
+    else:
+        click.echo("No usage stats are collected.")
+        click.echo("Enable with: evo telemetry on")
 
 
 if __name__ == "__main__":

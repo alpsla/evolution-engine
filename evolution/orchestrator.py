@@ -241,8 +241,32 @@ class Orchestrator:
             if not json_output:
                 log(f"\n{p5_result.get('human_summary', '')}")
 
+        # ── Prescan hint (non-intrusive) ──
+        if not json_output:
+            self._prescan_hint(log, active_families)
+
         log(f"\nDone in {elapsed}s")
         return result
+
+    # ─────────────────── Prescan Hint ───────────────────
+
+    def _prescan_hint(self, log, active_families: list[str]):
+        """Show a non-intrusive hint if prescan detects additional tools."""
+        try:
+            from evolution.prescan import SourcePrescan
+
+            prescan = SourcePrescan(self.repo_path)
+            detected = prescan.scan()
+            connected_set = set(active_families)
+            unconnected = [s for s in detected if s.family not in connected_set]
+
+            if unconnected:
+                names = ", ".join(s.display_name for s in unconnected[:3])
+                extra = f" (+{len(unconnected) - 3} more)" if len(unconnected) > 3 else ""
+                log(f"\nDetected in repo: {names}{extra}")
+                log("  Run `evo sources` to see what connecting them would add.")
+        except Exception:
+            pass  # prescan is advisory, never block the pipeline
 
     # ─────────────────── Universal Pattern Import ───────────────────
 

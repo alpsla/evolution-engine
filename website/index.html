@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evolution Engine — Know when your codebase drifts before it breaks</title>
+  <meta name="description" content="Git-native codebase evolution indexer. Cross-correlate signals from git, CI, dependencies, and deployments to detect drift before it becomes a problem.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="assets/codequal-logo.svg" type="image/svg+xml">
+</head>
+<body>
+
+<!-- ─── Nav ─── -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-brand">
+      <img src="assets/codequal-logo.svg" alt="CodeQual" width="28" height="32">
+      evo <span>by CodeQual</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#adapters">Adapters</a></li>
+      <li><a href="docs.html">Docs</a></li>
+      <li><a href="privacy.html">Privacy</a></li>
+      <li><a href="#install" class="btn btn-primary btn-sm">Get Started</a></li>
+    </ul>
+    <button class="mobile-toggle" aria-label="Menu">&#9776;</button>
+  </div>
+</nav>
+
+<!-- ─── Hero ─── -->
+<section class="hero">
+  <div class="container">
+    <h1>Know when your codebase drifts before it breaks</h1>
+    <p>Cross-correlate signals from git, CI, dependencies, and deployments. Local-first, zero-config, evidence-based.</p>
+    <div class="hero-ctas">
+      <a href="#install" class="btn btn-primary">Install Free</a>
+      <a href="#pricing" class="btn btn-outline">Get Pro</a>
+    </div>
+
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="terminal-dot red"></div>
+        <div class="terminal-dot yellow"></div>
+        <div class="terminal-dot green"></div>
+      </div>
+      <div class="terminal-body">
+        <div><span class="prompt">$</span> <span class="cmd">pip install evolution-engine</span></div>
+        <div><span class="prompt">$</span> <span class="cmd">evo analyze .</span></div>
+        <div class="output">&nbsp;</div>
+        <div class="output">Detected: git, pip, GitHub Actions, GitHub Releases</div>
+        <div class="output">Phase 1: 247 events ingested (4 families)</div>
+        <div class="output">Phase 2: 12 signals computed</div>
+        <div class="output">Phase 3: Explanations generated</div>
+        <div class="output">Phase 4: 3 patterns matched (27 universal)</div>
+        <div class="output">Phase 5: Advisory generated</div>
+        <div class="output">&nbsp;</div>
+        <div><span class="highlight">ADVISORY</span> <span class="output">2 significant changes detected</span></div>
+        <div class="output">  <span class="highlight">HIGH</span> File dispersion spiked after CI failure (3.2x above baseline)</div>
+        <div class="output">  <span class="warning" style="color: #F59E0B">MEDIUM</span> Dependency count grew 18% in 7 days</div>
+        <div class="output">&nbsp;</div>
+        <div class="success">Saved to .evo/phase5/advisory.json</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Features ─── -->
+<section id="features" class="features">
+  <div class="container">
+    <h2 class="section-title">Why Evolution Engine</h2>
+    <p class="section-subtitle">One command gives you visibility that no single tool can provide.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon">&#128274;</span>
+        <h3>Local-first</h3>
+        <p>Your code never leaves your machine. All analysis runs locally. Only opt-in telemetry (anonymous usage stats) ever phones home.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">&#9889;</span>
+        <h3>Zero-config</h3>
+        <p>Auto-detects your tools from configs, lockfiles, and imports. No YAML, no dashboards, no setup. Just <code>evo analyze .</code></p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">&#128202;</span>
+        <h3>Evidence-based</h3>
+        <p>Statistical deviation from your repo's own baseline. Modified z-scores, not arbitrary thresholds. Calibrated across 43 open-source repos.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">&#128279;</span>
+        <h3>Cross-signal</h3>
+        <p>Correlates git + CI + deps + deploys. "CI fails after big dependency updates" is a pattern no single tool sees.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── How it works ─── -->
+<section id="install" class="how-it-works">
+  <div class="container">
+    <h2 class="section-title">How it works</h2>
+    <p class="section-subtitle">Three steps. No configuration needed.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3>Install</h3>
+        <p>One pip install. Works with Python 3.10+.</p>
+        <code data-copy="pip install evolution-engine">pip install evolution-engine<span class="copy-tooltip">Copied!</span></code>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3>Analyze</h3>
+        <p>Run in any git repo. EE auto-detects your tools and computes signals.</p>
+        <code data-copy="evo analyze .">evo analyze .<span class="copy-tooltip">Copied!</span></code>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3>Act</h3>
+        <p>Read the advisory, investigate with AI, or set up the GitHub Action for continuous monitoring.</p>
+        <code data-copy="evo investigate .">evo investigate .<span class="copy-tooltip">Copied!</span></code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Signal Families ─── -->
+<section id="signals" class="signals">
+  <div class="container">
+    <h2 class="section-title">Signal Families</h2>
+    <p class="section-subtitle">EE ingests events from multiple data sources and computes deviation metrics for each.</p>
+    <table class="signals-table">
+      <thead>
+        <tr>
+          <th>Family</th>
+          <th>Source</th>
+          <th>Metrics</th>
+          <th>Tier</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Git</td>
+          <td>Local git history</td>
+          <td>files_touched, dispersion, change_locality, cochange_novelty</td>
+          <td><span class="badge badge-free">Free</span></td>
+        </tr>
+        <tr>
+          <td>Dependency</td>
+          <td>pip, npm, go, cargo, bundler lockfiles</td>
+          <td>dependency_count, max_depth</td>
+          <td><span class="badge badge-free">Free</span></td>
+        </tr>
+        <tr>
+          <td>CI</td>
+          <td>GitHub Actions (more coming)</td>
+          <td>run_duration, run_failed</td>
+          <td><span class="badge badge-pro">Pro</span></td>
+        </tr>
+        <tr>
+          <td>Deployment</td>
+          <td>GitHub Releases (more coming)</td>
+          <td>release_cadence_hours, is_prerelease, asset_count</td>
+          <td><span class="badge badge-pro">Pro</span></td>
+        </tr>
+        <tr>
+          <td>Security</td>
+          <td>Dependabot, Snyk, Semgrep</td>
+          <td>vulnerability_count, severity_score</td>
+          <td><span class="badge badge-pro">Pro</span></td>
+        </tr>
+        <tr>
+          <td>Monitoring</td>
+          <td>Datadog, New Relic, Grafana</td>
+          <td>error_rate, latency_p99</td>
+          <td><span class="badge badge-planned">Planned</span></td>
+        </tr>
+        <tr>
+          <td>Incidents</td>
+          <td>PagerDuty, OpsGenie</td>
+          <td>incident_frequency, mttr</td>
+          <td><span class="badge badge-planned">Planned</span></td>
+        </tr>
+        <tr>
+          <td>Work Items</td>
+          <td>Jira, Linear</td>
+          <td>cycle_time, wip_count</td>
+          <td><span class="badge badge-planned">Planned</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ─── Adapter Catalog ─── -->
+<section id="adapters" class="adapters">
+  <div class="container">
+    <h2 class="section-title">Adapter Catalog</h2>
+    <p class="section-subtitle">Built-in integrations plus a growing plugin ecosystem. Each adapter connects a data source to the EE pipeline.</p>
+    <div class="adapter-grid">
+      <!-- Built-in (Available) -->
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>Git</h4>
+          <span class="badge badge-free">Free</span>
+        </div>
+        <div class="adapter-family">version_control</div>
+        <p>Local git history analysis — commits, file changes, co-change patterns.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>pip</h4>
+          <span class="badge badge-free">Free</span>
+        </div>
+        <div class="adapter-family">dependency</div>
+        <p>Python dependency tracking from requirements.txt and Pipfile.lock.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>npm</h4>
+          <span class="badge badge-free">Free</span>
+        </div>
+        <div class="adapter-family">dependency</div>
+        <p>Node.js dependency tracking from package-lock.json with depth analysis.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>go modules</h4>
+          <span class="badge badge-free">Free</span>
+        </div>
+        <div class="adapter-family">dependency</div>
+        <p>Go module tracking from go.sum with dependency depth.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>cargo</h4>
+          <span class="badge badge-free">Free</span>
+        </div>
+        <div class="adapter-family">dependency</div>
+        <p>Rust crate tracking from Cargo.lock with depth analysis.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>bundler</h4>
+          <span class="badge badge-free">Free</span>
+        </div>
+        <div class="adapter-family">dependency</div>
+        <p>Ruby gem tracking from Gemfile.lock.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>GitHub Actions</h4>
+          <span class="badge badge-pro">Pro</span>
+        </div>
+        <div class="adapter-family">ci</div>
+        <p>CI pipeline monitoring — run duration, failure rates, workflow trends.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>GitHub Releases</h4>
+          <span class="badge badge-pro">Pro</span>
+        </div>
+        <div class="adapter-family">deployment</div>
+        <p>Release cadence tracking, pre-release detection, asset monitoring.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>Dependabot</h4>
+          <span class="badge badge-pro">Pro</span>
+        </div>
+        <div class="adapter-family">security</div>
+        <p>Security advisory tracking from GitHub Dependabot alerts.</p>
+      </div>
+      <!-- Planned -->
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>Jenkins</h4>
+          <span class="badge badge-planned">Planned</span>
+        </div>
+        <div class="adapter-family">ci</div>
+        <p>Jenkins CI pipeline monitoring and build analysis.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>GitLab CI</h4>
+          <span class="badge badge-planned">Planned</span>
+        </div>
+        <div class="adapter-family">ci</div>
+        <p>GitLab CI/CD pipeline monitoring and job analysis.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>Datadog</h4>
+          <span class="badge badge-planned">Planned</span>
+        </div>
+        <div class="adapter-family">monitoring</div>
+        <p>APM metrics, error rates, and deployment markers from Datadog.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>Sentry</h4>
+          <span class="badge badge-planned">Planned</span>
+        </div>
+        <div class="adapter-family">error_tracking</div>
+        <p>Error tracking and release health from Sentry.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>SonarQube</h4>
+          <span class="badge badge-planned">Planned</span>
+        </div>
+        <div class="adapter-family">quality_gate</div>
+        <p>Code quality gate status and metrics from SonarQube.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>Snyk</h4>
+          <span class="badge badge-planned">Planned</span>
+        </div>
+        <div class="adapter-family">security_scan</div>
+        <p>Vulnerability scanning and license compliance from Snyk.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>PagerDuty</h4>
+          <span class="badge badge-planned">Planned</span>
+        </div>
+        <div class="adapter-family">incidents</div>
+        <p>Incident frequency, MTTR, and escalation patterns.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>Jira</h4>
+          <span class="badge badge-planned">Planned</span>
+        </div>
+        <div class="adapter-family">work_items</div>
+        <p>Cycle time, WIP count, and sprint velocity from Jira.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>ArgoCD</h4>
+          <span class="badge badge-planned">Planned</span>
+        </div>
+        <div class="adapter-family">deployment</div>
+        <p>GitOps deployment tracking and sync status from ArgoCD.</p>
+      </div>
+      <a href="docs.html#build-adapter" class="adapter-card" style="border-style: dashed; border-color: var(--secondary); text-decoration: none; color: inherit;">
+        <div class="adapter-card-header">
+          <h4>Build Your Own</h4>
+          <span class="badge badge-community">Community</span>
+        </div>
+        <div class="adapter-family">any family</div>
+        <p>Create a custom adapter with our scaffold tool and step-by-step guide. Ship it as a pip package.</p>
+        <code style="font-size: 0.8rem; color: var(--secondary); margin-top: 4px;">evo adapter new myapp --family ci</code>
+      </a>
+    </div>
+    <div class="adapter-cta">
+      <p style="color: var(--text-muted); margin-bottom: 16px;">Don't see your tool? We prioritize by community demand.</p>
+      <button class="btn btn-accent" onclick="openAdapterModal()">Request an Adapter</button>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Pricing ─── -->
+<section id="pricing" class="pricing">
+  <div class="container">
+    <h2 class="section-title">Simple, transparent pricing</h2>
+    <p class="section-subtitle">Start free. Upgrade when you need CI, deployment, and security signals.</p>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <h3>Free</h3>
+        <div class="pricing-price">$0</div>
+        <div class="pricing-desc">Forever free for git + dependency analysis</div>
+        <ul class="pricing-features">
+          <li>Git history analysis</li>
+          <li>Dependency tracking (pip, npm, go, cargo, bundler)</li>
+          <li>27 universal patterns</li>
+          <li>Local knowledge base</li>
+          <li>HTML reports</li>
+          <li>GitHub Action (basic)</li>
+          <li class="disabled">CI/deployment/security adapters</li>
+          <li class="disabled">AI investigation &amp; fix</li>
+          <li class="disabled">Community KB sync</li>
+        </ul>
+        <a href="https://pypi.org/project/evolution-engine/" class="btn btn-outline" target="_blank">pip install evolution-engine</a>
+      </div>
+      <div class="pricing-card featured">
+        <h3>Pro</h3>
+        <div class="pricing-price">$19 <span>/dev/month</span></div>
+        <div class="pricing-desc">Full pipeline visibility with AI-powered investigation</div>
+        <ul class="pricing-features">
+          <li>Everything in Free</li>
+          <li>CI adapter (GitHub Actions)</li>
+          <li>Deployment adapter (GitHub Releases)</li>
+          <li>AI investigation &amp; fix loop</li>
+          <li>Cross-signal pattern detection</li>
+          <li>Priority adapter requests</li>
+          <li>Email support (info@codequal.dev)</li>
+        </ul>
+        <button class="btn btn-primary" onclick="startCheckout()">Get Pro</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Footer ─── -->
+<footer>
+  <div class="container">
+    <ul class="footer-links">
+      <li><a href="docs.html">Docs</a></li>
+      <li><a href="privacy.html">Privacy</a></li>
+      <li>info@codequal.dev</li>
+    </ul>
+    <p class="footer-tagline">Your code never leaves your machine.</p>
+    <p class="footer-brand">Evolution Engine by CodeQual</p>
+  </div>
+</footer>
+
+<!-- ─── Adapter Request Modal ─── -->
+<div id="adapter-modal" class="modal-overlay">
+  <div class="modal">
+    <h3>Request an Adapter</h3>
+    <form onsubmit="submitAdapterRequest(event)">
+      <div class="form-group">
+        <label for="adapter_name">Adapter Name *</label>
+        <input type="text" id="adapter_name" name="adapter_name" placeholder="e.g. CircleCI, Terraform Cloud" required maxlength="100">
+      </div>
+      <div class="form-group">
+        <label for="family">Family *</label>
+        <select id="family" name="family" required>
+          <option value="">Select a family...</option>
+          <option value="ci">CI</option>
+          <option value="deployment">Deployment</option>
+          <option value="dependency">Dependency</option>
+          <option value="security">Security</option>
+          <option value="monitoring">Monitoring</option>
+          <option value="incidents">Incidents</option>
+          <option value="work_items">Work Items</option>
+          <option value="quality_gate">Quality Gate</option>
+          <option value="error_tracking">Error Tracking</option>
+          <option value="feature_flags">Feature Flags</option>
+          <option value="code_review">Code Review</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="use_case">Use Case</label>
+        <textarea id="use_case" name="use_case" placeholder="What would this adapter help you detect or monitor?" maxlength="500"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="description">Additional Details</label>
+        <textarea id="description" name="description" placeholder="API docs, data format, or anything else helpful..." maxlength="1000"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="email">Email (optional, for updates)</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" maxlength="200">
+      </div>
+      <div id="adapter-form-message" class="form-message"></div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeAdapterModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Submit Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

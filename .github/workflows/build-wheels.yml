@@ -1,0 +1,145 @@
+name: Build & Publish Wheels
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish to PyPI"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+
+jobs:
+  # ─── Pure Python wheel (always built) ───
+  pure-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build pure Python wheel
+        run: |
+          pip install build
+          python -m build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-pure-python
+          path: dist/*
+
+  # ─── Cython-compiled wheels (per platform) ───
+  cython-wheels:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+            cibw_archs: x86_64
+          - os: ubuntu-latest
+            arch: aarch64
+            cibw_archs: aarch64
+          - os: macos-14
+            arch: arm64
+            cibw_archs: arm64
+          - os: macos-13
+            arch: x86_64
+            cibw_archs: x86_64
+          - os: windows-latest
+            arch: x86_64
+            cibw_archs: AMD64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # QEMU for aarch64 cross-compilation on x86_64
+      - name: Set up QEMU
+        if: matrix.arch == 'aarch64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Install Cython
+        run: pip install cython setuptools wheel
+
+      - name: Verify Cython build script
+        run: python build_cython.py --check
+
+      - name: Build wheels with cibuildwheel
+        uses: pypa/cibuildwheel@v2.21
+        env:
+          CIBW_BUILD: "cp311-*"
+          CIBW_ARCHS: ${{ matrix.cibw_archs }}
+          CIBW_BEFORE_BUILD: "pip install cython && python build_cython.py"
+          CIBW_TEST_COMMAND: "evo --version"
+          CIBW_TEST_REQUIRES: ""
+          # Skip musllinux (low demand), PyPy (not supported)
+          CIBW_SKIP: "*-musllinux_* pp*"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.os }}-${{ matrix.arch }}
+          path: wheelhouse/*.whl
+
+  # ─── Test wheels ───
+  test-wheels:
+    needs: [pure-python]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheel-pure-python
+          path: dist/
+
+      - name: Install and test
+        run: |
+          pip install dist/*.whl
+          evo --version
+          evo --help
+          # Quick sanity check on a temp repo
+          cd /tmp && git init test-repo && cd test-repo
+          git commit --allow-empty -m "init"
+          evo analyze . --quiet || true
+
+  # ─── Publish to PyPI ───
+  publish:
+    needs: [pure-python, cython-wheels, test-wheels]
+    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.publish == 'true'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # Trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheel-*
+          path: dist/
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

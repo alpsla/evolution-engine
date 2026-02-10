@@ -1,0 +1,42 @@
+# Evolution Engine — PR Monitoring Workflow
+#
+# Copy this file to .github/workflows/evo-monitor.yml in your repository.
+#
+# What it does:
+#   1. Runs EE analysis on every PR
+#   2. Posts a risk summary as a PR comment
+#   3. Optionally runs AI investigation on High/Critical findings
+#   4. On subsequent pushes, updates the comment with resolution progress
+#
+# Requirements:
+#   - GitHub token (automatic via GITHUB_TOKEN)
+#   - Optional: ANTHROPIC_API_KEY secret for AI investigation
+#   - Optional: EVO_LICENSE_KEY secret for Pro features (CI, deployments)
+
+name: Evolution Engine
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for baseline computation
+
+      - uses: evolution-engine/analyze@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Post risk summary as PR comment
+          comment: true
+          # Run AI investigation on High/Critical findings (requires ANTHROPIC_API_KEY)
+          investigate: false
+          # anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
