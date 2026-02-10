@@ -1,10 +1,8 @@
 """
 Phase 3 Engine — Deterministic Explanation Layer
 
-Multi-family implementation with optional Phase 3.1 LLM enhancement:
 - One explanation per Phase 2 signal (any family)
-- Template-based, deterministic rendering (Phase 3)
-- Validation-gated LLM rendering when enabled (Phase 3.1)
+- Template-based, deterministic rendering with PM-friendly language
 - No aggregation, no judgment, no recommendations
 
 Conforms to PHASE_3_CONTRACT.md and PHASE_3_DESIGN.md.
@@ -15,13 +13,7 @@ import json
 import hashlib
 from datetime import datetime
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass  # dotenv not installed; rely on actual environment variables
-
-from evolution.phase3_1_renderer import Phase31Renderer
+from evolution.friendly import relative_change, metric_insight
 
 # All Phase 2 signal files, keyed by family
 SIGNAL_FILES = {
@@ -42,29 +34,36 @@ class Phase3Engine:
         self.phase2_path = evo_dir / "phase2"
         self.output_path = evo_dir / "phase3"
         self.output_path.mkdir(parents=True, exist_ok=True)
-        self.renderer = Phase31Renderer()
 
     # ---------- Templates ----------
 
-    def _baseline_str(self, signal: dict) -> str:
-        """Format baseline summary using median/MAD when available, else mean/stddev."""
+    def _get_median(self, signal: dict) -> float:
+        """Get the best available central tendency from a signal's baseline."""
         baseline = signal["baseline"]
         med = baseline.get("median")
-        mad = baseline.get("mad")
-        if med is not None and mad is not None and mad > 0:
-            return f"median {med:.2f} (MAD {mad:.2f})"
-        return f"{baseline['mean']:.2f} \u00b1 {baseline['stddev']:.2f}"
+        if med is not None and baseline.get("mad") is not None and baseline["mad"] > 0:
+            return med
+        return baseline["mean"]
+
+    def _direction(self, signal: dict) -> str:
+        """Return 'up' or 'down' based on observed vs baseline."""
+        observed = signal["observed"]
+        median = self._get_median(signal)
+        if median is None or median == 0:
+            return "up" if observed > 0 else "down"
+        return "up" if observed >= median else "down"
 
     def _template(self, signal: dict) -> str:
         metric = signal["metric"]
         observed = signal["observed"]
         baseline = signal["baseline"]
         m = baseline["mean"]
-        std = baseline["stddev"]
         window = signal["window"]["size"]
         conf = signal["confidence"]["status"]
-        engine = signal.get("engine_id", "unknown")
-        bl = self._baseline_str(signal)
+        median = self._get_median(signal)
+        direction = self._direction(signal)
+        change_str = relative_change(observed, median)
+        insight = metric_insight(metric, direction)
 
         # Handle degenerate baselines
         dev = signal.get("deviation", {})
@@ -79,151 +78,81 @@ class Phase3Engine:
 
         # ---- Git metrics ----
         if metric == "files_touched":
-            base = (
-                f"This change touched {observed} files. "
-                f"Over the last {window} changes, the baseline was {bl}."
-            )
+            base = f"This commit touched {observed} files — {change_str}."
         elif metric == "dispersion":
-            base = (
-                f"This change had a dispersion value of {observed:.2f}. "
-                f"Recent baseline: {bl}."
-            )
+            base = f"This change is spread across many parts of the codebase — {change_str}."
         elif metric == "change_locality":
-            base = (
-                f"The change locality for this commit was {observed:.2f}. "
-                f"Recent baseline: {bl}."
-            )
+            base = f"The change locality for this commit was {observed:.2f} — {change_str}."
         elif metric == "cochange_novelty_ratio":
-            base = (
-                f"The co-change novelty ratio for this change was {observed:.2f}. "
-                f"Recent baseline: {bl}."
-            )
+            base = f"The co-change novelty ratio was {observed:.2f} — {change_str}."
 
         # ---- CI metrics ----
         elif metric == "run_duration":
-            base = (
-                f"This CI run took {observed:.1f} seconds. "
-                f"Recent runs: {bl} seconds."
-            )
+            base = f"This CI build took {observed:.1f} seconds — {change_str}."
         elif metric == "run_failed":
-            status = "failed" if observed > 0 else "succeeded"
-            base = (
-                f"This CI run {status}. "
-                f"Recent failure rate: {m:.2%}."
-            )
+            if observed > 0:
+                base = "This CI build failed."
+            else:
+                base = "This CI build succeeded."
 
         # ---- Testing metrics ----
         elif metric == "total_tests":
-            base = (
-                f"This test run executed {observed:.0f} tests. "
-                f"Recent baseline: {bl} tests."
-            )
+            base = f"This test run executed {observed:.0f} tests — {change_str}."
         elif metric == "suite_duration":
-            base = (
-                f"This test suite completed in {observed:.1f} seconds. "
-                f"Recent baseline: {bl} seconds."
-            )
+            base = f"The test suite completed in {observed:.1f} seconds — {change_str}."
         elif metric == "skip_rate":
-            base = (
-                f"The skip rate for this run was {observed:.2%}. "
-                f"Recent baseline: {m:.2%} \u00b1 {std:.2%}."
-            )
+            base = f"The skip rate for this run was {observed:.2%} — {change_str}."
 
         # ---- Dependency metrics ----
         elif metric == "dependency_count":
-            base = (
-                f"This snapshot contains {observed:.0f} dependencies. "
-                f"Recent baseline: {bl}."
-            )
+            base = f"This snapshot has {observed:.0f} dependencies — {change_str}."
         elif metric == "max_depth":
-            base = (
-                f"The maximum transitive depth is {observed:.0f}. "
-                f"Recent baseline: {bl}."
-            )
+            base = f"The maximum dependency depth is {observed:.0f} — {change_str}."
 
         # ---- Schema metrics ----
         elif metric == "endpoint_count":
-            base = (
-                f"This schema version has {observed:.0f} endpoints. "
-                f"Recent baseline: {bl}."
-            )
+            base = f"This schema version has {observed:.0f} endpoints — {change_str}."
         elif metric == "type_count":
-            base = (
-                f"This schema version defines {observed:.0f} types. "
-                f"Recent baseline: {bl}."
-            )
+            base = f"This schema version defines {observed:.0f} types — {change_str}."
         elif metric == "field_count":
-            base = (
-                f"This schema version contains {observed:.0f} fields. "
-                f"Recent baseline: {bl}."
-            )
+            base = f"This schema version contains {observed:.0f} fields — {change_str}."
         elif metric == "schema_churn":
-            base = (
-                f"Schema churn for this version was {observed:.2f}. "
-                f"Recent baseline: {bl}."
-            )
+            base = f"Schema churn was {observed:.2f} — {change_str}."
 
         # ---- Deployment metrics ----
         elif metric == "release_cadence_hours":
-            base = (
-                f"This release came {observed:.1f} hours after the previous one. "
-                f"Recent cadence baseline: {bl} hours."
-            )
+            base = f"This release came {observed:.1f} hours after the previous one — {change_str}."
         elif metric == "is_prerelease":
             status = "a pre-release" if observed > 0 else "a stable release"
-            base = (
-                f"This was {status}. "
-                f"Recent pre-release rate: {m:.2%}."
-            )
+            base = f"This was {status}."
         elif metric == "asset_count":
-            base = (
-                f"This release included {observed:.0f} assets. "
-                f"Recent baseline: {bl} assets."
-            )
+            base = f"This release included {observed:.0f} assets — {change_str}."
 
         # ---- Config metrics ----
         elif metric == "resource_count":
-            base = (
-                f"This configuration manages {observed:.0f} resources. "
-                f"Recent baseline: {bl}."
-            )
+            base = f"This configuration manages {observed:.0f} resources — {change_str}."
         elif metric == "resource_type_count":
-            base = (
-                f"This configuration uses {observed:.0f} distinct resource types. "
-                f"Recent baseline: {bl}."
-            )
+            base = f"This configuration uses {observed:.0f} distinct resource types — {change_str}."
         elif metric == "config_churn":
-            base = (
-                f"Configuration churn was {observed:.0f} (total changes). "
-                f"Recent baseline: {bl}."
-            )
+            base = f"Configuration churn was {observed:.0f} — {change_str}."
 
         # ---- Security metrics ----
         elif metric == "vulnerability_count":
-            base = (
-                f"This scan found {observed:.0f} vulnerabilities. "
-                f"Recent baseline: {bl}."
-            )
+            base = f"This scan found {observed:.0f} vulnerabilities — {change_str}."
         elif metric == "critical_count":
-            base = (
-                f"This scan found {observed:.0f} critical vulnerabilities. "
-                f"Recent baseline: {bl}."
-            )
+            base = f"This scan found {observed:.0f} critical vulnerabilities — {change_str}."
         elif metric == "fixable_ratio":
-            base = (
-                f"The fixable ratio is {observed:.2%} of findings. "
-                f"Recent baseline: {m:.2%} \u00b1 {std:.2%}."
-            )
+            base = f"The fixable ratio is {observed:.2%} — {change_str}."
 
         # ---- Fallback ----
         else:
-            base = (
-                f"Metric '{metric}' had a value of {observed}. "
-                f"Baseline: {bl}."
-            )
+            base = f"Metric '{metric}' was {observed} — {change_str}."
+
+        if insight:
+            base += f" {insight}"
 
         if conf != "sufficient":
-            base += " This comparison is based on limited history and may change as more data becomes available."
+            base += " (based on limited history — may change as more data arrives)"
 
         return base
 
@@ -273,9 +202,6 @@ class Phase3Engine:
 
             explanation_id = self._hash(explanation)
             explanation["explanation_id"] = explanation_id
-
-            # Phase 3.1: LLM enhancement with validation gate (if enabled)
-            explanation = self.renderer.render(explanation)
 
             explanations.append(explanation)
 

@@ -20,6 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from evolution.friendly import risk_level, relative_change, metric_insight, friendly_pattern
 from evolution.phase4_engine import (
     Phase4Engine,
     signals_to_components,
@@ -477,30 +478,36 @@ class Phase5Engine:
         normal = change["normal"]
         current = change["current"]
         dev = change["deviation_stddev"]
-        unit = change.get("deviation_unit", "modified_zscore")
-        direction = "above" if dev > 0 else "below"
 
-        lines.append(f"{indent}{family_label} / {metric_label}")
+        # Get the best baseline median
+        median = normal["median"] if normal.get("mad", 0) > 0 else normal["mean"]
 
-        # Use median/MAD when available, fall back to mean/stddev
-        if normal.get("mad", 0) > 0:
-            normal_str = f"{normal['median']:.4g}"
-            spread_str = f"MAD {normal['mad']:.2f}"
-        else:
-            normal_str = f"{normal['mean']:.4g}"
-            spread_str = f"+/- {normal['stddev']:.2f}"
+        # Risk label
+        rl = risk_level(dev)
+        risk_tag = f"  [{rl['label']}]"
 
-        # Format current value
-        if change["metric"] in ("skip_rate", "fixable_ratio", "is_prerelease", "run_failed"):
-            current_str = f"{current:.1%}" if current < 1.01 else f"{current:.4g}"
-        elif isinstance(current, float) and current < 1:
-            current_str = f"{current:.2f}"
-        else:
-            current_str = f"{current:.4g}"
+        lines.append(f"{indent}{family_label} / {metric_label}{risk_tag}")
 
-        unit_label = {"modified_zscore": "MAD", "iqr_normalized": "IQR", "degenerate": "deg"}.get(unit, "std")
-        lines.append(f"{indent}   Normally: {normal_str} ({spread_str})")
-        lines.append(f"{indent}   Now:      {current_str}  ({abs(dev):.1f} {unit_label} {direction} normal)")
+        # Natural-language comparison
+        change_str = relative_change(current, median)
+        lines.append(f"{indent}   {change_str.capitalize()} (now {self._fmt_value(change['metric'], current)})")
+
+        # Insight
+        direction = "up" if dev > 0 else "down"
+        insight = metric_insight(change["metric"], direction)
+        if insight:
+            lines.append(f"{indent}   \u2192 {insight}")
+
+    @staticmethod
+    def _fmt_value(metric: str, value) -> str:
+        """Format a metric value for display."""
+        if metric in ("skip_rate", "fixable_ratio", "is_prerelease", "run_failed"):
+            return f"{value:.1%}" if isinstance(value, (int, float)) and value <= 1.01 else f"{value:.4g}"
+        if isinstance(value, float) and value < 1:
+            return f"{value:.2f}"
+        if isinstance(value, float):
+            return f"{value:.4g}"
+        return str(value)
 
     def _format_human_summary(self, advisory: dict) -> str:
         """Render advisory as human-readable 'normal vs now' summary.
@@ -516,8 +523,11 @@ class Phase5Engine:
         event_groups = advisory.get("event_groups", [])
         n_groups = len(event_groups)
 
-        lines.append(f"{summary['significant_changes']} significant changes detected "
-                     f"across {', '.join(summary['families_affected'])}.")
+        families_str = " and ".join(
+            FAMILY_LABELS.get(f, f) for f in summary["families_affected"]
+        )
+        lines.append(f"{summary['significant_changes']} unusual changes detected "
+                     f"across {families_str}.")
         if n_groups and n_groups < summary["significant_changes"]:
             lines.append(f"(Grouped into {n_groups} trigger events)")
         lines.append("")
@@ -526,10 +536,10 @@ class Phase5Engine:
         if event_groups:
             for gi, group in enumerate(event_groups, 1):
                 if group["signal_count"] > 1:
-                    families_str = ", ".join(
+                    gfamilies_str = ", ".join(
                         FAMILY_LABELS.get(f, f) for f in group["families"]
                     )
-                    lines.append(f"Event {gi} ({group['signal_count']} signals across {families_str}):")
+                    lines.append(f"Event {gi} ({group['signal_count']} signals across {gfamilies_str}):")
                     for change in group["changes"]:
                         self._append_change_lines(lines, change, indent="  ")
                 else:
@@ -542,24 +552,20 @@ class Phase5Engine:
 
         # Pattern matches
         if advisory.get("pattern_matches"):
-            lines.append("PATTERN RECOGNITION")
+            lines.append("RECURRING PATTERNS")
             lines.append("")
             for pm in advisory["pattern_matches"]:
-                lines.append(f"  These changes match a known pattern (seen {pm['seen_count']} times):")
-                lines.append(f"  {pm['description']}")
+                desc = friendly_pattern(pm)
+                lines.append(f"  {desc}")
                 lines.append("")
 
         # Candidate patterns
         if advisory.get("candidate_patterns"):
-            lines.append("CANDIDATE PATTERNS (not yet promoted)")
+            lines.append("RECURRING PATTERNS (emerging)")
             lines.append("")
             for cp in advisory["candidate_patterns"]:
-                r = cp.get("correlation", 0)
-                families_str = ", ".join(cp.get("families", []))
-                desc = cp.get("description", "")
-                lines.append(f"  r={r:.2f} across {families_str}")
-                if desc:
-                    lines.append(f"  {desc}")
+                desc = friendly_pattern(cp)
+                lines.append(f"  {desc}")
                 lines.append("")
 
         # Evidence summary
@@ -588,33 +594,30 @@ class Phase5Engine:
         lines.append("")
 
         n = advisory["summary"]["significant_changes"]
-        lines.append(f"{n} thing{'s' if n != 1 else ''} look{'s' if n == 1 else ''} "
-                     f"different from your system's normal behavior:")
+        lines.append(f"{n} unusual change{'s' if n != 1 else ''} detected:")
         lines.append("")
 
         for i, change in enumerate(advisory["changes"], 1):
-            family_label = FAMILY_LABELS.get(change["family"], change["family"])
             metric_label = METRIC_LABELS.get(change["metric"], change["metric"])
             current = change["current"]
             normal_info = change["normal"]
-            normal = normal_info["median"] if normal_info.get("mad", 0) > 0 else normal_info["mean"]
-            dev = abs(change["deviation_stddev"])
+            median = normal_info["median"] if normal_info.get("mad", 0) > 0 else normal_info["mean"]
+            dev = change["deviation_stddev"]
+            rl = risk_level(dev)
 
-            if change["metric"] in ("failure_rate", "skip_rate", "fixable_ratio"):
-                lines.append(f"{i}. {family_label}: {metric_label} "
-                             f"{normal:.1%} -> {current:.1%} ({dev:.1f}x stddev)")
-            elif isinstance(current, float) and current < 1:
-                lines.append(f"{i}. {family_label}: {metric_label} "
-                             f"{normal:.2f} -> {current:.2f} ({dev:.1f}x stddev)")
-            else:
-                lines.append(f"{i}. {family_label}: {metric_label} "
-                             f"{normal:.1f} -> {current:.4g} ({dev:.1f}x stddev)")
+            change_str = relative_change(current, median)
+            lines.append(f"{i}. {metric_label}: {change_str} [{rl['label']}]")
+
+            direction = "up" if dev > 0 else "down"
+            insight = metric_insight(change["metric"], direction)
+            if insight:
+                lines.append(f"   \u2192 {insight}")
 
         if advisory.get("pattern_matches"):
             lines.append("")
             for pm in advisory["pattern_matches"]:
-                lines.append(f"This matches a known pattern seen {pm['seen_count']} times:")
-                lines.append(f'"{pm["description"]}"')
+                desc = friendly_pattern(pm)
+                lines.append(f"Pattern: {desc}")
 
         evidence = advisory.get("evidence", {})
         parts = []
@@ -779,15 +782,13 @@ class Phase5Engine:
         """Format a human-readable verification report."""
         lines = []
         lines.append(f"Fix Verification Report — {after.get('scope', 'unknown')}")
-        lines.append(f"Comparing: {before.get('advisory_id', '?')[:8]} → "
+        lines.append(f"Comparing: {before.get('advisory_id', '?')[:8]} \u2192 "
                       f"{after.get('advisory_id', '?')[:8]}")
         lines.append("")
 
         total_before = len(before.get("changes", []))
         resolved_count = len(diff["resolved"])
-        persisting_count = len(diff["persisting"])
         new_count = len(diff["new"])
-        regression_count = len(diff["regressions"])
 
         # Summary line
         if resolved_count == total_before and new_count == 0:
@@ -805,19 +806,19 @@ class Phase5Engine:
             for r in diff["resolved"]:
                 family = FAMILY_LABELS.get(r["family"], r["family"])
                 metric = METRIC_LABELS.get(r["metric"], r["metric"])
-                lines.append(f"  ✅ {family} / {metric} — was {abs(r['was_deviation']):.1f}x "
-                             f"stddev, now within normal range")
+                lines.append(f"  \u2705 {family} / {metric} \u2014 back to normal")
             lines.append("")
 
         # Persisting
         if diff["persisting"]:
-            lines.append("PERSISTING:")
+            lines.append("STILL UNUSUAL:")
             for p in diff["persisting"]:
                 family = FAMILY_LABELS.get(p["family"], p["family"])
                 metric = METRIC_LABELS.get(p["metric"], p["metric"])
-                direction = "improved" if p["improved"] else "unchanged/worsened"
-                lines.append(f"  ⚠️  {family} / {metric} — was {abs(p['was_deviation']):.1f}x, "
-                             f"now {abs(p['now_deviation']):.1f}x stddev ({direction})")
+                rl = risk_level(p["now_deviation"])
+                trend = "improving" if p["improved"] else "not improving"
+                lines.append(f"  \u26a0\ufe0f  {family} / {metric} \u2014 "
+                             f"still {rl['description'].lower()} ({trend})")
             lines.append("")
 
         # New
@@ -826,9 +827,9 @@ class Phase5Engine:
             for n in diff["new"]:
                 family = FAMILY_LABELS.get(n["family"], n["family"])
                 metric = METRIC_LABELS.get(n["metric"], n["metric"])
-                lines.append(f"  🔵 {family} / {metric} — "
-                             f"{abs(n['deviation_stddev']):.1f}x stddev "
-                             f"(not present in previous advisory)")
+                rl = risk_level(n["deviation_stddev"])
+                lines.append(f"  \U0001f535 {family} / {metric} \u2014 "
+                             f"{rl['description'].lower()} (new)")
             lines.append("")
 
         # Regressions
@@ -837,9 +838,9 @@ class Phase5Engine:
             for r in diff["regressions"]:
                 family = FAMILY_LABELS.get(r["family"], r["family"])
                 metric = METRIC_LABELS.get(r["metric"], r["metric"])
-                lines.append(f"  🔴 {family} / {metric} — "
-                             f"{abs(r['deviation_stddev']):.1f}x stddev "
-                             f"(was normal before, now deviating)")
+                rl = risk_level(r["deviation_stddev"])
+                lines.append(f"  \U0001f534 {family} / {metric} \u2014 "
+                             f"{rl['description'].lower()} (was normal before)")
             lines.append("")
 
         # Score

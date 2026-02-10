@@ -15,6 +15,8 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from evolution.friendly import risk_level, relative_change, metric_insight, friendly_pattern
+
 FAMILY_LABELS = {
     "git": "Version Control",
     "ci": "CI / Build",
@@ -157,8 +159,8 @@ def _render_html(
 </section>
 
 <section class="changes">
-  <h2>Significant Changes</h2>
-  {change_cards if change_cards else '<p class="empty">No significant changes detected.</p>'}
+  <h2>Unusual Changes</h2>
+  {change_cards if change_cards else '<p class="empty">No unusual changes detected.</p>'}
 </section>
 
 {pattern_section}
@@ -181,17 +183,17 @@ def _build_stat_cards(summary: dict, cal: dict = None) -> str:
     cards = []
     cards.append(_stat_card(
         str(summary.get("significant_changes", 0)),
-        "Significant Changes",
+        "Unusual Changes",
         "changes",
     ))
     cards.append(_stat_card(
         str(len(summary.get("families_affected", []))),
-        "Families Affected",
+        "Areas Affected",
         "families",
     ))
     cards.append(_stat_card(
         str(summary.get("known_patterns_matched", 0)),
-        "Patterns Matched",
+        "Known Patterns",
         "patterns",
     ))
     cards.append(_stat_card(
@@ -243,27 +245,34 @@ def _build_change_cards(event_groups: list, changes: list) -> str:
         change_rows = []
         for c in group_changes:
             family = FAMILY_LABELS.get(c["family"], c["family"])
-            metric = METRIC_LABELS.get(c["metric"], c["metric"])
+            metric_key = c.get("metric", "")
+            metric = METRIC_LABELS.get(metric_key, metric_key)
             current = c.get("current", 0)
             normal = c.get("normal", {})
             median = normal.get("median", normal.get("mean", 0))
-            dev = abs(c.get("deviation_stddev", 0))
-            unit = c.get("deviation_unit", "")
-            direction = "above" if c.get("deviation_stddev", 0) >= 0 else "below"
-            color = "#ef4444" if direction == "above" else "#3b82f6"
+            dev = c.get("deviation_stddev", 0)
+            rl = risk_level(dev)
 
-            unit_label = {"modified_zscore": "MAD", "iqr_normalized": "IQR"}.get(unit, unit)
+            change_str = relative_change(current, median)
+            direction = "up" if dev >= 0 else "down"
+            insight = metric_insight(metric_key, direction)
 
             change_rows.append(
                 f'<tr>'
                 f'<td class="metric-name">{_esc(family)} / {_esc(metric)}</td>'
                 f'<td class="metric-normal">{_fmt_num(median)}</td>'
-                f'<td class="metric-current" style="color:{color}">{_fmt_num(current)}</td>'
+                f'<td class="metric-current">{_fmt_num(current)}</td>'
                 f'<td class="metric-deviation">'
-                f'<span class="dev-badge" style="background:{color}">'
-                f'{_fmt_num(dev)} {unit_label} {direction}</span></td>'
+                f'<span class="dev-badge" style="background:{rl["color"]}">'
+                f'{rl["label"]}</span></td>'
                 f'</tr>'
             )
+            if insight:
+                change_rows.append(
+                    f'<tr class="insight-row">'
+                    f'<td colspan="4">\u2192 {_esc(insight)}</td>'
+                    f'</tr>'
+                )
 
         desc = primary.get("description", "")
         rows_html = "\n".join(change_rows)
@@ -276,7 +285,7 @@ def _build_change_cards(event_groups: list, changes: list) -> str:
     <span class="signal-count">{group.get('signal_count', 1)} signal(s)</span>
   </div>
   <table class="change-table">
-    <thead><tr><th>Metric</th><th>Normal</th><th>Now</th><th>Deviation</th></tr></thead>
+    <thead><tr><th>What Changed</th><th>Usual</th><th>Now</th><th>Risk</th></tr></thead>
     <tbody>{rows_html}</tbody>
   </table>
   {f'<p class="change-desc">{_esc(desc)}</p>' if desc else ''}
@@ -286,18 +295,20 @@ def _build_change_cards(event_groups: list, changes: list) -> str:
     for c in changes:
         if c.get("event_ref", "") not in seen_refs:
             family = FAMILY_LABELS.get(c["family"], c["family"])
-            metric = METRIC_LABELS.get(c["metric"], c["metric"])
-            dev = abs(c.get("deviation_stddev", 0))
-            unit = c.get("deviation_unit", "")
-            direction = "above" if c.get("deviation_stddev", 0) >= 0 else "below"
-            unit_label = {"modified_zscore": "MAD", "iqr_normalized": "IQR"}.get(unit, unit)
+            metric_key = c.get("metric", "")
+            metric = METRIC_LABELS.get(metric_key, metric_key)
+            dev = c.get("deviation_stddev", 0)
+            rl = risk_level(dev)
+            direction = "up" if dev >= 0 else "down"
+            insight = metric_insight(metric_key, direction)
             cards.append(f"""
 <div class="change-card">
   <div class="change-header">
     <span class="badge-sm" style="background:{FAMILY_COLORS.get(c['family'], '#6b7280')}">{_esc(family)}</span>
   </div>
   <p class="change-metric">{_esc(metric)}: {_fmt_num(c.get('current', 0))}
-    <span class="dev-badge">{_fmt_num(dev)} {unit_label} {direction}</span></p>
+    <span class="dev-badge" style="background:{rl['color']}">{rl['label']}</span></p>
+  {f'<p class="insight-text">&rarr; {_esc(insight)}</p>' if insight else ''}
   {f'<p class="change-desc">{_esc(c.get("description", ""))}</p>' if c.get("description") else ''}
 </div>""")
 
@@ -312,45 +323,36 @@ def _build_pattern_section(matches: list, candidates: list) -> str:
     for p in matches:
         sources = ", ".join(FAMILY_LABELS.get(s, s) for s in p.get("sources", []))
         metrics = ", ".join(METRIC_LABELS.get(m, m) for m in p.get("metrics", []))
-        corr = p.get("correlation_strength", 0)
+        desc = friendly_pattern(p)
         items.append(
             f'<div class="pattern-card matched">'
-            f'<div class="pattern-badge">Matched</div>'
+            f'<div class="pattern-badge">Known Pattern</div>'
             f'<div class="pattern-sources">{_esc(sources)}</div>'
             f'<div class="pattern-metrics">{_esc(metrics)}</div>'
-            f'<div class="pattern-corr">r = {corr:.2f}</div>'
-            f'{_pattern_desc(p)}'
+            f'{f"""<p class="pattern-desc">{_esc(desc)}</p>""" if desc else ""}'
             f'</div>'
         )
 
     for p in candidates:
         sources = ", ".join(FAMILY_LABELS.get(s, s) for s in p.get("sources", []))
         metrics = ", ".join(METRIC_LABELS.get(m, m) for m in p.get("metrics", []))
-        corr = p.get("correlation_strength", 0)
+        desc = friendly_pattern(p)
         items.append(
             f'<div class="pattern-card candidate">'
-            f'<div class="pattern-badge candidate-badge">Candidate</div>'
+            f'<div class="pattern-badge candidate-badge">Emerging Pattern</div>'
             f'<div class="pattern-sources">{_esc(sources)}</div>'
             f'<div class="pattern-metrics">{_esc(metrics)}</div>'
-            f'<div class="pattern-corr">r = {corr:.2f}</div>'
-            f'{_pattern_desc(p)}'
+            f'{f"""<p class="pattern-desc">{_esc(desc)}</p>""" if desc else ""}'
             f'</div>'
         )
 
     return f"""
 <section class="patterns">
-  <h2>Pattern Recognition</h2>
+  <h2>Recurring Patterns</h2>
   <div class="pattern-grid">
     {"".join(items)}
   </div>
 </section>"""
-
-
-def _pattern_desc(p: dict) -> str:
-    desc = p.get("description_semantic") or p.get("description_statistical", "")
-    if desc:
-        return f'<p class="pattern-desc">{_esc(desc)}</p>'
-    return ""
 
 
 def _build_evidence_section(
@@ -687,6 +689,22 @@ section { margin-bottom: 2.5rem; }
   font-style: italic;
 }
 
+.insight-row td {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  padding-top: 0.1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.15);
+  font-style: italic;
+}
+
+.insight-text {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-top: 0.3rem;
+  font-style: italic;
+}
+
 .pattern-grid { display: grid; gap: 1rem; }
 
 .pattern-card {
@@ -715,7 +733,6 @@ section { margin-bottom: 2.5rem; }
 
 .pattern-sources { font-weight: 600; margin-bottom: 0.2rem; }
 .pattern-metrics { color: var(--text-dim); font-size: 0.85rem; }
-.pattern-corr { font-size: 0.8rem; color: var(--accent); margin-top: 0.3rem; }
 .pattern-desc { font-size: 0.85rem; color: var(--text-dim); margin-top: 0.4rem; }
 
 .evidence-block {

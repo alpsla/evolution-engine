@@ -49,7 +49,9 @@ class Phase31Renderer:
 
         baseline_text = explanation["summary"]
         prompt = (
-            "Rewrite the following explanation to improve clarity and readability. "
+            "Rewrite the following explanation for a product manager audience. "
+            "Use plain English — avoid statistical jargon like 'MAD', 'stddev', 'z-score', or 'deviation'. "
+            "Keep the relative comparison (e.g. '3x more than usual') and the practical insight. "
             "Do not add facts, numbers, judgments, recommendations, or generalizations. "
             "Preserve all numeric values exactly.\n\n"
             f"Explanation:\n{baseline_text}"

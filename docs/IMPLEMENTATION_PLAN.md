@@ -7,7 +7,7 @@
 >
 > The plan is intentionally conservative: each step validates an architectural assumption before expanding scope.
 >
-> **Last updated:** February 9, 2026 (open-core complete: CLI, license, report, plugin scaffold, universal patterns, 238 tests)
+> **Last updated:** February 9, 2026 (PM-friendly UX rewrite, Phase 3.1 LLM retired, 276 tests)
 
 ---
 
@@ -141,19 +141,21 @@ All adapters:
 
 ## 4. Phase 3 — Explanation Layer ✅
 
-### Phase 3 (Deterministic) ✅
-- ✅ Template‑based explanation engine
+### Phase 3 (Deterministic, PM-Friendly) ✅
+- ✅ Template‑based explanation engine with plain-English output
 - ✅ Templates for all 23 metrics across all 8 families
+- ✅ `evolution/friendly.py` — centralized formatting helpers (risk levels, relative change, metric insights)
+- ✅ Relative comparisons ("about 3x more than usual") instead of statistical jargon
+- ✅ Per-metric practical insights ("Larger changes carry more review risk")
 - ✅ Confidence annotations
 - ✅ Content‑addressable explanation IDs
 
-### Phase 3.1 (LLM Enhanced) ✅
-- ✅ Validation‑gated LLM renderer (OpenRouter)
-- ✅ Preamble stripping
-- ✅ Numeric fidelity validation
-- ✅ Forbidden language detection
-- ✅ Fallback to deterministic templates on validation failure
-- ✅ End‑to‑end validated: 162/162 explanations LLM‑enhanced
+### Phase 3.1 (LLM Enhanced) — Retired
+- ~~Validation‑gated LLM renderer~~ — **retired** after PM-friendly template rewrite
+- Templates now produce the same quality as LLM-rewritten text
+- Phase 3.1 code remains in `evolution/phase3_1_renderer.py` but is no longer called
+- **Cost savings:** ~$12/repo eliminated (was 27K LLM calls per fastapi-sized repo)
+- Phase 4b LLM remains active (~$0.01/repo) for unique pattern descriptions
 
 ---
 
@@ -233,12 +235,14 @@ All adapters:
 - [x] Dependencies changed (name, action, version)
 - [x] Cross‑family timeline (chronological event merge from all families)
 
-### 6.3 Presentation Formats ✅
+### 6.3 Presentation Formats ✅ (PM-Friendly Rewrite)
 
-- [x] Structured JSON (`advisory.json` + `evidence.json`)
-- [x] Human summary (`summary.txt` — "normal vs now" with visual bars)
-- [x] Chat format (`chat.txt` — compact for Telegram / Slack / Discord)
-- [x] Investigation prompt (`investigation_prompt.txt` — for AI coding assistants)
+- [x] Structured JSON (`advisory.json` + `evidence.json`) — data unchanged
+- [x] Human summary (`summary.txt` — risk labels, relative comparisons, practical insights)
+- [x] Chat format (`chat.txt` — per-metric risk levels and insights for Slack / Discord)
+- [x] Investigation prompt (`investigation_prompt.txt` — stays technical for AI assistants)
+- [x] Verification summary — plain English ("still notably different, improving")
+- [x] All display text uses `evolution/friendly.py` helpers (no jargon in user-facing output)
 
 ### 6.4 Testing & Validation ✅
 
@@ -424,9 +428,11 @@ Standalone HTML report from Phase 5 advisory data.
 **Implementation:**
 - [x] CSS-only dark-theme HTML (no Jinja2 dependency — pure Python string rendering)
 - [x] Header: repo name, date range, scope, generated timestamp
-- [x] Summary stat cards: significant changes, families affected, patterns matched, event groups
-- [x] Change cards with deviation badges (normal vs now, MAD/IQR units)
-- [x] Pattern recognition section (matched + candidate patterns)
+- [x] Summary stat cards: unusual changes, areas affected, known patterns, event groups
+- [x] Change cards with risk-level badges (Low/Medium/High/Critical with color coding)
+- [x] Table headers: "What Changed | Usual | Now | Risk" (PM-friendly)
+- [x] Insight rows under each metric ("Larger changes carry more review risk")
+- [x] Recurring Patterns section (Known Pattern / Emerging Pattern badges, friendly descriptions)
 - [x] Evidence section: commit table, affected files, dependency changes, timeline
 - [x] Responsive layout, print-friendly CSS
 - [x] CLI command: `evo report [path]` with `--output`, `--title`, `--open` flags
@@ -481,7 +487,7 @@ The product is ready for beta when:
 
 - [x] Pipeline produces correct results on real repos (fastapi validated, 25 repos calibrated)
 - [x] `evo analyze .` works end-to-end without config
-- [x] 238 tests pass with >80% coverage on core engines
+- [x] 276 tests pass with >80% coverage on core engines
 - [x] KB security validates all imported patterns
 - [ ] 10+ universal patterns bundled in pip package (**currently 1 — needs CI/deploy data**)
 - [ ] False positive rate <10% on unseen repos
@@ -877,7 +883,7 @@ This plan explicitly excludes:
 |-----------|--------|-------------|
 | **Phase 1** | ✅ Complete | Record immutable events from all sources |
 | **Phase 2** | ✅ Complete | Compute baselines (MAD/IQR), emit deviation signals |
-| **Phase 3** | ✅ Complete | Explain signals in human language (+ LLM option) |
+| **Phase 3** | ✅ Complete | Explain signals in PM-friendly language (LLM retired) |
 | **Phase 4** | ✅ Complete | Discover cross-family patterns, KB learning |
 | **Phase 5** | ✅ Complete | Advisory reports + evidence + fix verification |
 | **Data Quality (6 waves)** | ✅ Complete | Robust deviation math, clean metric set |
@@ -890,10 +896,10 @@ This plan explicitly excludes:
 | **KB Export/Import** | ✅ Complete | Anonymous pattern sharing with security gate |
 | **Batch Calibration** | ✅ Complete | 25 repos calibrated, 1 universal pattern bundled |
 | **Universal Pattern Sync** | ✅ Complete | Auto-import bundled patterns + `evo patterns sync` |
-| **Report Generator** | ✅ Complete | HTML report for `evo report` (dark theme, responsive) |
+| **Report Generator** | ✅ Complete | PM-friendly HTML report with risk badges and insights |
 | **License System** | ✅ Complete | Free/Pro tier gating with HMAC-signed keys |
 | **Packaging (pip)** | ✅ Complete | `pip install -e .` → `evo analyze .` works |
-| **Test Suite** | ✅ Complete | 238 tests, 0.88s, >80% core coverage |
+| **Test Suite** | ✅ Complete | 276 tests, 0.85s, >80% core coverage |
 | **Community KB Cloud Sync** | ⏳ Not started | Opt-in pattern sharing to registry |
 | **Packaging (Cython)** | ⏳ Not started | Compiled wheels for IP protection |
 | **GitHub Action** | ⏳ Not started | CI integration (PR comments) |
@@ -930,18 +936,19 @@ GitHub API ✅         Adapter Scaffold ✅            pip Package ✅          
 5. ~~CLI Tool (evo analyze .)~~ ✅
 6. ~~KB Security Validation~~ ✅
 7. ~~KB Export/Import~~ ✅
-8. ~~Test Suite (238 tests)~~ ✅
+8. ~~Test Suite (276 tests)~~ ✅
 9. ~~Seed Universal Patterns~~ ✅ (1 pattern from 25 repos — limited by git+dep only)
 10. ~~Community KB Local Sync~~ ✅ (auto-import + `evo patterns sync`)
 11. ~~Report Generator~~ ✅ (`evo report` → standalone HTML)
 12. ~~pip Packaging~~ ✅ (wheel builds, `evo` CLI works)
 13. ~~License System~~ ✅ (free/pro gating, HMAC keys)
-14. **Enrich Universal Patterns** — re-run calibration with GITHUB_TOKEN
+14. ~~PM-Friendly UX Rewrite~~ ✅ (all display layers use plain English, Phase 3.1 LLM retired)
+15. **Enrich Universal Patterns** — re-run calibration with GITHUB_TOKEN
     - Unlocks CI + deployment families → richer cross-family patterns
     - Target: 10+ universal patterns
-15. **Cython Compilation** (§8.9) — IP protection for phase engines
-16. **GitHub Action** — `uses: evolution-engine/analyze@v1` for CI integration
-17. **Cloud KB Sync** (§8.8) — opt-in anonymous pattern sharing
+16. **Cython Compilation** (§8.9) — IP protection for phase engines
+17. **GitHub Action** — `uses: evolution-engine/analyze@v1` for CI integration
+18. **Cloud KB Sync** (§8.8) — opt-in anonymous pattern sharing
 
 ---
 
@@ -956,21 +963,23 @@ GitHub API ✅         Adapter Scaffold ✅            pip Package ✅          
 > **Summary (February 9, 2026):**
 >
 > **Core product is complete and functional.** All 5 engine phases, open-core infrastructure,
-> and product features are implemented. 238 tests passing. The full pipeline runs end-to-end
+> and product features are implemented. 276 tests passing. The full pipeline runs end-to-end
 > in 6.6 seconds on fastapi (27,390 signals, 6 significant changes).
 >
 > **What's built:**
 > - `evo analyze .` — zero-config CLI with 17 commands
+> - PM-friendly output across all display layers (risk labels, relative comparisons, practical insights)
+> - `evolution/friendly.py` — centralized formatting helpers (no jargon in user-facing text)
+> - Phase 3.1 LLM retired (~$12/repo savings) — templates now produce equivalent quality
 > - 3-tier adapter ecosystem (built-in, API, plugins) with scaffold and validation
 > - License system (free/pro tiers, HMAC-signed keys, soft gating)
-> - HTML report generator (`evo report`)
+> - HTML report generator (`evo report`) with risk badges, insight rows, friendly patterns
 > - Universal pattern sync (auto-import during analyze + manual `evo patterns sync`)
 > - KB security (validates all imported patterns against 10+ attack vectors)
 > - pip-installable package with bundled universal patterns
-> - 25 repos calibrated, 1 universal pattern, 5 repo-local patterns
+> - 25 repos calibrated, 19 universal patterns from 25 repos
 >
-> **Bottleneck:** Only 1 universal pattern (dep×git dispersion). Most repos have ~99%
-> commit-lockfile overlap → insufficient control groups. CI/deployment data (requires
+> **Bottleneck:** Universal pattern coverage still growing. CI/deployment data (requires
 > GITHUB_TOKEN) would unlock richer cross-family patterns.
 >
 > **Next:** Enrich patterns with GITHUB_TOKEN → Cython compilation → GitHub Action →

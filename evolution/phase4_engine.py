@@ -871,15 +871,15 @@ class Phase4Engine:
 
         # Build the prompt per PHASE_4_DESIGN.md §5.2
         prompt = (
-            "You are analyzing a set of co-occurring software evolution signals.\n\n"
+            "You are explaining a recurring code change pattern to a product manager.\n\n"
             f"Statistical finding: {pattern.get('description_statistical', '')}\n\n"
             "Signal explanations:\n"
             + "\n".join(signal_explanations)
             + "\n\n"
-            "Describe the structural theme these signals represent in ONE sentence.\n"
+            "Describe what this pattern means in ONE plain-English sentence.\n"
+            "Write for a non-technical audience — avoid jargon like 'correlation', 'deviation', 'stddev'.\n"
             "Do not add judgment, recommendations, or speculation.\n"
-            "Do not use words like \"risk\", \"danger\", \"should\", or \"needs\".\n"
-            "Describe only what is structurally happening."
+            "Describe only what is happening in practical terms."
         )
 
         try:

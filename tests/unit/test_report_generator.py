@@ -185,8 +185,8 @@ class TestGenerateReport:
 
     def test_contains_pattern_section(self, advisory_dir):
         html = generate_report(advisory_dir)
-        assert "Pattern Recognition" in html
-        assert "Matched" in html
+        assert "Recurring Patterns" in html
+        assert "Known Pattern" in html
 
     def test_contains_evidence(self, advisory_dir):
         html = generate_report(advisory_dir)
@@ -242,7 +242,7 @@ class TestGenerateReport:
             "candidate_patterns": [],
         }))
         html = generate_report(tmp_path)
-        assert "No significant changes detected" in html
+        assert "No unusual changes detected" in html
 
 
 class TestHelpers:
