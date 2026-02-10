@@ -22,7 +22,7 @@ from typing import Any, Optional
 
 _DEFAULTS = {
     "sync.privacy_level": 0,          # 0=nothing, 1=metadata, 2=anonymized digests
-    "sync.registry_url": "https://registry.evo.dev/v1",
+    "sync.registry_url": "https://registry.codequal.dev/v1",
     "sync.auto_pull": False,           # auto-pull community patterns on analyze
     "llm.enabled": False,
     "llm.provider": "anthropic",

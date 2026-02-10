@@ -9,7 +9,7 @@ Rate limit: 5 requests per IP per day.
 
 Environment variables:
   GITHUB_BOT_TOKEN — GitHub token with repo:issues scope
-  GITHUB_REPO      — Target repo (e.g. "openclaw/evolution-engine")
+  GITHUB_REPO      — Target repo (e.g. "alpsla/evolution_monitor")
 """
 
 import json
@@ -83,7 +83,7 @@ def handler(request):
 
     # Create GitHub issue
     github_token = os.environ.get("GITHUB_BOT_TOKEN")
-    github_repo = os.environ.get("GITHUB_REPO", "openclaw/evolution-engine")
+    github_repo = os.environ.get("GITHUB_REPO", "alpsla/evolution_monitor")
 
     if not github_token:
         # Log locally if no GitHub token configured
@@ -112,7 +112,7 @@ def handler(request):
 **Requested by:** {email or '_Anonymous_'}
 
 ---
-_Submitted via evo.dev adapter request form._
+_Submitted via codequal.dev adapter request form._
 _Vote with a thumbs-up if you'd also like this adapter!_
 """
 

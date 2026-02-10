@@ -44,7 +44,7 @@ class ProFeatureError(Exception):
             "  - CI, deployment, and security adapters\n"
             "  - LLM-enhanced explanations and semantic patterns\n"
             "  - Community knowledge base sync (coming soon)\n\n"
-            "Set EVO_LICENSE_KEY or visit https://evo.dev/pro\n"
+            "Set EVO_LICENSE_KEY or visit https://codequal.dev/pro\n"
         )
         super().__init__(message)
 

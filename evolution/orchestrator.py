@@ -51,7 +51,7 @@ class Orchestrator:
 
         # Gate LLM features behind Pro tier
         if enable_llm and not self.license.is_pro():
-            self._log("LLM features require Evolution Engine Pro. Set EVO_LICENSE_KEY or visit https://evo.dev/pro")
+            self._log("LLM features require Evolution Engine Pro. Set EVO_LICENSE_KEY or visit https://codequal.dev/pro")
             self.enable_llm = False
         else:
             self.enable_llm = enable_llm
@@ -142,7 +142,7 @@ class Orchestrator:
             f in families_to_run for f in ["ci", "deployment", "security"]
         ):
             log("\nCI/deployment/security data requires Evolution Engine Pro.")
-            log("Set EVO_LICENSE_KEY or visit https://evo.dev/pro")
+            log("Set EVO_LICENSE_KEY or visit https://codequal.dev/pro")
         else:
             if "ci" in families_to_run and self._has_tier2("ci"):
                 api_families.append("ci")

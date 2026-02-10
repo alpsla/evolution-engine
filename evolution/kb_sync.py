@@ -86,7 +86,7 @@ class KBSync:
 
         self._privacy_level = config.get("sync.privacy_level", 0)
         self._registry_url = registry_url or config.get(
-            "sync.registry_url", "https://registry.evo.dev/v1"
+            "sync.registry_url", "https://registry.codequal.dev/v1"
         )
 
     @property
