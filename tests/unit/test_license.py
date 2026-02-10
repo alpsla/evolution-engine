@@ -148,7 +148,7 @@ class TestProFeatureGating:
 
         assert "Test Feature" in str(exc_info.value)
         assert "Evolution Engine Pro" in str(exc_info.value)
-        assert "https://evo.dev/pro" in str(exc_info.value)
+        assert "https://codequal.dev/pro" in str(exc_info.value)
 
     def test_require_pro_passes_for_pro(self, monkeypatch):
         """require_pro() should not raise for Pro tier."""
@@ -291,5 +291,5 @@ class TestProFeatureError:
 
         assert "CI Adapters" in str(err)
         assert "Evolution Engine Pro" in str(err)
-        assert "https://evo.dev/pro" in str(err)
+        assert "https://codequal.dev/pro" in str(err)
         assert err.feature_name == "CI Adapters"

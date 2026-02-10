@@ -32,9 +32,11 @@ from pathlib import Path
 
 import click
 
+from evolution import __version__
+
 
 @click.group()
-@click.version_option(version="0.1.0", prog_name="evo")
+@click.version_option(version=__version__, prog_name="evo")
 def main():
     """Evolution Engine — Git-native codebase evolution indexer."""
     pass
@@ -877,7 +879,7 @@ def license_status(path):
         click.echo("  - LLM-enhanced explanations and semantic patterns")
         click.echo("  - Community knowledge base sync (coming soon)")
         click.echo()
-        click.echo("Set EVO_LICENSE_KEY or visit https://evo.dev/pro")
+        click.echo("Set EVO_LICENSE_KEY or visit https://codequal.dev/pro")
 
 
 @license.command("activate")

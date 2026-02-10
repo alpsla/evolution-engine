@@ -43,3 +43,6 @@ tests/test_walker/
 # Auto Claude data directory
 .auto-claude/
 .vercel
+
+# Secrets / recovery codes
+PyPI-Recovery-Codes-*

@@ -7,7 +7,7 @@ Returns: { "url": "https://checkout.stripe.com/..." }
 Environment variables:
   STRIPE_SECRET_KEY  — Stripe secret key
   STRIPE_PRICE_ID   — Price ID for Pro subscription ($19/month)
-  BASE_URL           — Site base URL (e.g. https://evo.dev)
+  BASE_URL           — Site base URL (e.g. https://codequal.dev)
 """
 
 import json
@@ -23,7 +23,7 @@ def handler(request):
 
     secret_key = os.environ.get("STRIPE_SECRET_KEY")
     price_id = os.environ.get("STRIPE_PRICE_ID")
-    base_url = os.environ.get("BASE_URL", "https://evo.dev")
+    base_url = os.environ.get("BASE_URL", "https://codequal.dev")
 
     if not secret_key or not price_id:
         return _response({"error": "Stripe not configured"}, 500)

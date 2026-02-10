@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 
-_TELEMETRY_URL = "https://evo.dev/api/telemetry"
+_TELEMETRY_URL = "https://codequal.dev/api/telemetry"
 _TIMEOUT = 2  # seconds
 
 

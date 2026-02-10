@@ -60,7 +60,7 @@ class TestEvoConfig:
         cfg = EvoConfig(path=tmp_path / "config.toml")
         assert cfg.get("sync.privacy_level") == 0
         assert cfg.get("llm.enabled") is False
-        assert cfg.get("sync.registry_url") == "https://registry.evo.dev/v1"
+        assert cfg.get("sync.registry_url") == "https://registry.codequal.dev/v1"
 
     def test_get_unknown_key(self, tmp_path):
         cfg = EvoConfig(path=tmp_path / "config.toml")
