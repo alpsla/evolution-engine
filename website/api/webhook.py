@@ -19,6 +19,8 @@ import json
 import os
 from datetime import datetime, timezone
 
+from _axiom import send as axiom_send
+
 
 def handler(request):
     """Handle Stripe webhook events."""
@@ -86,12 +88,15 @@ def _handle_checkout_completed(stripe, customer_id, signing_key):
     )
 
     # Log for observability
-    print(json.dumps({
+    log_entry = {
+        "type": "webhook",
         "event": "license_generated",
         "customer_id": customer_id,
         "tier": "pro",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-    }))
+    }
+    print(json.dumps(log_entry))
+    axiom_send(log_entry)
 
 
 def _handle_subscription_deleted(stripe, customer_id):
@@ -100,11 +105,14 @@ def _handle_subscription_deleted(stripe, customer_id):
         customer_id,
         metadata={"evo_license_key": ""},
     )
-    print(json.dumps({
+    log_entry = {
+        "type": "webhook",
         "event": "license_revoked",
         "customer_id": customer_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-    }))
+    }
+    print(json.dumps(log_entry))
+    axiom_send(log_entry)
 
 
 def _generate_license_key(tier, email, signing_key):

@@ -19,6 +19,8 @@ import time
 
 import urllib.request
 
+from _axiom import send as axiom_send
+
 
 # In-memory rate limit (resets on cold start)
 _rate_limits: dict[str, list[float]] = {}
@@ -87,7 +89,7 @@ def handler(request):
 
     if not github_token:
         # Log locally if no GitHub token configured
-        print(json.dumps({
+        log_entry = {
             "type": "adapter_request",
             "adapter_name": adapter_name,
             "family": family,
@@ -95,7 +97,9 @@ def handler(request):
             "use_case": use_case,
             "email": email,
             "timestamp": now,
-        }))
+        }
+        print(json.dumps(log_entry))
+        axiom_send(log_entry)
         return _response({"success": True, "message": "Request recorded."})
 
     # Build issue body
@@ -144,7 +148,9 @@ _Vote with a thumbs-up if you'd also like this adapter!_
         })
     except Exception as e:
         # Log error but don't expose details
-        print(json.dumps({"error": "github_issue_creation_failed", "detail": str(e)}))
+        error_entry = {"type": "adapter_request", "error": "github_issue_creation_failed", "detail": str(e), "timestamp": time.time()}
+        print(json.dumps(error_entry))
+        axiom_send(error_entry)
         return _response({
             "success": True,
             "message": "Request recorded. We'll follow up soon.",

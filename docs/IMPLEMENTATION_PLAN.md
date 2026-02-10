@@ -7,7 +7,7 @@
 >
 > The plan is intentionally conservative: each step validates an architectural assumption before expanding scope.
 >
-> **Last updated:** February 10, 2026 (Product launch: website, Stripe, telemetry, PyPI prep; 534 tests)
+> **Last updated:** February 10, 2026 (Axiom observability, product launch: website, Stripe, telemetry, PyPI prep; 542 tests)
 
 ---
 
@@ -961,7 +961,20 @@ command name, adapter count, family list, signal count, pattern count, error typ
 **What we NEVER collect:**
 source code, file paths, repo names, git hashes, usernames, emails, IP addresses, advisory content, dependency names, stack traces
 
-**Files:** `evolution/telemetry.py`, `evolution/config.py` (defaults), `evolution/cli.py` (integration), `website/api/telemetry.py`, `website/privacy.html` — 12 tests in `tests/unit/test_telemetry.py`
+**Observability — Axiom Direct Ingest:**
+
+Vercel Hobby plan does not support log drains (Pro-only feature). Instead, all API
+endpoints POST structured events directly to Axiom's HTTP ingest API via a shared
+helper (`website/api/_axiom.py`). Fire-and-forget with 2s timeout — never blocks
+the response. No-op when `AXIOM_TOKEN` is not set (safe for local dev).
+
+- [x] `website/api/_axiom.py` — shared `send(event)` helper
+- [x] All 4 logging endpoints forward events: telemetry, webhook (license_generated, license_revoked), adapter-request
+- [x] Consistent `"type"` field across all events for unified querying
+- [x] Vercel env vars: `AXIOM_TOKEN` (API token) + `AXIOM_DATASET` (default: `evo`)
+- [x] Axiom free tier: 500 GB/month ingest, 30-day retention (vs Vercel's 3-day)
+
+**Files:** `evolution/telemetry.py`, `evolution/config.py` (defaults), `evolution/cli.py` (integration), `website/api/telemetry.py`, `website/api/_axiom.py`, `website/privacy.html` — 12 tests in `tests/unit/test_telemetry.py`
 
 ### 8.14 Website & Landing Page ✅
 
@@ -983,6 +996,7 @@ Single-page dark-themed marketing site using CodeQual's "Ocean Depth" design sys
 - [x] `website/api/get-license.py` — License key retrieval post-checkout
 - [x] `website/api/telemetry.py` — Telemetry event ingestion
 - [x] `website/api/adapter-request.py` — Adapter request → GitHub Issue creation
+- [x] `website/api/_axiom.py` — Shared Axiom direct ingest helper (all endpoints forward events)
 
 **Adapter Catalog:**
 - [x] `evolution/data/adapter_catalog.json` — 26 adapters (9 available, 17 planned)
@@ -993,7 +1007,7 @@ Single-page dark-themed marketing site using CodeQual's "Ocean Depth" design sys
 **Deployment:**
 - [x] `website/vercel.json` — Routes for API, static, SPA fallback
 - [x] `website/requirements.txt` — Stripe dependency for serverless functions
-- [x] Env vars configured: STRIPE_SECRET_KEY, STRIPE_PRICE_ID, STRIPE_WEBHOOK_SECRET, BASE_URL, EVO_LICENSE_SIGNING_KEY
+- [x] Env vars configured: STRIPE_SECRET_KEY, STRIPE_PRICE_ID, STRIPE_WEBHOOK_SECRET, BASE_URL, EVO_LICENSE_SIGNING_KEY, AXIOM_TOKEN, AXIOM_DATASET
 
 ### 8.15 Future Enhancements
 
@@ -1095,7 +1109,7 @@ This plan explicitly excludes:
 | **Report Generator** | ✅ Complete | PM-friendly HTML report with risk badges and insights |
 | **License System** | ✅ Complete | Free/Pro tier gating with HMAC-signed keys |
 | **Packaging (pip)** | ✅ Complete | `pip install -e .` → `evo analyze .` works |
-| **Test Suite** | ✅ Complete | 534 tests, 1.5s, >80% core coverage |
+| **Test Suite** | ✅ Complete | 542 tests, 1.5s, >80% core coverage |
 | **Source Prescan** | ✅ Complete | SDK fingerprint detection (Datadog, Sentry, etc.) |
 | **AI Agent: investigate** | ✅ Complete | Feed advisory into AI agent for root cause analysis |
 | **AI Agent: fix + validate** | ✅ Complete | AI proposes fixes, EE validates until clear |
@@ -1104,6 +1118,7 @@ This plan explicitly excludes:
 | **Packaging (Cython)** | 🔄 Build script done | Compiled wheels — CI builds pending |
 | **Configurable License Key** | ✅ Complete | `EVO_LICENSE_SIGNING_KEY` env var for production |
 | **Opt-in Telemetry** | ✅ Complete | Anonymous usage stats, `DO_NOT_TRACK` support, 12 tests |
+| **Axiom Observability** | ✅ Complete | Direct ingest from all API endpoints, 30-day retention (free tier) |
 | **Website & Landing Page** | ✅ Complete | Ocean Depth theme, Vercel deployed, docs + privacy pages |
 | **Stripe Integration** | ✅ Complete | Checkout, webhook, license generation, success page |
 | **Adapter Catalog** | ✅ Complete | 26 adapters, request system → GitHub Issues |
@@ -1170,11 +1185,14 @@ Docs page ✅                    Privacy page ✅
 29. ~~Stripe Pro Integration~~ ✅ (checkout, webhook, license generation)
 30. ~~Adapter Catalog & Requests~~ ✅ (26 adapters, GitHub Issue creation)
 
+**Completed (31):**
+31. ~~Axiom observability~~ ✅ — direct ingest from all API endpoints (bypasses Vercel Pro log drain requirement)
+
 **Next — PyPI & Beta:**
-31. **PyPI publication** — `python -m build && twine upload dist/*`
-32. **Stripe end-to-end test** — test purchase in sandbox, verify license key
-33. **Custom domain** — configure codequal.dev for Vercel
-34. **Community beta** — announce, gather feedback
+32. **PyPI publication** — `python -m build && twine upload dist/*`
+33. **Stripe end-to-end test** — test purchase in sandbox, verify license key
+34. **Custom domain** — configure codequal.dev for Vercel
+35. **Community beta** — announce, gather feedback
 
 ---
 
@@ -1184,10 +1202,11 @@ The remaining items before public beta:
 
 | # | Task | Effort | Blocker? |
 |---|------|--------|----------|
-| 31 | **PyPI publication** — `python -m build && twine upload dist/*` | Low | Yes — users can't `pip install` without it |
-| 32 | **Stripe end-to-end test** — sandbox purchase, verify license key generation | Low | Yes — must work before accepting payments |
-| 33 | **Custom domain** — configure codequal.dev for Vercel | Low | No — vanity URL, current `.vercel.app` works |
-| 34 | **Community beta** — announce, gather feedback | Low | No — can begin once 31+32 are verified |
+| 31 | ~~Axiom observability~~ ✅ — direct ingest, 30-day retention | Done | — |
+| 32 | **PyPI publication** — `python -m build && twine upload dist/*` | Low | Yes — users can't `pip install` without it |
+| 33 | **Stripe end-to-end test** — sandbox purchase, verify license key generation | Low | Yes — must work before accepting payments |
+| 34 | **Custom domain** — configure codequal.dev for Vercel | Low | No — vanity URL, current `.vercel.app` works |
+| 35 | **Community beta** — announce, gather feedback | Low | No — can begin once 32+33 are verified |
 
 ---
 
@@ -1234,6 +1253,7 @@ The remaining items before public beta:
 > - **Stripe integration** — Pro subscription checkout, webhook license generation, success page
 > - **Opt-in telemetry** (`evolution/telemetry.py`) — anonymous usage stats, DO_NOT_TRACK support
 > - **Adapter catalog** (`evolution/data/adapter_catalog.json`) — 26 adapters with request system
+> - **Axiom observability** (`website/api/_axiom.py`) — direct ingest from all API endpoints (30-day retention, bypasses Vercel Pro log drain)
 >
 > **Remaining:**
 > - PyPI package publication

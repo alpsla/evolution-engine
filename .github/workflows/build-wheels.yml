@@ -54,9 +54,6 @@ jobs:
           - os: macos-14
             arch: arm64
             cibw_archs: arm64
-          - os: macos-13
-            arch: x86_64
-            cibw_archs: x86_64
           - os: windows-latest
             arch: x86_64
             cibw_archs: AMD64

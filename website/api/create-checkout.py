@@ -13,11 +13,11 @@ Environment variables:
 import json
 import os
 
-import stripe
-
 
 def handler(request):
     """Create a Stripe Checkout session for Pro subscription."""
+    import stripe
+
     if request.method != "POST":
         return _response({"error": "Method not allowed"}, 405)
 

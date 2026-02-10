@@ -11,6 +11,8 @@ Rate limit: 100 events/hour per anon_id (in-memory, resets per cold start).
 import json
 import time
 
+from _axiom import send as axiom_send
+
 # In-memory rate limit (resets on cold start)
 _rate_limits: dict[str, list[float]] = {}
 _MAX_EVENTS_PER_HOUR = 100
@@ -68,6 +70,7 @@ def handler(request):
         "timestamp": now,
     }
     print(json.dumps(log_entry))
+    axiom_send(log_entry)
 
     return _response({"ok": True})
 
