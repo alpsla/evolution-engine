@@ -7,7 +7,7 @@
 >
 > The plan is intentionally conservative: each step validates an architectural assumption before expanding scope.
 >
-> **Last updated:** February 9, 2026 (PM-friendly UX rewrite, Phase 3.1 LLM retired, 276 tests)
+> **Last updated:** February 9, 2026 (source prescan design, AI agent integration design, market research)
 
 ---
 
@@ -802,13 +802,134 @@ Opt-in sync with community pattern registry.
 | Team | $99/mo/10 | all | Shared patterns (future) |
 | Enterprise | custom | all | Self-hosted sync (future) |
 
-### 8.11 Future Enhancements
+### 8.11 Source Prescan — SDK Fingerprint Detection ⏳
+
+> **Status: ⏳ Not started — design complete, fingerprint DB ready**
+>
+> Auto-detect external tools (Datadog, Sentry, New Relic, etc.) by scanning
+> dependency lockfiles, config files, and import statements. Suggests adapters
+> the user can optionally connect to enrich analysis.
+
+**Three detection layers:**
+
+| Layer | What it scans | Cost | Examples |
+|-------|-------------|------|---------|
+| Config files | Filenames in repo | ~0ms (Glob) | `sonar-project.properties`, `.snyk`, `datadog.yaml` |
+| SDK packages | Already-parsed lockfiles | ~0ms (in-memory) | `dd-trace`, `@sentry/node`, `newrelic` |
+| Import statements | Quick grep of source | ~1-2s | `import sentry_sdk`, `from datadog import` |
+
+**Fingerprint database:** `evolution/data/sdk_fingerprints.json` — maps 20 services across 8 families:
+- Monitoring: Datadog, New Relic, Grafana, Prometheus, OpenTelemetry, Elastic APM, Azure Monitor
+- Error tracking: Sentry
+- Incidents: PagerDuty, OpsGenie, Statuspage
+- Security: Snyk, Semgrep
+- Quality: SonarQube, Codecov
+- Code review: Qodo, CodeRabbit
+- Work items: Jira, Linear
+- Feature flags: LaunchDarkly, Unleash
+
+**CLI integration:**
+- `evo sources` — shows connected + detected (hints, not pushes)
+- `evo adapter list` — full catalog with detection status
+- `evo sources --what-if <adapters>` — estimates cross-family impact without installing
+
+**Key principle:** Soft sell. "We noticed `dd-trace` in your dependencies — here's what connecting Datadog would add." Always optional, user decides based on data.
+
+**Tasks:**
+1. [ ] Implement `SourcePrescan` class — scans configs, lockfiles, imports against fingerprint DB
+2. [ ] Wire prescan into `evo sources` CLI command
+3. [ ] Wire prescan into `evo adapter list` (show detected status)
+4. [ ] Implement `--what-if` estimator (cross-family combination math + pattern type descriptions)
+5. [ ] Add prescan summary to `evo analyze` output (non-intrusive hint at bottom)
+
+**Files needed:** `evolution/prescan.py`, `evolution/data/sdk_fingerprints.json` (ready)
+
+### 8.12 AI Agent Integration — Detect → Investigate → Fix → Validate ⏳
+
+> **Status: ⏳ Not started — design complete**
+>
+> The advisory's investigation prompt is already designed for AI agents.
+> This section adds explicit CLI commands and a GitHub Action workflow
+> that closes the loop: EE detects → AI investigates → AI fixes → EE validates.
+
+**The feedback loop (iterates until EE confirms all clear):**
+```
+1. evo analyze .       → EE detects anomalies, drift, patterns
+2. evo investigate .   → AI agent reads advisory, investigates root causes
+3. evo fix .           → AI agent proposes fixes on branch
+4. evo verify .        → EE re-analyzes: is the advisory resolved?
+       │
+   ┌───┴────────┐
+   ALL CLEAR    RESIDUAL ISSUES
+   Advisory     EE feeds remaining
+   resolved →   findings back to
+   ready for    AI agent → step 2
+   human        (automatic iteration
+   review       up to --max-iterations)
+```
+
+The loop is not one-shot — it iterates like a RALF (Review-Analyze-Loop-Fix) cycle.
+The AI agent gets EE's residual findings as context for each iteration, so it
+doesn't repeat failed fixes. The loop terminates when:
+- **All advisory items resolved** (ideal outcome), or
+- **Max iterations reached** (default 3) — human reviews remaining items, or
+- **No progress** — same advisory after fix attempt → stops to avoid infinite loop
+
+**Phase 1 — `evo investigate` (AI reads EE output):**
+- Takes Phase 5 advisory JSON + investigation prompt
+- Feeds into AI coding agent (Claude Code, Cursor, or any tool via `--agent` flag)
+- Produces structured investigation report: root cause per finding, suggested fix, confidence
+- Output: `investigation.json` + `investigation.txt`
+- Fallback: `--show-prompt` prints the prompt for manual paste into any AI tool
+
+**Phase 2 — `evo fix` (AI writes code, EE validates):**
+- Reads investigation report
+- AI agent creates branch, applies minimal targeted fixes
+- Runs `evo verify` on the fix branch automatically
+- If advisory clears: reports success, PR ready for human review
+- If issues remain: reports residual findings, can iterate (`--max-iterations 3`)
+- `--dry-run` previews changes without committing
+
+**Phase 3 — GitHub Action (continuous loop on every PR):**
+```yaml
+- uses: evolution-engine/analyze@v1
+  with:
+    comment: true           # Risk summary on PR
+    investigate: true       # AI investigation on High/Critical
+    suggest-fixes: true     # Inline fix suggestions as review comments
+    validate-on-push: true  # Re-run and compare on subsequent pushes
+```
+- On each push: EE compares current vs previous advisory
+- PR comment updates: "3 of 6 issues resolved, 2 improving, 1 new regression"
+- Loop continues until clear or team accepts residual risk
+
+**Key design decisions:**
+- **EE never auto-merges** — human always has final say
+- **EE validates its own AI** — the fix loop prevents AI from introducing new drift
+- **Agent-agnostic** — works with Claude Code, Cursor, Copilot, or custom scripts
+- **Investigation prompt stays technical** — designed for machines, not PMs
+- **PM report stays friendly** — designed for humans, not machines
+- Two audiences, two outputs, one pipeline
+
+**Tasks:**
+1. [ ] Implement `evo investigate` — feed advisory into AI agent, produce investigation report
+2. [ ] Implement `evo analyze . --show-prompt` — print investigation prompt to stdout
+3. [ ] Implement `evo fix . --dry-run` — AI agent proposes fixes, preview mode
+4. [ ] Implement `evo fix .` — create branch, apply fixes, run `evo verify` automatically
+5. [ ] Implement `--max-iterations` for fix loop (default 3)
+6. [ ] GitHub Action: `evolution-engine/analyze@v1` with comment + investigate + validate
+7. [ ] GitHub Action: PR comment update on subsequent pushes (diff vs previous advisory)
+8. [ ] Agent abstraction layer — pluggable backends (Claude API, local Ollama, custom)
+
+**Files needed:** `evolution/investigator.py`, `evolution/fixer.py`, `evolution/agents/base.py`, `evolution/agents/claude.py`, `.github/actions/analyze/action.yml`
+
+### 8.13 Future Enhancements
 
 - PostgreSQL + pgvector migration (multi-tenant, when SaaS tier exists)
-- Integrated AI Investigation (direct API call to coding assistant)
 - Additional vendor adapters (GitLab CI, Jenkins, npm, Cargo, etc.)
 - Real-time event streaming (webhooks vs batch polling)
 - IDE extensions (VS Code, JetBrains) — surfaces advisories where code is written
+- Trend dashboard — multi-run advisory comparison over time
 
 ---
 
@@ -873,7 +994,6 @@ This plan explicitly excludes:
 - Blocking enforcement (CI integration is **advisory**, never blocking)
 - Global risk scoring
 - Semantic intent inference
-- Automated code fixes (the system provides evidence, not patches)
 
 ---
 
@@ -900,35 +1020,45 @@ This plan explicitly excludes:
 | **License System** | ✅ Complete | Free/Pro tier gating with HMAC-signed keys |
 | **Packaging (pip)** | ✅ Complete | `pip install -e .` → `evo analyze .` works |
 | **Test Suite** | ✅ Complete | 276 tests, 0.85s, >80% core coverage |
+| **Source Prescan** | ⏳ Not started | SDK fingerprint detection (Datadog, Sentry, etc.) |
+| **AI Agent: investigate** | ⏳ Not started | Feed advisory into AI agent for root cause analysis |
+| **AI Agent: fix + validate** | ⏳ Not started | AI proposes fixes, EE validates until clear |
+| **GitHub Action** | ⏳ Not started | CI integration (PR comments + investigate + validate loop) |
 | **Community KB Cloud Sync** | ⏳ Not started | Opt-in pattern sharing to registry |
 | **Packaging (Cython)** | ⏳ Not started | Compiled wheels for IP protection |
-| **GitHub Action** | ⏳ Not started | CI integration (PR comments) |
 
 ### Execution Timeline
 
 ```
-Engine (Done)         Open-Core (Done)              Product (Done)           Remaining
-─────────────         ────────────────              ──────────────           ─────────
-Phase 1-5 ✅          Adapter Registry ✅            Batch Calibration ✅      More Universal
-6-Wave Fix ✅         CLI (17 commands) ✅           Report Generator ✅       Patterns (needs
-Adapters ✅           KB Security ✅                 Universal Sync ✅         GITHUB_TOKEN)
-Walker ✅             KB Export/Import ✅            License System ✅              │
-GitHub API ✅         Adapter Scaffold ✅            pip Package ✅                 │
-                      238 Tests ✅                                            Cython Wheels
-                                                                                  │
-╔══════════════════════════════════════════════════════════════╗              GitHub Action
-║ Core product is complete and functional.                    ║                    │
-║ evo analyze . works end-to-end with zero config.            ║              Cloud KB Sync
-║ Free/Pro gating, HTML reports, plugin ecosystem ready.      ║
-║                                                             ║
-║ Bottleneck: only 1 universal pattern.                       ║
-║ Unlock: run calibration WITH GITHUB_TOKEN for CI/deploy     ║
-║ data → richer cross-family patterns.                        ║
-╚══════════════════════════════════════════════════════════════╝
+Engine (Done)         Open-Core (Done)              Product (Done)
+─────────────         ────────────────              ──────────────
+Phase 1-5 ✅          Adapter Registry ✅            Batch Calibration ✅
+6-Wave Fix ✅         CLI (17 commands) ✅           Report Generator ✅
+Adapters ✅           KB Security ✅                 Universal Sync ✅ (19 patterns)
+Walker ✅             KB Export/Import ✅            License System ✅
+GitHub API ✅         Adapter Scaffold ✅            pip Package ✅
+                      276 Tests ✅                   PM-Friendly UX ✅
+                                                     Integrations Doc ✅
+                                                     Market Research ✅
+
+Priority 1            Priority 2                    Priority 3            Priority 4
+──────────            ──────────                    ──────────            ──────────
+Source Prescan        evo investigate               GitHub Action         Enrich Patterns
+  SDK fingerprints      AI reads advisory             PR comments           GITHUB_TOKEN
+  evo sources           Root cause report             Investigate           30+ patterns
+  evo adapter list      Agent abstraction             Suggest fixes              │
+  --what-if hint        --show-prompt                 Validate loop        Cython Wheels
+                             │                             │                    │
+                        evo fix                       Action validates     Cloud KB Sync
+                          AI applies fixes            on every push             │
+                          evo verify auto                                  Product Launch
+                          Iterate until clear
+                          Human approves
 ```
 
 ### Immediate Next Actions
 
+**Completed (1–14):**
 1. ~~Build Git History Walker Adapter~~ ✅
 2. ~~Build GitHub API Adapters~~ ✅
 3. ~~6-Wave Data Quality Fix~~ ✅
@@ -937,18 +1067,49 @@ GitHub API ✅         Adapter Scaffold ✅            pip Package ✅          
 6. ~~KB Security Validation~~ ✅
 7. ~~KB Export/Import~~ ✅
 8. ~~Test Suite (276 tests)~~ ✅
-9. ~~Seed Universal Patterns~~ ✅ (1 pattern from 25 repos — limited by git+dep only)
+9. ~~Seed Universal Patterns~~ ✅ (19 patterns from 25 repos)
 10. ~~Community KB Local Sync~~ ✅ (auto-import + `evo patterns sync`)
 11. ~~Report Generator~~ ✅ (`evo report` → standalone HTML)
 12. ~~pip Packaging~~ ✅ (wheel builds, `evo` CLI works)
 13. ~~License System~~ ✅ (free/pro gating, HMAC keys)
 14. ~~PM-Friendly UX Rewrite~~ ✅ (all display layers use plain English, Phase 3.1 LLM retired)
-15. **Enrich Universal Patterns** — re-run calibration with GITHUB_TOKEN
+
+**Priority 1 — Source Prescan (§8.11):**
+15. **SDK Fingerprint Prescan** — detect Datadog, Sentry, New Relic, etc. from lockfiles/configs
+    - [ ] `SourcePrescan` class scans against `sdk_fingerprints.json`
+    - [ ] `evo sources` command (connected + detected + hints)
+    - [ ] `evo adapter list` shows detection status
+    - [ ] `evo sources --what-if` estimates cross-family impact
+    - [ ] Non-intrusive hint at bottom of `evo analyze` output
+
+**Priority 2 — AI Agent Integration (§8.12):**
+16. **`evo investigate`** — feed advisory into AI agent for root cause analysis
+    - [ ] Read Phase 5 advisory + investigation prompt
+    - [ ] Agent abstraction layer (pluggable: Claude API, Cursor, Ollama, custom)
+    - [ ] Structured investigation report (`investigation.json` + `.txt`)
+    - [ ] `--show-prompt` for manual paste into any AI tool
+17. **`evo fix` + validate loop** — AI proposes fixes, EE validates until advisory clears
+    - [ ] AI creates branch, applies minimal fixes
+    - [ ] `evo verify` runs automatically on fix branch
+    - [ ] Iterate until advisory clears or `--max-iterations` reached (default 3)
+    - [ ] `--dry-run` previews without committing
+    - [ ] Human always has final approval (EE never auto-merges)
+
+**Priority 3 — CI Integration:**
+18. **GitHub Action** — `uses: evolution-engine/analyze@v1`
+    - [ ] PR comment with risk summary
+    - [ ] Optional AI investigation on High/Critical findings
+    - [ ] Inline fix suggestions as review comments
+    - [ ] Re-run + compare on subsequent pushes ("3 of 6 resolved, 1 regression")
+    - [ ] Validate loop: update PR comment until advisory clears or team accepts
+
+**Priority 4 — Enrichment & Distribution:**
+19. **Enrich Universal Patterns** — re-run calibration with GITHUB_TOKEN
     - Unlocks CI + deployment families → richer cross-family patterns
-    - Target: 10+ universal patterns
-16. **Cython Compilation** (§8.9) — IP protection for phase engines
-17. **GitHub Action** — `uses: evolution-engine/analyze@v1` for CI integration
-18. **Cloud KB Sync** (§8.8) — opt-in anonymous pattern sharing
+    - Target: 30+ universal patterns
+20. **Cython Compilation** (§8.9) — IP protection for phase engines
+21. **Cloud KB Sync** (§8.8) — opt-in anonymous pattern sharing
+22. **Marketing materials** — integrations doc (done), demo script, landing page
 
 ---
 
@@ -976,13 +1137,23 @@ GitHub API ✅         Adapter Scaffold ✅            pip Package ✅          
 > - HTML report generator (`evo report`) with risk badges, insight rows, friendly patterns
 > - Universal pattern sync (auto-import during analyze + manual `evo patterns sync`)
 > - KB security (validates all imported patterns against 10+ attack vectors)
-> - pip-installable package with bundled universal patterns
-> - 25 repos calibrated, 19 universal patterns from 25 repos
+> - pip-installable package with 19 bundled universal patterns from 25 repos
+> - SDK fingerprint database for 20 external services (Datadog, Sentry, etc.)
+> - Integrations & AI agent workflow design (`docs/INTEGRATIONS.md`)
+> - Market research report (`.calibration/MARKET_RESEARCH_2026-02-09.md`)
 >
-> **Bottleneck:** Universal pattern coverage still growing. CI/deployment data (requires
-> GITHUB_TOKEN) would unlock richer cross-family patterns.
+> **Next priorities (in order):**
+> 1. **Source Prescan** — auto-detect existing tools from lockfiles/configs, hint to users
+> 2. **AI Agent Integration** — `evo investigate` → `evo fix` → `evo verify` loop
+>    (iterate until EE confirms everything is back to normal)
+> 3. **GitHub Action** — PR comments with risk summary + investigate + validate loop
+> 4. **Enrich patterns** → Cython → Cloud KB sync → product launch
 >
-> **Next:** Enrich patterns with GITHUB_TOKEN → Cython compilation → GitHub Action →
-> cloud KB sync → product launch.
->
-> The engagement flow: **evo analyze . → Advisory → Report → Investigation Prompt → Fix → evo verify → Repeat.**
+> **The engagement flow:**
+> ```
+> evo analyze → Advisory → AI investigates → AI fixes → evo verify
+>                                                          │
+>                                                    PASS? ─┤
+>                                                    Yes: done
+>                                                    No: loop back ↑
+> ```

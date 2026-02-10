@@ -1,0 +1,302 @@
+{
+  "_description": "Maps SDK package names and config files to external services. Used by the prescan to detect tools already in use.",
+  "_format": "Each entry: service name → { adapter, family, detect_packages (in lockfiles), detect_configs (file paths/globs), detect_imports (Python/JS/Go import patterns) }",
+
+  "datadog": {
+    "adapter": "evo-adapter-datadog",
+    "family": "monitoring",
+    "display_name": "Datadog",
+    "detect_packages": [
+      "dd-trace", "ddtrace", "datadog", "datadog-api-client",
+      "@datadog/browser-rum", "@datadog/browser-logs",
+      "datadog-lambda", "datadog-ci"
+    ],
+    "detect_configs": [
+      "datadog.yaml", "datadog.yml", "dd-conf.yaml"
+    ],
+    "detect_imports": [
+      "ddtrace", "datadog", "@datadog/"
+    ]
+  },
+
+  "newrelic": {
+    "adapter": "evo-adapter-newrelic",
+    "family": "monitoring",
+    "display_name": "New Relic",
+    "detect_packages": [
+      "newrelic", "@newrelic/native-metrics", "@newrelic/next",
+      "@newrelic/browser-agent", "newrelic-lambda"
+    ],
+    "detect_configs": [
+      "newrelic.yml", "newrelic.js", "newrelic.ini"
+    ],
+    "detect_imports": [
+      "newrelic", "@newrelic/"
+    ]
+  },
+
+  "sentry": {
+    "adapter": "evo-adapter-sentry",
+    "family": "error_tracking",
+    "display_name": "Sentry",
+    "detect_packages": [
+      "@sentry/node", "@sentry/browser", "@sentry/react",
+      "@sentry/vue", "@sentry/angular", "@sentry/nextjs",
+      "@sentry/svelte", "@sentry/remix", "@sentry/astro",
+      "sentry-sdk", "sentry_sdk", "@sentry/profiling-node"
+    ],
+    "detect_configs": [
+      ".sentryclirc", "sentry.properties", "sentry.client.config.js",
+      "sentry.server.config.js", "sentry.edge.config.js"
+    ],
+    "detect_imports": [
+      "sentry_sdk", "@sentry/"
+    ]
+  },
+
+  "pagerduty": {
+    "adapter": "evo-adapter-pagerduty",
+    "family": "incidents",
+    "display_name": "PagerDuty",
+    "detect_packages": [
+      "@pagerduty/pdjs", "pypd", "pagerduty"
+    ],
+    "detect_configs": [],
+    "detect_imports": [
+      "pypd", "pagerduty", "@pagerduty/"
+    ]
+  },
+
+  "opsgenie": {
+    "adapter": "evo-adapter-opsgenie",
+    "family": "incidents",
+    "display_name": "OpsGenie",
+    "detect_packages": [
+      "opsgenie-sdk", "@opsgenie/sdk"
+    ],
+    "detect_configs": [],
+    "detect_imports": [
+      "opsgenie", "@opsgenie/"
+    ]
+  },
+
+  "sonarqube": {
+    "adapter": "evo-adapter-sonarqube",
+    "family": "quality_gate",
+    "display_name": "SonarQube",
+    "detect_packages": [
+      "sonarqube-scanner", "sonar-scanner", "sonarqube-verify"
+    ],
+    "detect_configs": [
+      "sonar-project.properties", ".sonarcloud.properties"
+    ],
+    "detect_imports": []
+  },
+
+  "snyk": {
+    "adapter": "evo-adapter-snyk",
+    "family": "security_scan",
+    "display_name": "Snyk",
+    "detect_packages": [
+      "snyk", "@snyk/protect"
+    ],
+    "detect_configs": [
+      ".snyk"
+    ],
+    "detect_imports": []
+  },
+
+  "semgrep": {
+    "adapter": "evo-adapter-semgrep",
+    "family": "security_scan",
+    "display_name": "Semgrep",
+    "detect_packages": [
+      "semgrep"
+    ],
+    "detect_configs": [
+      ".semgrep.yml", ".semgrep.yaml", ".semgrepignore"
+    ],
+    "detect_imports": []
+  },
+
+  "codecov": {
+    "adapter": "evo-adapter-codecov",
+    "family": "quality_gate",
+    "display_name": "Codecov",
+    "detect_packages": [
+      "@codecov/webpack-plugin", "@codecov/vite-plugin",
+      "@codecov/rollup-plugin", "codecov"
+    ],
+    "detect_configs": [
+      "codecov.yml", "codecov.yaml", ".codecov.yml"
+    ],
+    "detect_imports": []
+  },
+
+  "grafana": {
+    "adapter": "evo-adapter-grafana",
+    "family": "monitoring",
+    "display_name": "Grafana",
+    "detect_packages": [
+      "@grafana/data", "@grafana/ui", "@grafana/runtime",
+      "grafana-api", "grafana_client"
+    ],
+    "detect_configs": [
+      "grafana.ini", "grafana.yml"
+    ],
+    "detect_imports": [
+      "grafana_client", "@grafana/"
+    ]
+  },
+
+  "prometheus": {
+    "adapter": "evo-adapter-prometheus",
+    "family": "monitoring",
+    "display_name": "Prometheus",
+    "detect_packages": [
+      "prom-client", "prometheus_client", "prometheus-client",
+      "prometheus_flask_instrumentator"
+    ],
+    "detect_configs": [
+      "prometheus.yml", "prometheus.yaml"
+    ],
+    "detect_imports": [
+      "prometheus_client", "prom-client"
+    ]
+  },
+
+  "opentelemetry": {
+    "adapter": "evo-adapter-otel",
+    "family": "monitoring",
+    "display_name": "OpenTelemetry",
+    "detect_packages": [
+      "@opentelemetry/api", "@opentelemetry/sdk-node",
+      "@opentelemetry/sdk-trace-base", "@opentelemetry/exporter-trace-otlp-http",
+      "opentelemetry-api", "opentelemetry-sdk",
+      "opentelemetry-instrumentation", "opentelemetry-exporter-otlp"
+    ],
+    "detect_configs": [
+      "otel-collector-config.yaml", "otel-config.yaml"
+    ],
+    "detect_imports": [
+      "opentelemetry", "@opentelemetry/"
+    ]
+  },
+
+  "azure_monitor": {
+    "adapter": "evo-adapter-azure-monitor",
+    "family": "monitoring",
+    "display_name": "Azure Monitor",
+    "detect_packages": [
+      "applicationinsights", "@microsoft/applicationinsights-web",
+      "opencensus-ext-azure"
+    ],
+    "detect_configs": [],
+    "detect_imports": [
+      "applicationinsights", "opencensus.ext.azure"
+    ]
+  },
+
+  "elastic_apm": {
+    "adapter": "evo-adapter-elastic",
+    "family": "monitoring",
+    "display_name": "Elastic APM",
+    "detect_packages": [
+      "elastic-apm-node", "elastic-apm-python",
+      "@elastic/apm-rum", "@elastic/apm-rum-vue",
+      "@elastic/apm-rum-react", "@elastic/apm-rum-angular"
+    ],
+    "detect_configs": [],
+    "detect_imports": [
+      "elasticapm", "elastic-apm-node", "@elastic/apm-rum"
+    ]
+  },
+
+  "jira": {
+    "adapter": "evo-adapter-jira",
+    "family": "work_items",
+    "display_name": "Jira",
+    "detect_packages": [
+      "jira", "jira-client", "jira2"
+    ],
+    "detect_configs": [],
+    "detect_imports": [
+      "jira"
+    ]
+  },
+
+  "linear": {
+    "adapter": "evo-adapter-linear",
+    "family": "work_items",
+    "display_name": "Linear",
+    "detect_packages": [
+      "@linear/sdk"
+    ],
+    "detect_configs": [],
+    "detect_imports": [
+      "@linear/sdk"
+    ]
+  },
+
+  "qodo": {
+    "adapter": "evo-adapter-qodo",
+    "family": "code_review",
+    "display_name": "Qodo",
+    "detect_packages": [
+      "codiumai", "@codiumai/cover-agent"
+    ],
+    "detect_configs": [
+      ".codiumai", "qodo.yml"
+    ],
+    "detect_imports": []
+  },
+
+  "coderabbit": {
+    "adapter": "evo-adapter-coderabbit",
+    "family": "code_review",
+    "display_name": "CodeRabbit",
+    "detect_packages": [],
+    "detect_configs": [
+      ".coderabbit.yaml"
+    ],
+    "detect_imports": []
+  },
+
+  "launchdarkly": {
+    "adapter": "evo-adapter-launchdarkly",
+    "family": "feature_flags",
+    "display_name": "LaunchDarkly",
+    "detect_packages": [
+      "launchdarkly-node-server-sdk", "launchdarkly-server-sdk",
+      "launchdarkly-js-client-sdk", "launchdarkly-react-client-sdk",
+      "ldclient-py"
+    ],
+    "detect_configs": [],
+    "detect_imports": [
+      "ldclient", "launchdarkly"
+    ]
+  },
+
+  "unleash": {
+    "adapter": "evo-adapter-unleash",
+    "family": "feature_flags",
+    "display_name": "Unleash",
+    "detect_packages": [
+      "unleash-client", "unleash-proxy-client",
+      "@unleash/proxy-client-react", "@unleash/nextjs"
+    ],
+    "detect_configs": [],
+    "detect_imports": [
+      "unleash_client", "unleash-client"
+    ]
+  },
+
+  "statuspage": {
+    "adapter": "evo-adapter-statuspage",
+    "family": "incidents",
+    "display_name": "Statuspage",
+    "detect_packages": [],
+    "detect_configs": [],
+    "detect_imports": []
+  }
+}
