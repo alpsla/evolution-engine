@@ -20,74 +20,69 @@ import os
 from datetime import datetime, timezone
 
 from _axiom import send as axiom_send
+from _handler import JSONHandler
 
 
-def handler(request):
+class handler(JSONHandler):
     """Handle Stripe webhook events."""
-    import stripe
 
-    secret_key = os.environ.get("STRIPE_SECRET_KEY")
-    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
-    signing_key = os.environ.get("EVO_LICENSE_SIGNING_KEY", "evo-license-v1-dev-key-replace-in-production")
+    def do_POST(self):
+        import stripe
 
-    if not secret_key or not webhook_secret:
-        return _response({"error": "Not configured"}, 500)
+        secret_key = os.environ.get("STRIPE_SECRET_KEY")
+        webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
+        signing_key = os.environ.get("EVO_LICENSE_SIGNING_KEY", "evo-license-v1-dev-key-replace-in-production")
 
-    stripe.api_key = secret_key
+        if not secret_key or not webhook_secret:
+            return self._send_json({"error": "Not configured"}, 500)
 
-    # Verify webhook signature
-    payload = request.body if hasattr(request, 'body') else request.get_data()
-    sig_header = (
-        request.headers.get("Stripe-Signature")
-        or request.headers.get("stripe-signature", "")
-    )
+        stripe.api_key = secret_key
 
-    try:
-        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-    except (ValueError, stripe.SignatureVerificationError):
-        return _response({"error": "Invalid signature"}, 400)
+        # Verify webhook signature
+        payload = self._read_body()
+        sig_header = self._get_header("Stripe-Signature") or self._get_header("stripe-signature")
 
-    # Handle events
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        customer_id = session.get("customer")
-        if customer_id:
-            _handle_checkout_completed(stripe, customer_id, signing_key)
+        try:
+            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+        except (ValueError, stripe.SignatureVerificationError):
+            return self._send_json({"error": "Invalid signature"}, 400)
 
-    elif event["type"] == "customer.subscription.deleted":
-        subscription = event["data"]["object"]
-        customer_id = subscription.get("customer")
-        if customer_id:
-            _handle_subscription_deleted(stripe, customer_id)
+        # Handle events
+        if event["type"] == "checkout.session.completed":
+            session = event["data"]["object"]
+            customer_id = session.get("customer")
+            if customer_id:
+                _handle_checkout_completed(stripe, customer_id, signing_key)
 
-    return _response({"received": True})
+        elif event["type"] == "customer.subscription.deleted":
+            subscription = event["data"]["object"]
+            customer_id = subscription.get("customer")
+            if customer_id:
+                _handle_subscription_deleted(stripe, customer_id)
+
+        self._send_json({"received": True})
 
 
 def _handle_checkout_completed(stripe, customer_id, signing_key):
     """Generate license key and store on Stripe Customer metadata."""
-    # Idempotent: check if key already exists
     customer = stripe.Customer.retrieve(customer_id)
     metadata = customer.get("metadata", {})
     if metadata.get("evo_license_key"):
         return  # Already has a key
 
-    # Get customer email
     email = customer.get("email", "unknown@customer.com")
 
-    # Generate HMAC-signed license key (same algorithm as evolution/license.py)
     license_key = _generate_license_key(
         tier="pro",
         email=email,
         signing_key=signing_key.encode("utf-8") if isinstance(signing_key, str) else signing_key,
     )
 
-    # Store on customer metadata
     stripe.Customer.modify(
         customer_id,
         metadata={"evo_license_key": license_key},
     )
 
-    # Log for observability
     log_entry = {
         "type": "webhook",
         "event": "license_generated",
@@ -130,11 +125,3 @@ def _generate_license_key(tier, email, signing_key):
     ).hexdigest()
     signed = f"{payload_str}.{signature}"
     return base64.b64encode(signed.encode("utf-8")).decode("utf-8")
-
-
-def _response(body, status=200):
-    return {
-        "statusCode": status,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(body),
-    }

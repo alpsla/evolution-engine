@@ -2,7 +2,27 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/*.py",
+      "src": "api/telemetry.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "15mb" }
+    },
+    {
+      "src": "api/webhook.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "15mb" }
+    },
+    {
+      "src": "api/adapter-request.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "15mb" }
+    },
+    {
+      "src": "api/create-checkout.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "15mb" }
+    },
+    {
+      "src": "api/get-license.py",
       "use": "@vercel/python",
       "config": { "maxLambdaSize": "15mb" }
     },
