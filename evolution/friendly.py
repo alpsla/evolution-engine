@@ -182,7 +182,7 @@ def friendly_pattern(pattern: dict) -> str:
     families, metrics, correlation.
     """
     desc = pattern.get("description") or ""
-    seen_count = pattern.get("support_count") or pattern.get("seen_count") or pattern.get("occurrence_count") or 0
+    seen_count = pattern.get("support_count") or pattern.get("repo_count") or pattern.get("seen_count") or 0
 
     if desc:
         prefix = f"Seen in {seen_count} project{'s' if seen_count != 1 else ''}: " if seen_count > 0 else ""
