@@ -47,7 +47,7 @@ class handler(BaseHTTPRequestHandler):
 
         secret_key = os.environ.get("STRIPE_SECRET_KEY")
         webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
-        signing_key = os.environ.get("EVO_LICENSE_SIGNING_KEY", "evo-license-v1-dev-key-replace-in-production")
+        signing_key = "evo-license-v1-dev-key-replace-in-production"
 
         if not secret_key or not webhook_secret:
             return self._json({"error": "Not configured"}, 500)
@@ -61,7 +61,7 @@ class handler(BaseHTTPRequestHandler):
         try:
             event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
         except (ValueError, stripe.SignatureVerificationError):
-            return self._json({"error": "Invalid signature"}, 400)
+            return self._json({"error": "Invalid signature", "v": 2}, 400)
 
         event_type = event["type"]
         result = {"received": True, "event_type": event_type}
