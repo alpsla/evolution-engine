@@ -12,11 +12,10 @@ Environment variables:
 
 import json
 import os
+from http.server import BaseHTTPRequestHandler
 
-from _handler import JSONHandler
 
-
-class handler(JSONHandler):
+class handler(BaseHTTPRequestHandler):
     """Create a Stripe Checkout session for Pro subscription."""
 
     def do_POST(self):
@@ -27,7 +26,7 @@ class handler(JSONHandler):
         base_url = os.environ.get("BASE_URL", "https://codequal.dev")
 
         if not secret_key or not price_id:
-            return self._send_json({"error": "Stripe not configured"}, 500)
+            return self._json({"error": "Stripe not configured"}, 500)
 
         stripe.api_key = secret_key
 
@@ -39,6 +38,17 @@ class handler(JSONHandler):
                 cancel_url=f"{base_url}/#pricing",
                 metadata={"product": "evolution-engine-pro"},
             )
-            self._send_json({"url": session.url})
+            self._json({"url": session.url})
         except stripe.StripeError as e:
-            self._send_json({"error": str(e)}, 400)
+            self._json({"error": str(e)}, 400)
+
+    def _json(self, body, status=200):
+        payload = json.dumps(body).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def log_message(self, format, *args):
+        pass

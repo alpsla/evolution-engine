@@ -17,13 +17,29 @@ import hashlib
 import hmac as hmac_mod
 import json
 import os
+import urllib.request
 from datetime import datetime, timezone
-
-from _axiom import send as axiom_send
-from _handler import JSONHandler
+from http.server import BaseHTTPRequestHandler
 
 
-class handler(JSONHandler):
+def _axiom_send(event: dict) -> None:
+    token = os.environ.get("AXIOM_TOKEN")
+    if not token:
+        return
+    dataset = os.environ.get("AXIOM_DATASET", "evo")
+    try:
+        req = urllib.request.Request(
+            f"https://api.axiom.co/v1/datasets/{dataset}/ingest",
+            data=json.dumps([event]).encode("utf-8"),
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=2)
+    except Exception:
+        pass
+
+
+class handler(BaseHTTPRequestHandler):
     """Handle Stripe webhook events."""
 
     def do_POST(self):
@@ -34,20 +50,19 @@ class handler(JSONHandler):
         signing_key = os.environ.get("EVO_LICENSE_SIGNING_KEY", "evo-license-v1-dev-key-replace-in-production")
 
         if not secret_key or not webhook_secret:
-            return self._send_json({"error": "Not configured"}, 500)
+            return self._json({"error": "Not configured"}, 500)
 
         stripe.api_key = secret_key
 
-        # Verify webhook signature
-        payload = self._read_body()
-        sig_header = self._get_header("Stripe-Signature") or self._get_header("stripe-signature")
+        length = int(self.headers.get("Content-Length", 0))
+        payload = self.rfile.read(length)
+        sig_header = self.headers.get("Stripe-Signature") or self.headers.get("stripe-signature", "")
 
         try:
             event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
         except (ValueError, stripe.SignatureVerificationError):
-            return self._send_json({"error": "Invalid signature"}, 400)
+            return self._json({"error": "Invalid signature"}, 400)
 
-        # Handle events
         if event["type"] == "checkout.session.completed":
             session = event["data"]["object"]
             customer_id = session.get("customer")
@@ -60,28 +75,34 @@ class handler(JSONHandler):
             if customer_id:
                 _handle_subscription_deleted(stripe, customer_id)
 
-        self._send_json({"received": True})
+        self._json({"received": True})
+
+    def _json(self, body, status=200):
+        payload = json.dumps(body).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def log_message(self, format, *args):
+        pass
 
 
 def _handle_checkout_completed(stripe, customer_id, signing_key):
-    """Generate license key and store on Stripe Customer metadata."""
     customer = stripe.Customer.retrieve(customer_id)
     metadata = customer.get("metadata", {})
     if metadata.get("evo_license_key"):
-        return  # Already has a key
+        return
 
     email = customer.get("email", "unknown@customer.com")
-
     license_key = _generate_license_key(
         tier="pro",
         email=email,
         signing_key=signing_key.encode("utf-8") if isinstance(signing_key, str) else signing_key,
     )
 
-    stripe.Customer.modify(
-        customer_id,
-        metadata={"evo_license_key": license_key},
-    )
+    stripe.Customer.modify(customer_id, metadata={"evo_license_key": license_key})
 
     log_entry = {
         "type": "webhook",
@@ -91,15 +112,11 @@ def _handle_checkout_completed(stripe, customer_id, signing_key):
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     print(json.dumps(log_entry))
-    axiom_send(log_entry)
+    _axiom_send(log_entry)
 
 
 def _handle_subscription_deleted(stripe, customer_id):
-    """Clear license key from Customer metadata on cancellation."""
-    stripe.Customer.modify(
-        customer_id,
-        metadata={"evo_license_key": ""},
-    )
+    stripe.Customer.modify(customer_id, metadata={"evo_license_key": ""})
     log_entry = {
         "type": "webhook",
         "event": "license_revoked",
@@ -107,11 +124,10 @@ def _handle_subscription_deleted(stripe, customer_id):
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     print(json.dumps(log_entry))
-    axiom_send(log_entry)
+    _axiom_send(log_entry)
 
 
 def _generate_license_key(tier, email, signing_key):
-    """Generate HMAC-signed license key. Mirrors evolution/license.py:generate_key."""
     payload = {
         "tier": tier,
         "email": email,

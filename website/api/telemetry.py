@@ -9,10 +9,10 @@ Rate limit: 100 events/hour per anon_id (in-memory, resets per cold start).
 """
 
 import json
+import os
 import time
-
-from _axiom import send as axiom_send
-from _handler import JSONHandler
+import urllib.request
+from http.server import BaseHTTPRequestHandler
 
 # In-memory rate limit (resets on cold start)
 _rate_limits: dict[str, list[float]] = {}
@@ -20,45 +20,62 @@ _MAX_EVENTS_PER_HOUR = 100
 _MAX_PAYLOAD_SIZE = 4096  # bytes
 
 
-class handler(JSONHandler):
+def _axiom_send(event: dict) -> None:
+    """Fire-and-forget: send a single event to Axiom. Never raises."""
+    token = os.environ.get("AXIOM_TOKEN")
+    if not token:
+        return
+    dataset = os.environ.get("AXIOM_DATASET", "evo")
+    try:
+        req = urllib.request.Request(
+            f"https://api.axiom.co/v1/datasets/{dataset}/ingest",
+            data=json.dumps([event]).encode("utf-8"),
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=2)
+    except Exception:
+        pass
+
+
+class handler(BaseHTTPRequestHandler):
     """Receive and log telemetry events."""
 
     def do_OPTIONS(self):
-        self._send_cors()
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
 
     def do_POST(self):
-        # Parse body
         try:
-            raw = self._read_body()
+            length = int(self.headers.get("Content-Length", 0))
+            raw = self.rfile.read(length)
             if len(raw) > _MAX_PAYLOAD_SIZE:
-                return self._send_json({"error": "Payload too large"}, 413)
+                return self._json({"error": "Payload too large"}, 413)
             data = json.loads(raw.decode("utf-8"))
         except (json.JSONDecodeError, ValueError):
-            return self._send_json({"error": "Invalid JSON"}, 400)
+            return self._json({"error": "Invalid JSON"}, 400)
 
-        # Validate structure
         event_name = data.get("event")
         if not event_name or not isinstance(event_name, str):
-            return self._send_json({"error": "Missing event name"}, 400)
+            return self._json({"error": "Missing event name"}, 400)
 
         anon_id = data.get("anon_id", "unknown")
         if not isinstance(anon_id, str) or len(anon_id) > 50:
-            return self._send_json({"error": "Invalid anon_id"}, 400)
+            return self._json({"error": "Invalid anon_id"}, 400)
 
-        # Rate limit
         now = time.time()
         if anon_id not in _rate_limits:
             _rate_limits[anon_id] = []
-
-        # Clean old entries (older than 1 hour)
         _rate_limits[anon_id] = [t for t in _rate_limits[anon_id] if now - t < 3600]
 
         if len(_rate_limits[anon_id]) >= _MAX_EVENTS_PER_HOUR:
-            return self._send_json({"error": "Rate limit exceeded"}, 429)
+            return self._json({"error": "Rate limit exceeded"}, 429)
 
         _rate_limits[anon_id].append(now)
 
-        # Log structured event (Vercel captures stdout)
         log_entry = {
             "type": "telemetry",
             "event": event_name,
@@ -68,6 +85,17 @@ class handler(JSONHandler):
             "timestamp": now,
         }
         print(json.dumps(log_entry))
-        axiom_send(log_entry)
+        _axiom_send(log_entry)
 
-        self._send_json({"ok": True})
+        self._json({"ok": True})
+
+    def _json(self, body, status=200):
+        payload = json.dumps(body).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def log_message(self, format, *args):
+        pass
