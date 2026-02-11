@@ -21,12 +21,17 @@
       evo <span>by CodeQual</span>
     </a>
     <ul class="nav-links">
-      <li><a href="#features">Features</a></li>
-      <li><a href="#pricing">Pricing</a></li>
-      <li><a href="#adapters">Adapters</a></li>
-      <li><a href="docs.html">Docs</a></li>
-      <li><a href="privacy.html">Privacy</a></li>
-      <li><a href="#install" class="btn btn-primary btn-sm">Get Started</a></li>
+      <li><a href="#features" data-i18n="nav.features">Features</a></li>
+      <li><a href="#pricing" data-i18n="nav.pricing">Pricing</a></li>
+      <li><a href="#adapters" data-i18n="nav.adapters">Adapters</a></li>
+      <li><a href="docs.html" data-i18n="nav.docs">Docs</a></li>
+      <li><a href="privacy.html" data-i18n="nav.privacy">Privacy</a></li>
+      <li><a href="#install" class="btn btn-primary btn-sm" data-i18n="nav.get_started">Get Started</a></li>
+      <li class="lang-switcher">
+        <button class="lang-btn active" data-lang="en" onclick="switchLanguage('en')">EN</button>
+        <button class="lang-btn" data-lang="de" onclick="switchLanguage('de')">DE</button>
+        <button class="lang-btn" data-lang="es" onclick="switchLanguage('es')">ES</button>
+      </li>
     </ul>
     <button class="mobile-toggle" aria-label="Menu">&#9776;</button>
   </div>
@@ -35,11 +40,11 @@
 <!-- ─── Hero ─── -->
 <section class="hero">
   <div class="container">
-    <h1>Know when your codebase drifts before it breaks</h1>
-    <p>Cross-correlate signals from git, CI, dependencies, and deployments. Local-first, zero-config, evidence-based.</p>
+    <h1 data-i18n="hero.title">Know when your codebase drifts before it breaks</h1>
+    <p data-i18n="hero.subtitle">Cross-correlate signals from git, CI, dependencies, and deployments. Local-first, zero-config, evidence-based.</p>
     <div class="hero-ctas">
-      <a href="#install" class="btn btn-primary">Install Free</a>
-      <a href="#pricing" class="btn btn-outline">Get Pro</a>
+      <a href="#install" class="btn btn-primary" data-i18n="hero.cta_install">Install Free</a>
+      <a href="#pricing" class="btn btn-outline" data-i18n="hero.cta_pro">Get Pro</a>
     </div>
 
     <div class="terminal">
@@ -72,28 +77,28 @@
 <!-- ─── Features ─── -->
 <section id="features" class="features">
   <div class="container">
-    <h2 class="section-title">Why Evolution Engine</h2>
-    <p class="section-subtitle">One command gives you visibility that no single tool can provide.</p>
+    <h2 class="section-title" data-i18n="features.title">Why Evolution Engine</h2>
+    <p class="section-subtitle" data-i18n="features.subtitle">One command gives you visibility that no single tool can provide.</p>
     <div class="features-grid">
       <div class="feature-card">
         <span class="feature-icon">&#128274;</span>
-        <h3>Local-first</h3>
-        <p>Your code never leaves your machine. All analysis runs locally. Only opt-in telemetry (anonymous usage stats) ever phones home.</p>
+        <h3 data-i18n="features.local_first_title">Local-first</h3>
+        <p data-i18n="features.local_first_desc">Your code never leaves your machine. All analysis runs locally. Only opt-in telemetry (anonymous usage stats) ever phones home.</p>
       </div>
       <div class="feature-card">
         <span class="feature-icon">&#9889;</span>
-        <h3>Zero-config</h3>
-        <p>Auto-detects your tools from configs, lockfiles, and imports. No YAML, no dashboards, no setup. Just <code>evo analyze .</code></p>
+        <h3 data-i18n="features.zero_config_title">Zero-config</h3>
+        <p data-i18n="features.zero_config_desc">Auto-detects your tools from configs, lockfiles, and imports. No YAML, no dashboards, no setup. Just <code>evo analyze .</code></p>
       </div>
       <div class="feature-card">
         <span class="feature-icon">&#128202;</span>
-        <h3>Evidence-based</h3>
-        <p>Statistical deviation from your repo's own baseline. Modified z-scores, not arbitrary thresholds. Calibrated across 43 open-source repos.</p>
+        <h3 data-i18n="features.evidence_based_title">Evidence-based</h3>
+        <p data-i18n="features.evidence_based_desc">Statistical deviation from your repo's own baseline. Modified z-scores, not arbitrary thresholds. Calibrated across 43 open-source repos.</p>
       </div>
       <div class="feature-card">
         <span class="feature-icon">&#128279;</span>
-        <h3>Cross-signal</h3>
-        <p>Correlates git + CI + deps + deploys. "CI fails after big dependency updates" is a pattern no single tool sees.</p>
+        <h3 data-i18n="features.cross_signal_title">Cross-signal</h3>
+        <p data-i18n="features.cross_signal_desc">Correlates git + CI + deps + deploys. "CI fails after big dependency updates" is a pattern no single tool sees.</p>
       </div>
     </div>
   </div>
@@ -102,25 +107,25 @@
 <!-- ─── How it works ─── -->
 <section id="install" class="how-it-works">
   <div class="container">
-    <h2 class="section-title">How it works</h2>
-    <p class="section-subtitle">Three steps. No configuration needed.</p>
+    <h2 class="section-title" data-i18n="how_it_works.title">How it works</h2>
+    <p class="section-subtitle" data-i18n="how_it_works.subtitle">Three steps. No configuration needed.</p>
     <div class="steps">
       <div class="step">
         <div class="step-number">1</div>
-        <h3>Install</h3>
-        <p>One pip install. Works with Python 3.10+.</p>
+        <h3 data-i18n="how_it_works.step1_title">Install</h3>
+        <p data-i18n="how_it_works.step1_desc">One pip install. Works with Python 3.10+.</p>
         <code data-copy="pip install evolution-engine">pip install evolution-engine<span class="copy-tooltip">Copied!</span></code>
       </div>
       <div class="step">
         <div class="step-number">2</div>
-        <h3>Analyze</h3>
-        <p>Run in any git repo. EE auto-detects your tools and computes signals.</p>
+        <h3 data-i18n="how_it_works.step2_title">Analyze</h3>
+        <p data-i18n="how_it_works.step2_desc">Run in any git repo. EE auto-detects your tools and computes signals.</p>
         <code data-copy="evo analyze .">evo analyze .<span class="copy-tooltip">Copied!</span></code>
       </div>
       <div class="step">
         <div class="step-number">3</div>
-        <h3>Act</h3>
-        <p>Read the advisory, investigate with AI, or set up the GitHub Action for continuous monitoring.</p>
+        <h3 data-i18n="how_it_works.step3_title">Act</h3>
+        <p data-i18n="how_it_works.step3_desc">Read the advisory, investigate with AI, or set up the GitHub Action for continuous monitoring.</p>
         <code data-copy="evo investigate .">evo investigate .<span class="copy-tooltip">Copied!</span></code>
       </div>
     </div>
@@ -130,63 +135,63 @@
 <!-- ─── Signal Families ─── -->
 <section id="signals" class="signals">
   <div class="container">
-    <h2 class="section-title">Signal Families</h2>
-    <p class="section-subtitle">EE ingests events from multiple data sources and computes deviation metrics for each.</p>
+    <h2 class="section-title" data-i18n="signals.title">Signal Families</h2>
+    <p class="section-subtitle" data-i18n="signals.subtitle">EE ingests events from multiple data sources and computes deviation metrics for each.</p>
     <table class="signals-table">
       <thead>
         <tr>
-          <th>Family</th>
-          <th>Source</th>
-          <th>Metrics</th>
-          <th>Tier</th>
+          <th data-i18n="signals.th_family">Family</th>
+          <th data-i18n="signals.th_source">Source</th>
+          <th data-i18n="signals.th_metrics">Metrics</th>
+          <th data-i18n="signals.th_tier">Tier</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Git</td>
-          <td>Local git history</td>
+          <td data-i18n="signals.git_family">Git</td>
+          <td data-i18n="signals.git_source">Local git history</td>
           <td>files_touched, dispersion, change_locality, cochange_novelty</td>
           <td><span class="badge badge-free">Free</span></td>
         </tr>
         <tr>
-          <td>Dependency</td>
-          <td>pip, npm, go, cargo, bundler lockfiles</td>
+          <td data-i18n="signals.dependency_family">Dependency</td>
+          <td data-i18n="signals.dependency_source">pip, npm, go, cargo, bundler lockfiles</td>
           <td>dependency_count, max_depth</td>
           <td><span class="badge badge-free">Free</span></td>
         </tr>
         <tr>
-          <td>CI</td>
-          <td>GitHub Actions (more coming)</td>
+          <td data-i18n="signals.ci_family">CI</td>
+          <td data-i18n="signals.ci_source">GitHub Actions (more coming)</td>
           <td>run_duration, run_failed</td>
           <td><span class="badge badge-pro">Pro</span></td>
         </tr>
         <tr>
-          <td>Deployment</td>
-          <td>GitHub Releases (more coming)</td>
+          <td data-i18n="signals.deployment_family">Deployment</td>
+          <td data-i18n="signals.deployment_source">GitHub Releases (more coming)</td>
           <td>release_cadence_hours, is_prerelease, asset_count</td>
           <td><span class="badge badge-pro">Pro</span></td>
         </tr>
         <tr>
-          <td>Security</td>
-          <td>Dependabot, Snyk, Semgrep</td>
+          <td data-i18n="signals.security_family">Security</td>
+          <td data-i18n="signals.security_source">Dependabot, Snyk, Semgrep</td>
           <td>vulnerability_count, severity_score</td>
           <td><span class="badge badge-pro">Pro</span></td>
         </tr>
         <tr>
-          <td>Monitoring</td>
-          <td>Datadog, New Relic, Grafana</td>
+          <td data-i18n="signals.monitoring_family">Monitoring</td>
+          <td data-i18n="signals.monitoring_source">Datadog, New Relic, Grafana</td>
           <td>error_rate, latency_p99</td>
           <td><span class="badge badge-planned">Planned</span></td>
         </tr>
         <tr>
-          <td>Incidents</td>
-          <td>PagerDuty, OpsGenie</td>
+          <td data-i18n="signals.incidents_family">Incidents</td>
+          <td data-i18n="signals.incidents_source">PagerDuty, OpsGenie</td>
           <td>incident_frequency, mttr</td>
           <td><span class="badge badge-planned">Planned</span></td>
         </tr>
         <tr>
-          <td>Work Items</td>
-          <td>Jira, Linear</td>
+          <td data-i18n="signals.work_items_family">Work Items</td>
+          <td data-i18n="signals.work_items_source">Jira, Linear</td>
           <td>cycle_time, wip_count</td>
           <td><span class="badge badge-planned">Planned</span></td>
         </tr>
@@ -198,8 +203,8 @@
 <!-- ─── Adapter Catalog ─── -->
 <section id="adapters" class="adapters">
   <div class="container">
-    <h2 class="section-title">Adapter Catalog</h2>
-    <p class="section-subtitle">Built-in integrations plus a growing plugin ecosystem. Each adapter connects a data source to the EE pipeline.</p>
+    <h2 class="section-title" data-i18n="adapters.title">Adapter Catalog</h2>
+    <p class="section-subtitle" data-i18n="adapters.subtitle">Built-in integrations plus a growing plugin ecosystem. Each adapter connects a data source to the EE pipeline.</p>
     <div class="adapter-grid">
       <!-- Built-in (Available) -->
       <div class="adapter-card">
@@ -208,7 +213,7 @@
           <span class="badge badge-free">Free</span>
         </div>
         <div class="adapter-family">version_control</div>
-        <p>Local git history analysis — commits, file changes, co-change patterns.</p>
+        <p data-i18n="adapters.git_desc">Local git history analysis — commits, file changes, co-change patterns.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -216,7 +221,7 @@
           <span class="badge badge-free">Free</span>
         </div>
         <div class="adapter-family">dependency</div>
-        <p>Python dependency tracking from requirements.txt and Pipfile.lock.</p>
+        <p data-i18n="adapters.pip_desc">Python dependency tracking from requirements.txt and Pipfile.lock.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -224,7 +229,7 @@
           <span class="badge badge-free">Free</span>
         </div>
         <div class="adapter-family">dependency</div>
-        <p>Node.js dependency tracking from package-lock.json with depth analysis.</p>
+        <p data-i18n="adapters.npm_desc">Node.js dependency tracking from package-lock.json with depth analysis.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -232,7 +237,7 @@
           <span class="badge badge-free">Free</span>
         </div>
         <div class="adapter-family">dependency</div>
-        <p>Go module tracking from go.sum with dependency depth.</p>
+        <p data-i18n="adapters.go_desc">Go module tracking from go.sum with dependency depth.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -240,7 +245,7 @@
           <span class="badge badge-free">Free</span>
         </div>
         <div class="adapter-family">dependency</div>
-        <p>Rust crate tracking from Cargo.lock with depth analysis.</p>
+        <p data-i18n="adapters.cargo_desc">Rust crate tracking from Cargo.lock with depth analysis.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -248,7 +253,7 @@
           <span class="badge badge-free">Free</span>
         </div>
         <div class="adapter-family">dependency</div>
-        <p>Ruby gem tracking from Gemfile.lock.</p>
+        <p data-i18n="adapters.bundler_desc">Ruby gem tracking from Gemfile.lock.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -256,7 +261,7 @@
           <span class="badge badge-pro">Pro</span>
         </div>
         <div class="adapter-family">ci</div>
-        <p>CI pipeline monitoring — run duration, failure rates, workflow trends.</p>
+        <p data-i18n="adapters.github_actions_desc">CI pipeline monitoring — run duration, failure rates, workflow trends.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -264,7 +269,7 @@
           <span class="badge badge-pro">Pro</span>
         </div>
         <div class="adapter-family">deployment</div>
-        <p>Release cadence tracking, pre-release detection, asset monitoring.</p>
+        <p data-i18n="adapters.github_releases_desc">Release cadence tracking, pre-release detection, asset monitoring.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -272,7 +277,7 @@
           <span class="badge badge-pro">Pro</span>
         </div>
         <div class="adapter-family">security</div>
-        <p>Security advisory tracking from GitHub Dependabot alerts.</p>
+        <p data-i18n="adapters.dependabot_desc">Security advisory tracking from GitHub Dependabot alerts.</p>
       </div>
       <!-- Planned -->
       <div class="adapter-card">
@@ -281,7 +286,7 @@
           <span class="badge badge-planned">Planned</span>
         </div>
         <div class="adapter-family">ci</div>
-        <p>Jenkins CI pipeline monitoring and build analysis.</p>
+        <p data-i18n="adapters.jenkins_desc">Jenkins CI pipeline monitoring and build analysis.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -289,7 +294,7 @@
           <span class="badge badge-planned">Planned</span>
         </div>
         <div class="adapter-family">ci</div>
-        <p>GitLab CI/CD pipeline monitoring and job analysis.</p>
+        <p data-i18n="adapters.gitlab_ci_desc">GitLab CI/CD pipeline monitoring and job analysis.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -297,7 +302,7 @@
           <span class="badge badge-planned">Planned</span>
         </div>
         <div class="adapter-family">monitoring</div>
-        <p>APM metrics, error rates, and deployment markers from Datadog.</p>
+        <p data-i18n="adapters.datadog_desc">APM metrics, error rates, and deployment markers from Datadog.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -305,7 +310,7 @@
           <span class="badge badge-planned">Planned</span>
         </div>
         <div class="adapter-family">error_tracking</div>
-        <p>Error tracking and release health from Sentry.</p>
+        <p data-i18n="adapters.sentry_desc">Error tracking and release health from Sentry.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -313,7 +318,7 @@
           <span class="badge badge-planned">Planned</span>
         </div>
         <div class="adapter-family">quality_gate</div>
-        <p>Code quality gate status and metrics from SonarQube.</p>
+        <p data-i18n="adapters.sonarqube_desc">Code quality gate status and metrics from SonarQube.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -321,7 +326,7 @@
           <span class="badge badge-planned">Planned</span>
         </div>
         <div class="adapter-family">security_scan</div>
-        <p>Vulnerability scanning and license compliance from Snyk.</p>
+        <p data-i18n="adapters.snyk_desc">Vulnerability scanning and license compliance from Snyk.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -329,7 +334,7 @@
           <span class="badge badge-planned">Planned</span>
         </div>
         <div class="adapter-family">incidents</div>
-        <p>Incident frequency, MTTR, and escalation patterns.</p>
+        <p data-i18n="adapters.pagerduty_desc">Incident frequency, MTTR, and escalation patterns.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -337,7 +342,7 @@
           <span class="badge badge-planned">Planned</span>
         </div>
         <div class="adapter-family">work_items</div>
-        <p>Cycle time, WIP count, and sprint velocity from Jira.</p>
+        <p data-i18n="adapters.jira_desc">Cycle time, WIP count, and sprint velocity from Jira.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -345,21 +350,21 @@
           <span class="badge badge-planned">Planned</span>
         </div>
         <div class="adapter-family">deployment</div>
-        <p>GitOps deployment tracking and sync status from ArgoCD.</p>
+        <p data-i18n="adapters.argocd_desc">GitOps deployment tracking and sync status from ArgoCD.</p>
       </div>
       <a href="docs.html#build-adapter" class="adapter-card" style="border-style: dashed; border-color: var(--secondary); text-decoration: none; color: inherit;">
         <div class="adapter-card-header">
-          <h4>Build Your Own</h4>
+          <h4 data-i18n="adapters.build_your_own_title">Build Your Own</h4>
           <span class="badge badge-community">Community</span>
         </div>
         <div class="adapter-family">any family</div>
-        <p>Create a custom adapter with our scaffold tool and step-by-step guide. Ship it as a pip package.</p>
+        <p data-i18n="adapters.build_your_own_desc">Create a custom adapter with our scaffold tool and step-by-step guide. Ship it as a pip package.</p>
         <code style="font-size: 0.8rem; color: var(--secondary); margin-top: 4px;">evo adapter new myapp --family ci</code>
       </a>
     </div>
     <div class="adapter-cta">
-      <p style="color: var(--text-muted); margin-bottom: 16px;">Don't see your tool? We prioritize by community demand.</p>
-      <button class="btn btn-accent" onclick="openAdapterModal()">Request an Adapter</button>
+      <p style="color: var(--text-muted); margin-bottom: 16px;" data-i18n="adapters.dont_see">Don't see your tool? We prioritize by community demand.</p>
+      <button class="btn btn-accent" onclick="openAdapterModal()" data-i18n="adapters.request_adapter">Request an Adapter</button>
     </div>
   </div>
 </section>
@@ -367,40 +372,40 @@
 <!-- ─── Pricing ─── -->
 <section id="pricing" class="pricing">
   <div class="container">
-    <h2 class="section-title">Simple, transparent pricing</h2>
-    <p class="section-subtitle">Start free. Upgrade when you need CI, deployment, and security signals.</p>
+    <h2 class="section-title" data-i18n="pricing.title">Simple, transparent pricing</h2>
+    <p class="section-subtitle" data-i18n="pricing.subtitle">Start free. Upgrade when you need CI, deployment, and security signals.</p>
     <div class="pricing-grid">
       <div class="pricing-card">
-        <h3>Free</h3>
-        <div class="pricing-price">$0</div>
-        <div class="pricing-desc">Forever free for git + dependency analysis</div>
+        <h3 data-i18n="pricing.free_title">Free</h3>
+        <div class="pricing-price" data-i18n="pricing.free_price">$0</div>
+        <div class="pricing-desc" data-i18n="pricing.free_desc">Forever free for git + dependency analysis</div>
         <ul class="pricing-features">
-          <li>Git history analysis</li>
-          <li>Dependency tracking (pip, npm, go, cargo, bundler)</li>
-          <li>27 universal patterns</li>
-          <li>Local knowledge base</li>
-          <li>HTML reports</li>
-          <li>GitHub Action (basic)</li>
-          <li class="disabled">CI/deployment/security adapters</li>
-          <li class="disabled">AI investigation &amp; fix</li>
-          <li class="disabled">Community KB sync</li>
+          <li data-i18n="pricing.free_f1">Git history analysis</li>
+          <li data-i18n="pricing.free_f2">Dependency tracking (pip, npm, go, cargo, bundler)</li>
+          <li data-i18n="pricing.free_f3">27 universal patterns</li>
+          <li data-i18n="pricing.free_f4">Local knowledge base</li>
+          <li data-i18n="pricing.free_f5">HTML reports</li>
+          <li data-i18n="pricing.free_f6">GitHub Action (basic)</li>
+          <li class="disabled" data-i18n="pricing.free_f7">CI/deployment/security adapters</li>
+          <li class="disabled" data-i18n="pricing.free_f8">AI investigation &amp; fix</li>
+          <li class="disabled" data-i18n="pricing.free_f9">Community KB sync</li>
         </ul>
-        <a href="https://pypi.org/project/evolution-engine/" class="btn btn-outline" target="_blank">pip install evolution-engine</a>
+        <a href="https://pypi.org/project/evolution-engine/" class="btn btn-outline" target="_blank" data-i18n="pricing.free_cta">pip install evolution-engine</a>
       </div>
-      <div class="pricing-card featured">
-        <h3>Pro</h3>
-        <div class="pricing-price">$19 <span>/dev/month</span></div>
-        <div class="pricing-desc">Full pipeline visibility with AI-powered investigation</div>
+      <div class="pricing-card featured" data-i18n-popular="pricing.most_popular">
+        <h3 data-i18n="pricing.pro_title">Pro</h3>
+        <div class="pricing-price"><span data-i18n="pricing.pro_price_amount">$19</span> <span data-i18n="pricing.pro_price_unit">/dev/month</span></div>
+        <div class="pricing-desc" data-i18n="pricing.pro_desc">Full pipeline visibility with AI-powered investigation</div>
         <ul class="pricing-features">
-          <li>Everything in Free</li>
-          <li>CI adapter (GitHub Actions)</li>
-          <li>Deployment adapter (GitHub Releases)</li>
-          <li>AI investigation &amp; fix loop</li>
-          <li>Cross-signal pattern detection</li>
-          <li>Priority adapter requests</li>
-          <li>Email support (info@codequal.dev)</li>
+          <li data-i18n="pricing.pro_f1">Everything in Free</li>
+          <li data-i18n="pricing.pro_f2">CI adapter (GitHub Actions)</li>
+          <li data-i18n="pricing.pro_f3">Deployment adapter (GitHub Releases)</li>
+          <li data-i18n="pricing.pro_f4">AI investigation &amp; fix loop</li>
+          <li data-i18n="pricing.pro_f5">Cross-signal pattern detection</li>
+          <li data-i18n="pricing.pro_f6">Priority adapter requests</li>
+          <li data-i18n="pricing.pro_f7">Email support (info@codequal.dev)</li>
         </ul>
-        <button class="btn btn-primary" onclick="startCheckout()">Get Pro</button>
+        <button class="btn btn-primary" onclick="startCheckout()" data-i18n="pricing.pro_cta">Get Pro</button>
       </div>
     </div>
   </div>
@@ -410,63 +415,65 @@
 <footer>
   <div class="container">
     <ul class="footer-links">
-      <li><a href="docs.html">Docs</a></li>
-      <li><a href="privacy.html">Privacy</a></li>
+      <li><a href="docs.html" data-i18n="footer.docs">Docs</a></li>
+      <li><a href="privacy.html" data-i18n="footer.privacy">Privacy</a></li>
       <li>info@codequal.dev</li>
     </ul>
-    <p class="footer-tagline">Your code never leaves your machine.</p>
-    <p class="footer-brand">Evolution Engine by CodeQual</p>
+    <p class="footer-tagline" data-i18n="footer.tagline">Your code never leaves your machine.</p>
+    <p class="footer-brand" data-i18n="footer.brand">Evolution Engine by CodeQual</p>
+    <p style="color: var(--text-dim); font-size: 0.7rem; max-width: 600px; margin: 16px auto 0; line-height: 1.5; opacity: 0.7;">All third-party product names, logos, and brands are property of their respective owners. All company, product, and service names used on this website are for identification purposes only. Use of these names does not imply endorsement.</p>
   </div>
 </footer>
 
 <!-- ─── Adapter Request Modal ─── -->
 <div id="adapter-modal" class="modal-overlay">
   <div class="modal">
-    <h3>Request an Adapter</h3>
+    <h3 data-i18n="modal.title">Request an Adapter</h3>
     <form onsubmit="submitAdapterRequest(event)">
       <div class="form-group">
-        <label for="adapter_name">Adapter Name *</label>
-        <input type="text" id="adapter_name" name="adapter_name" placeholder="e.g. CircleCI, Terraform Cloud" required maxlength="100">
+        <label for="adapter_name" data-i18n="modal.adapter_name_label">Adapter Name *</label>
+        <input type="text" id="adapter_name" name="adapter_name" placeholder="e.g. CircleCI, Terraform Cloud" data-i18n="modal.adapter_name_placeholder" data-i18n-attr="placeholder" required maxlength="100">
       </div>
       <div class="form-group">
-        <label for="family">Family *</label>
+        <label for="family" data-i18n="modal.family_label">Family *</label>
         <select id="family" name="family" required>
-          <option value="">Select a family...</option>
-          <option value="ci">CI</option>
-          <option value="deployment">Deployment</option>
-          <option value="dependency">Dependency</option>
-          <option value="security">Security</option>
-          <option value="monitoring">Monitoring</option>
-          <option value="incidents">Incidents</option>
-          <option value="work_items">Work Items</option>
-          <option value="quality_gate">Quality Gate</option>
-          <option value="error_tracking">Error Tracking</option>
-          <option value="feature_flags">Feature Flags</option>
-          <option value="code_review">Code Review</option>
-          <option value="other">Other</option>
+          <option value="" data-i18n="modal.family_placeholder">Select a family...</option>
+          <option value="ci" data-i18n="modal.family_ci">CI</option>
+          <option value="deployment" data-i18n="modal.family_deployment">Deployment</option>
+          <option value="dependency" data-i18n="modal.family_dependency">Dependency</option>
+          <option value="security" data-i18n="modal.family_security">Security</option>
+          <option value="monitoring" data-i18n="modal.family_monitoring">Monitoring</option>
+          <option value="incidents" data-i18n="modal.family_incidents">Incidents</option>
+          <option value="work_items" data-i18n="modal.family_work_items">Work Items</option>
+          <option value="quality_gate" data-i18n="modal.family_quality_gate">Quality Gate</option>
+          <option value="error_tracking" data-i18n="modal.family_error_tracking">Error Tracking</option>
+          <option value="feature_flags" data-i18n="modal.family_feature_flags">Feature Flags</option>
+          <option value="code_review" data-i18n="modal.family_code_review">Code Review</option>
+          <option value="other" data-i18n="modal.family_other">Other</option>
         </select>
       </div>
       <div class="form-group">
-        <label for="use_case">Use Case</label>
-        <textarea id="use_case" name="use_case" placeholder="What would this adapter help you detect or monitor?" maxlength="500"></textarea>
+        <label for="use_case" data-i18n="modal.use_case_label">Use Case</label>
+        <textarea id="use_case" name="use_case" placeholder="What would this adapter help you detect or monitor?" data-i18n="modal.use_case_placeholder" data-i18n-attr="placeholder" maxlength="500"></textarea>
       </div>
       <div class="form-group">
-        <label for="description">Additional Details</label>
-        <textarea id="description" name="description" placeholder="API docs, data format, or anything else helpful..." maxlength="1000"></textarea>
+        <label for="description" data-i18n="modal.description_label">Additional Details</label>
+        <textarea id="description" name="description" placeholder="API docs, data format, or anything else helpful..." data-i18n="modal.description_placeholder" data-i18n-attr="placeholder" maxlength="1000"></textarea>
       </div>
       <div class="form-group">
-        <label for="email">Email (optional, for updates)</label>
-        <input type="email" id="email" name="email" placeholder="you@example.com" maxlength="200">
+        <label for="email" data-i18n="modal.email_label">Email (optional, for updates)</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" data-i18n="modal.email_placeholder" data-i18n-attr="placeholder" maxlength="200">
       </div>
       <div id="adapter-form-message" class="form-message"></div>
       <div class="form-actions">
-        <button type="button" class="btn btn-outline btn-sm" onclick="closeAdapterModal()">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm">Submit Request</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeAdapterModal()" data-i18n="modal.cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-i18n="modal.submit">Submit Request</button>
       </div>
     </form>
   </div>
 </div>
 
+<script src="i18n.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

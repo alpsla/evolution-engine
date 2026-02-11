@@ -1,5 +1,21 @@
 // Evolution Engine — Landing Page Scripts
 
+// ─── i18n helper for dynamic messages ───
+// Resolves a dot-separated key from the globally loaded translations.
+// Falls back to the provided default if translations are not yet loaded.
+function _t(key, fallback) {
+  if (typeof window.__evo_i18n === 'object' && window.__evo_i18n) {
+    var keys = key.split('.');
+    var val = window.__evo_i18n;
+    for (var i = 0; i < keys.length; i++) {
+      if (val == null || typeof val !== 'object') return fallback;
+      val = val[keys[i]];
+    }
+    return val != null ? val : fallback;
+  }
+  return fallback;
+}
+
 // ─── Mobile menu ───
 document.addEventListener('DOMContentLoaded', () => {
   const toggle = document.querySelector('.mobile-toggle');
@@ -71,13 +87,13 @@ function submitAdapterRequest(e) {
   };
 
   if (!data.adapter_name || !data.family) {
-    showFormMessage('Please fill in the adapter name and family.', 'error');
+    showFormMessage(_t('modal.error_validation', 'Please fill in the adapter name and family.'), 'error');
     return;
   }
 
   const btn = form.querySelector('button[type="submit"]');
   btn.disabled = true;
-  btn.textContent = 'Submitting...';
+  btn.textContent = _t('modal.submitting', 'Submitting...');
 
   fetch('/api/adapter-request', {
     method: 'POST',
@@ -87,16 +103,16 @@ function submitAdapterRequest(e) {
     .then(res => res.json())
     .then(result => {
       if (result.success) {
-        showFormMessage('Request submitted! We\'ll track it as a GitHub issue.', 'success');
+        showFormMessage(_t('modal.success_message', 'Request submitted! We\'ll track it as a GitHub issue.'), 'success');
         form.reset();
       } else {
-        showFormMessage(result.error || 'Something went wrong.', 'error');
+        showFormMessage(result.error || _t('modal.error_generic', 'Something went wrong.'), 'error');
       }
     })
-    .catch(() => showFormMessage('Network error. Please try again.', 'error'))
+    .catch(() => showFormMessage(_t('modal.error_network', 'Network error. Please try again.'), 'error'))
     .finally(() => {
       btn.disabled = false;
-      btn.textContent = 'Submit Request';
+      btn.textContent = _t('modal.submit', 'Submit Request');
     });
 }
 
