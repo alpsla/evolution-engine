@@ -321,12 +321,14 @@ def _build_pattern_section(matches, candidates):
     if not matches and not candidates:
         return ""
 
-    items = []
+    PATTERN_VISIBLE_LIMIT = 3
+
+    known_cards = []
     for p in matches:
         sources = ", ".join(FAMILY_LABELS.get(s, s) for s in p.get("sources", []))
         metrics = ", ".join(METRIC_LABELS.get(m, m) for m in p.get("metrics", []))
         desc = friendly_pattern(p)
-        items.append(
+        known_cards.append(
             '<div class="pattern-card">\n'
             '  <span class="badge">Known Pattern</span>\n'
             f'  <h3 style="margin-top: 0.5em;">{_esc(sources)}</h3>\n'
@@ -335,11 +337,12 @@ def _build_pattern_section(matches, candidates):
             + '</div>'
         )
 
+    emerging_cards = []
     for p in candidates:
         sources = ", ".join(FAMILY_LABELS.get(s, s) for s in p.get("sources", []))
         metrics = ", ".join(METRIC_LABELS.get(m, m) for m in p.get("metrics", []))
         desc = friendly_pattern(p)
-        items.append(
+        emerging_cards.append(
             '<div class="pattern-card">\n'
             '  <span class="badge" style="background: var(--color-warning);">Emerging Pattern</span>\n'
             f'  <h3 style="margin-top: 0.5em;">{_esc(sources)}</h3>\n'
@@ -348,11 +351,33 @@ def _build_pattern_section(matches, candidates):
             + '</div>'
         )
 
+    known_html = _collapsible_pattern_cards(known_cards, "Known Patterns", PATTERN_VISIBLE_LIMIT)
+    emerging_html = _collapsible_pattern_cards(emerging_cards, "Emerging Patterns", PATTERN_VISIBLE_LIMIT)
+
     return (
         '<section class="patterns page-break-before">\n'
         '  <h2>Recurring Patterns</h2>\n'
-        '  ' + '\n  '.join(items) + '\n'
+        f'  {known_html}\n'
+        f'  {emerging_html}\n'
         '</section>'
+    )
+
+
+def _collapsible_pattern_cards(cards, heading, limit):
+    """Wrap pattern cards in a collapsible <details> when there are more than *limit*."""
+    if not cards:
+        return ""
+    if len(cards) <= limit:
+        return '\n'.join(cards)
+    visible = '\n'.join(cards[:limit])
+    hidden = '\n'.join(cards[limit:])
+    extra = len(cards) - limit
+    return (
+        f'{visible}\n'
+        f'<details class="pattern-overflow">\n'
+        f'  <summary class="toggle-btn">Show {extra} more {heading}</summary>\n'
+        f'  {hidden}\n'
+        f'</details>'
     )
 
 
@@ -449,54 +474,80 @@ def _build_evidence_section(commits, files, deps, timeline, evidence_raw):
 def _build_commits_table(commits):
     if not commits:
         return ""
-    rows = []
-    for c in commits[:20]:
+    LIMIT = 20
+    visible_rows = []
+    hidden_rows = []
+    for i, c in enumerate(commits):
         sha = c.get("sha", "")[:8]
         msg = c.get("message", "").split("\n")[0][:80]
         author = c.get("author", {}).get("name", "")
         ts = _format_date(c.get("timestamp", ""))
-        rows.append(
+        row = (
             f'<tr><td><code>{_esc(sha)}</code></td>'
             f'<td>{_esc(msg)}</td>'
             f'<td>{_esc(author)}</td>'
             f'<td>{ts}</td></tr>'
         )
-    more = ""
-    if len(commits) > 20:
-        more = f'<p class="more">... and {len(commits) - 20} more</p>'
+        if i < LIMIT:
+            visible_rows.append(row)
+        else:
+            hidden_rows.append(row)
+    toggle = ""
+    if hidden_rows:
+        total = len(commits)
+        toggle = (
+            f'<button class="toggle-btn" onclick="toggleTableRows(\'commits-overflow\', this)">'
+            f'Show all {total} items</button>'
+        )
     return (
         '<h3>Commits Involved</h3>\n'
         '<table class="evidence-table">\n'
         '  <thead><tr><th>SHA</th><th>Message</th><th>Author</th><th>Date</th></tr></thead>\n'
-        '  <tbody>' + ''.join(rows) + '</tbody>\n'
-        '</table>\n'
-        + more
+        '  <tbody>' + ''.join(visible_rows)
+        + '</tbody>\n'
+        + (f'  <tbody class="evidence-overflow" id="commits-overflow">{"".join(hidden_rows)}</tbody>\n'
+           if hidden_rows else '')
+        + '</table>\n'
+        + toggle
     )
 
 
 def _build_files_table(files):
     if not files:
         return ""
-    rows = []
-    for f in files[:30]:
+    LIMIT = 30
+    visible_rows = []
+    hidden_rows = []
+    for i, f in enumerate(files):
         path = f.get("path", "")
         change_type = f.get("change_type", "")
         first_seen = f.get("first_seen_in", "")[:8]
-        rows.append(
+        row = (
             f'<tr><td><code>{_esc(path)}</code></td>'
             f'<td>{_esc(change_type.title())}</td>'
             f'<td><code>{_esc(first_seen)}</code></td></tr>'
         )
-    more = ""
-    if len(files) > 30:
-        more = f'<p class="more">... and {len(files) - 30} more</p>'
+        if i < LIMIT:
+            visible_rows.append(row)
+        else:
+            hidden_rows.append(row)
+    toggle = ""
+    if hidden_rows:
+        total = len(files)
+        toggle = (
+            f'<button class="toggle-btn" onclick="toggleTableRows(\'files-overflow\', this)">'
+            f'Show all {total} items</button>'
+        )
     return (
         '<h3>Files Affected</h3>\n'
         '<table class="evidence-table">\n'
         '  <thead><tr><th>Path</th><th>Change Type</th><th>First Seen In</th></tr></thead>\n'
-        '  <tbody>' + ''.join(rows) + '</tbody>\n'
-        '</table>\n'
-        + more
+        '  <tbody>' + ''.join(visible_rows)
+        + '</tbody>\n'
+        + (f'  <tbody class="evidence-overflow" id="files-overflow">{"".join(hidden_rows)}</tbody>\n'
+           if hidden_rows else '')
+        + '</table>\n'
+        + toggle
     )
 
 
@@ -525,33 +576,44 @@ def _build_deps_table(deps):
 def _build_timeline(timeline):
     if not timeline:
         return ""
-    items = []
-    shown = min(len(timeline), 30)
-    for entry in timeline[:shown]:
+    LIMIT = 30
+    visible_items = []
+    hidden_items = []
+    for i, entry in enumerate(timeline):
         family = entry.get("family", "")
         text = entry.get("event_text", entry.get("event", ""))
         ts = _format_date(entry.get("timestamp", ""))
         label = FAMILY_LABELS.get(family, family)
-        items.append(
+        item = (
             '<div class="timeline-event">\n'
             f'  <div class="timeline-time">{ts}</div>\n'
             f'  <div class="timeline-content"><strong>{_esc(label)}:</strong> {_esc(text)}</div>\n'
             '</div>'
         )
-    if len(timeline) > shown:
-        items.append(
-            '<div class="timeline-event" style="border-left: none;">\n'
-            '  <div class="timeline-time"></div>\n'
-            '  <div class="timeline-content" style="color: var(--color-text-muted); font-style: italic;">\n'
-            f'    ... and {len(timeline) - shown} more events\n'
-            '  </div>\n'
+        if i < LIMIT:
+            visible_items.append(item)
+        else:
+            hidden_items.append(item)
+    toggle = ""
+    hidden_html = ""
+    if hidden_items:
+        total = len(timeline)
+        hidden_html = (
+            f'<div class="evidence-overflow" id="timeline-overflow">\n'
+            '  ' + '\n  '.join(hidden_items) + '\n'
             '</div>'
+        )
+        toggle = (
+            f'<button class="toggle-btn" onclick="toggleTableRows(\'timeline-overflow\', this)">'
+            f'Show all {total} items</button>'
         )
     return (
         '<h3>Timeline of Events</h3>\n'
         '<div class="timeline">\n'
-        '  ' + '\n  '.join(items) + '\n'
-        '</div>'
+        '  ' + '\n  '.join(visible_items) + '\n'
+        + hidden_html
+        + '</div>\n'
+        + toggle
     )
 
 
@@ -835,6 +897,13 @@ pre { background: var(--color-bg-subtle); padding: 1em; border-radius: 8px;
 .toggle-btn.active { background: var(--color-secondary); color: white; }
 .empty { color: var(--color-text-muted); font-style: italic; text-align: center; padding: 2rem; }
 .more { font-size: 9pt; color: var(--color-text-muted); margin-top: 0.5em; font-style: italic; }
+.evidence-overflow { display: none; }
+.evidence-overflow.show { display: table-row-group; }
+div.evidence-overflow { display: none; }
+div.evidence-overflow.show { display: block; }
+.pattern-overflow { margin-top: 0.5em; }
+.pattern-overflow > summary { list-style: none; display: inline-block; margin-top: 0.5em; }
+.pattern-overflow > summary::-webkit-details-marker { display: none; }
 .page-break-before { page-break-before: always; }
 .page-break-after { page-break-after: always; }
 footer { margin-top: 4em; padding-top: 2em; border-top: 1px solid var(--color-border);
@@ -845,6 +914,11 @@ footer strong { color: var(--color-secondary); }
   .btn, .toggle-btn, .action-buttons { display: none !important; }
   .prompt-full { display: block !important; }
   .evidence-details { display: block !important; }
+  .evidence-overflow { display: table-row-group !important; }
+  div.evidence-overflow { display: block !important; }
+  details.pattern-overflow > summary { display: none !important; }
+  details.pattern-overflow > summary ~ * { display: block !important; }
+  details[open] summary ~ * { display: block; }
   .no-print { display: none; }
   .cover-page { min-height: auto; padding: 4em 0; }
 }"""
@@ -898,4 +972,21 @@ function togglePrompt() {
   f.classList.toggle('show'); b.classList.toggle('active');
   b.textContent = f.classList.contains('show') ? 'Hide Full Prompt' : 'Show Full Prompt';
 }
+function toggleTableRows(id, btn) {
+  var el = document.getElementById(id);
+  if (!el || !btn) return;
+  el.classList.toggle('show');
+  btn.classList.toggle('active');
+  if (el.classList.contains('show')) {
+    btn.textContent = 'Collapse';
+  } else {
+    btn.textContent = btn.getAttribute('data-label') || 'Show all';
+  }
+}
+document.addEventListener('DOMContentLoaded', function() {
+  var btns = document.querySelectorAll('button[onclick^="toggleTableRows"]');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].setAttribute('data-label', btns[i].textContent);
+  }
+});
 </script>"""
