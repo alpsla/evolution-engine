@@ -157,9 +157,17 @@ class TestFriendlyPattern:
         assert "Seen in 1 project:" in result
         assert "projects" not in result
 
-    def test_occurrence_count_key(self):
+    def test_repo_count_key(self):
         result = friendly_pattern({
             "description": "test",
-            "occurrence_count": 7,
+            "repo_count": 7,
+        })
+        assert "Seen in 7 projects" in result
+
+    def test_repo_count_preferred_over_occurrence_count(self):
+        result = friendly_pattern({
+            "description": "test",
+            "repo_count": 7,
+            "occurrence_count": 27631,
         })
         assert "Seen in 7 projects" in result

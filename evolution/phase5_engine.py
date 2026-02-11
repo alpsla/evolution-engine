@@ -385,7 +385,7 @@ class Phase5Engine:
                         p.get("description_semantic")
                         or p.get("description_statistical", "")
                     ),
-                    "support_count": p.get("occurrence_count", 0),
+                    "support_count": p.get("repo_count") or p.get("occurrence_count", 0),
                 })
 
         return matches
