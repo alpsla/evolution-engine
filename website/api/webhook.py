@@ -63,19 +63,36 @@ class handler(BaseHTTPRequestHandler):
         except (ValueError, stripe.SignatureVerificationError):
             return self._json({"error": "Invalid signature"}, 400)
 
-        if event["type"] == "checkout.session.completed":
-            session = event["data"]["object"]
-            customer_id = session.get("customer")
-            if customer_id:
-                _handle_checkout_completed(stripe, customer_id, signing_key)
+        event_type = event["type"]
+        result = {"received": True, "event_type": event_type}
 
-        elif event["type"] == "customer.subscription.deleted":
-            subscription = event["data"]["object"]
-            customer_id = subscription.get("customer")
-            if customer_id:
-                _handle_subscription_deleted(stripe, customer_id)
+        try:
+            if event_type == "checkout.session.completed":
+                session = event["data"]["object"]
+                customer_id = session.get("customer")
+                result["customer_id"] = customer_id
+                if customer_id:
+                    _handle_checkout_completed(stripe, customer_id, signing_key)
+                    result["action"] = "license_generated"
+                else:
+                    result["action"] = "skipped_no_customer"
 
-        self._json({"received": True})
+            elif event_type == "customer.subscription.deleted":
+                subscription = event["data"]["object"]
+                customer_id = subscription.get("customer")
+                if customer_id:
+                    _handle_subscription_deleted(stripe, customer_id)
+                    result["action"] = "license_revoked"
+        except Exception as exc:
+            result["error"] = str(exc)
+            _axiom_send({
+                "type": "webhook_error",
+                "event_type": event_type,
+                "error": str(exc),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+
+        self._json(result)
 
     def _json(self, body, status=200):
         payload = json.dumps(body).encode("utf-8")
