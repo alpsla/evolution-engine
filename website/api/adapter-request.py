@@ -17,16 +17,13 @@ import os
 import re
 import time
 import urllib.request
-
-from _axiom import send as axiom_send
-from _handler import JSONHandler
+from http.server import BaseHTTPRequestHandler
 
 # In-memory rate limit (resets on cold start)
 _rate_limits: dict[str, list[float]] = {}
 _MAX_REQUESTS_PER_DAY = 5
 _MAX_FIELD_LENGTH = 1000
 
-# Valid families
 _VALID_FAMILIES = {
     "ci", "deployment", "dependency", "security", "monitoring",
     "incidents", "work_items", "quality_gate", "error_tracking",
@@ -34,20 +31,47 @@ _VALID_FAMILIES = {
 }
 
 
-class handler(JSONHandler):
+def _axiom_send(event: dict) -> None:
+    token = os.environ.get("AXIOM_TOKEN")
+    if not token:
+        return
+    dataset = os.environ.get("AXIOM_DATASET", "evo")
+    try:
+        req = urllib.request.Request(
+            f"https://api.axiom.co/v1/datasets/{dataset}/ingest",
+            data=json.dumps([event]).encode("utf-8"),
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=2)
+    except Exception:
+        pass
+
+
+def _sanitize(text, max_length):
+    if not isinstance(text, str):
+        return ""
+    text = text.strip()[:max_length]
+    return re.sub(r'[<>]', '', text)
+
+
+class handler(BaseHTTPRequestHandler):
     """Handle adapter request submission."""
 
     def do_OPTIONS(self):
-        self._send_cors()
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
 
     def do_POST(self):
-        # Parse body
         try:
-            data = self._read_json()
+            length = int(self.headers.get("Content-Length", 0))
+            data = json.loads(self.rfile.read(length).decode("utf-8"))
         except (json.JSONDecodeError, ValueError):
-            return self._send_json({"error": "Invalid JSON"}, 400)
+            return self._json({"error": "Invalid JSON"}, 400)
 
-        # Validate required fields
         adapter_name = _sanitize(data.get("adapter_name", ""), 100)
         family = data.get("family", "")
         description = _sanitize(data.get("description", ""), _MAX_FIELD_LENGTH)
@@ -55,15 +79,13 @@ class handler(JSONHandler):
         use_case = _sanitize(data.get("use_case", ""), 500)
 
         if not adapter_name:
-            return self._send_json({"error": "Adapter name is required"}, 400)
+            return self._json({"error": "Adapter name is required"}, 400)
         if family not in _VALID_FAMILIES:
-            return self._send_json({"error": f"Invalid family. Must be one of: {', '.join(sorted(_VALID_FAMILIES))}"}, 400)
+            return self._json({"error": f"Invalid family. Must be one of: {', '.join(sorted(_VALID_FAMILIES))}"}, 400)
 
-        # Rate limit by IP
-        client_ip = self._get_client_ip()
-        rate_key = f"ip:{client_ip}"
-        if email:
-            rate_key = f"email:{email}"
+        client_ip = (self.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+                     or self.headers.get("X-Real-IP", "unknown"))
+        rate_key = f"email:{email}" if email else f"ip:{client_ip}"
 
         now = time.time()
         if rate_key not in _rate_limits:
@@ -71,11 +93,10 @@ class handler(JSONHandler):
         _rate_limits[rate_key] = [t for t in _rate_limits[rate_key] if now - t < 86400]
 
         if len(_rate_limits[rate_key]) >= _MAX_REQUESTS_PER_DAY:
-            return self._send_json({"error": "Rate limit exceeded. Try again tomorrow."}, 429)
+            return self._json({"error": "Rate limit exceeded. Try again tomorrow."}, 429)
 
         _rate_limits[rate_key].append(now)
 
-        # Create GitHub issue
         github_token = os.environ.get("GITHUB_BOT_TOKEN")
         github_repo = os.environ.get("GITHUB_REPO", "alpsla/evolution_monitor")
 
@@ -90,10 +111,9 @@ class handler(JSONHandler):
                 "timestamp": now,
             }
             print(json.dumps(log_entry))
-            axiom_send(log_entry)
-            return self._send_json({"success": True, "message": "Request recorded."})
+            _axiom_send(log_entry)
+            return self._json({"success": True, "message": "Request recorded."})
 
-        # Build issue body
         issue_body = f"""## Adapter Request: {adapter_name}
 
 **Family:** {family}
@@ -130,28 +150,24 @@ _Vote with a thumbs-up if you'd also like this adapter!_
             )
             resp = urllib.request.urlopen(req, timeout=10)
             result = json.loads(resp.read().decode("utf-8"))
-            issue_url = result.get("html_url", "")
-
-            return self._send_json({
+            return self._json({
                 "success": True,
                 "message": "Request submitted as a GitHub issue!",
-                "issue_url": issue_url,
+                "issue_url": result.get("html_url", ""),
             })
         except Exception as e:
             error_entry = {"type": "adapter_request", "error": "github_issue_creation_failed", "detail": str(e), "timestamp": time.time()}
             print(json.dumps(error_entry))
-            axiom_send(error_entry)
-            return self._send_json({
-                "success": True,
-                "message": "Request recorded. We'll follow up soon.",
-            })
+            _axiom_send(error_entry)
+            return self._json({"success": True, "message": "Request recorded. We'll follow up soon."})
 
+    def _json(self, body, status=200):
+        payload = json.dumps(body).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(payload)
 
-def _sanitize(text, max_length):
-    """Sanitize user input."""
-    if not isinstance(text, str):
-        return ""
-    text = text.strip()
-    text = text[:max_length]
-    text = re.sub(r'[<>]', '', text)
-    return text
+    def log_message(self, format, *args):
+        pass
