@@ -5,11 +5,11 @@ POST /api/webhook
 Handles:
   - checkout.session.completed → generate HMAC license key, store on Customer
   - customer.subscription.deleted → clear license key from Customer metadata
+  - invoice.payment_failed → flag customer with payment_status=past_due
 
 Environment variables:
   STRIPE_SECRET_KEY       — Stripe secret key
   STRIPE_WEBHOOK_SECRET   — Webhook endpoint signing secret
-  EVO_LICENSE_SIGNING_KEY — HMAC signing key for license generation
 """
 
 import base64
@@ -83,6 +83,16 @@ class handler(BaseHTTPRequestHandler):
                 if customer_id:
                     _handle_subscription_deleted(stripe, customer_id)
                     result["action"] = "license_revoked"
+
+            elif event_type == "invoice.payment_failed":
+                invoice = event["data"]["object"]
+                customer_id = invoice.get("customer")
+                attempt_count = invoice.get("attempt_count", 0)
+                result["customer_id"] = customer_id
+                result["attempt_count"] = attempt_count
+                if customer_id:
+                    _handle_payment_failed(stripe, customer_id, attempt_count)
+                    result["action"] = "payment_failed_flagged"
         except Exception as exc:
             result["error"] = str(exc)
             _axiom_send({
@@ -144,10 +154,29 @@ def _handle_subscription_deleted(stripe, customer_id):
     _axiom_send(log_entry)
 
 
+def _handle_payment_failed(stripe, customer_id, attempt_count):
+    """Flag customer when invoice payment fails."""
+    stripe.Customer.modify(customer_id, metadata={
+        "evo_payment_status": "past_due",
+        "evo_payment_failed_at": datetime.now(timezone.utc).isoformat(),
+        "evo_payment_attempt": str(attempt_count),
+    })
+    log_entry = {
+        "type": "webhook",
+        "event": "payment_failed",
+        "customer_id": customer_id,
+        "attempt_count": attempt_count,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    print(json.dumps(log_entry))
+    _axiom_send(log_entry)
+
+
 def _generate_license_key(tier, email, signing_key):
+    email_hash = hashlib.sha256(email.lower().encode("utf-8")).hexdigest()[:16]
     payload = {
         "tier": tier,
-        "email": email,
+        "email_hash": email_hash,
         "issued": datetime.now(timezone.utc).isoformat(),
     }
     payload_str = json.dumps(payload, sort_keys=True)

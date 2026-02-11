@@ -44,7 +44,7 @@ class TestKeyCompatibility:
         result = _validate_key(key)
         assert result is not None
         assert result["tier"] == "pro"
-        assert result["email"] == "buyer@example.com"
+        assert "email_hash" in result  # email is hashed, not plaintext
 
     def test_webhook_key_grants_pro_via_get_license(self, monkeypatch):
         """Webhook-generated key → get_license() returns Pro tier."""
@@ -58,7 +58,7 @@ class TestKeyCompatibility:
         lic = get_license()
         assert lic.tier == "pro"
         assert lic.valid is True
-        assert lic.email == "buyer@example.com"
+        assert lic.email is not None  # email_hash present
         assert lic.is_pro()
 
     def test_custom_signing_key_consistency(self, monkeypatch):
@@ -75,9 +75,9 @@ class TestKeyCompatibility:
         lic = get_license()
         assert lic.tier == "pro"
         assert lic.valid is True
-        assert lic.email == "enterprise@corp.com"
+        assert lic.email is not None  # email_hash present
 
-    def test_mismatched_signing_key_falls_back_to_free(self, monkeypatch):
+    def test_mismatched_signing_key_falls_back_to_free(self, tmp_path, monkeypatch):
         """Key generated with one signing key should not validate with another."""
         # Generate with production key
         key = _generate_license_key(
@@ -88,6 +88,7 @@ class TestKeyCompatibility:
         # Validate with the default dev key (simulates mismatch)
         monkeypatch.delenv("EVO_LICENSE_SIGNING_KEY", raising=False)
         monkeypatch.setenv("EVO_LICENSE_KEY", key)
+        monkeypatch.setenv("HOME", str(tmp_path))
         lic = get_license()
         assert lic.tier == "free"
         assert lic.source == "default"
@@ -149,7 +150,7 @@ class TestWebhookHandlers:
         result = _validate_key(key)
         assert result is not None
         assert result["tier"] == "pro"
-        assert result["email"] == "buyer@example.com"
+        assert "email_hash" in result  # email is hashed, not plaintext
 
     def test_checkout_completed_is_idempotent(self):
         """Second call to _handle_checkout_completed should not overwrite existing key."""
@@ -179,7 +180,7 @@ class TestWebhookHandlers:
         _handle_subscription_deleted(mock_stripe, cid)
         assert store.customers[cid]["metadata"]["evo_license_key"] == ""
 
-    def test_cleared_key_falls_back_to_free(self, monkeypatch):
+    def test_cleared_key_falls_back_to_free(self, tmp_path, monkeypatch):
         """After subscription deletion, the cleared key should yield free tier."""
         mock_stripe, store = self._make_mock_stripe()
         customer = store.create(email="buyer@example.com")
@@ -197,6 +198,7 @@ class TestWebhookHandlers:
         _handle_subscription_deleted(mock_stripe, cid)
         cleared = store.customers[cid]["metadata"]["evo_license_key"]
         monkeypatch.setenv("EVO_LICENSE_KEY", cleared)
+        monkeypatch.setenv("HOME", str(tmp_path))
         lic = get_license()
         assert lic.tier == "free"
         assert not lic.is_pro()

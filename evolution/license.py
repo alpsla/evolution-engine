@@ -119,7 +119,7 @@ def get_license(repo_path: Optional[str] = None) -> License:
                 tier=license_data.get("tier", "free"),
                 valid=True,
                 source="env",
-                email=license_data.get("email"),
+                email=license_data.get("email") or license_data.get("email_hash"),
                 issued=license_data.get("issued"),
                 expires=license_data.get("expires"),
             )
@@ -146,7 +146,7 @@ def get_license(repo_path: Optional[str] = None) -> License:
                         tier=license_data.get("tier", "free"),
                         valid=True,
                         source="file",
-                        email=license_data.get("email"),
+                        email=license_data.get("email") or license_data.get("email_hash"),
                         issued=license_data.get("issued"),
                         expires=license_data.get("expires"),
                     )
@@ -176,7 +176,7 @@ def get_license(repo_path: Optional[str] = None) -> License:
                             tier=license_data.get("tier", "free"),
                             valid=True,
                             source="file",
-                            email=license_data.get("email"),
+                            email=license_data.get("email") or license_data.get("email_hash"),
                             issued=license_data.get("issued"),
                             expires=license_data.get("expires"),
                         )
@@ -270,9 +270,10 @@ def generate_key(
     Returns:
         Base64-encoded signed license key.
     """
+    email_hash = hashlib.sha256(email.lower().encode("utf-8")).hexdigest()[:16]
     payload = {
         "tier": tier,
-        "email": email,
+        "email_hash": email_hash,
         "issued": issued or datetime.now().isoformat(),
     }
     if expires:

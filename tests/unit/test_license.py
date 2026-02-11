@@ -22,9 +22,10 @@ from evolution.license import (
 class TestLicenseDetection:
     """Test license detection from various sources."""
 
-    def test_default_is_free_tier(self, monkeypatch):
+    def test_default_is_free_tier(self, tmp_path, monkeypatch):
         """No license key should default to free tier."""
         monkeypatch.delenv("EVO_LICENSE_KEY", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path))
         lic = get_license()
 
         assert lic.tier == "free"
@@ -51,12 +52,13 @@ class TestLicenseDetection:
         assert lic.tier == "pro"
         assert lic.valid is True
         assert lic.source == "env"
-        assert lic.email == "test@example.com"
+        assert lic.email is not None  # email_hash present
         assert lic.is_pro()
 
-    def test_invalid_key_falls_back_to_free(self, monkeypatch):
+    def test_invalid_key_falls_back_to_free(self, tmp_path, monkeypatch):
         """Invalid key should fall back to free tier."""
         monkeypatch.setenv("EVO_LICENSE_KEY", "invalid-key-123")
+        monkeypatch.setenv("HOME", str(tmp_path))
         lic = get_license()
 
         assert lic.tier == "free"
@@ -129,9 +131,10 @@ class TestLicenseDetection:
 class TestProFeatureGating:
     """Test Pro feature gating functions."""
 
-    def test_is_pro_returns_false_for_free(self, monkeypatch):
+    def test_is_pro_returns_false_for_free(self, tmp_path, monkeypatch):
         """is_pro() should return False for free tier."""
         monkeypatch.delenv("EVO_LICENSE_KEY", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path))
         assert is_pro() is False
 
     def test_is_pro_returns_true_for_pro(self, monkeypatch):
@@ -139,9 +142,10 @@ class TestProFeatureGating:
         monkeypatch.setenv("EVO_LICENSE_KEY", "pro-trial")
         assert is_pro() is True
 
-    def test_require_pro_raises_for_free(self, monkeypatch):
+    def test_require_pro_raises_for_free(self, tmp_path, monkeypatch):
         """require_pro() should raise ProFeatureError for free tier."""
         monkeypatch.delenv("EVO_LICENSE_KEY", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path))
 
         with pytest.raises(ProFeatureError) as exc_info:
             require_pro("Test Feature")
@@ -160,9 +164,10 @@ class TestProFeatureGating:
 class TestLicenseFeatures:
     """Test License.features property."""
 
-    def test_free_tier_features(self, monkeypatch):
+    def test_free_tier_features(self, tmp_path, monkeypatch):
         """Free tier should have limited features."""
         monkeypatch.delenv("EVO_LICENSE_KEY", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path))
         lic = get_license()
 
         assert lic.features["tier1_adapters"] is True  # git, dependency, config
@@ -204,24 +209,26 @@ class TestKeyGeneration:
             os.environ.pop("EVO_LICENSE_KEY", None)
 
         assert lic.tier == "pro"
-        assert lic.email == "user@example.com"
+        assert lic.email is not None  # email_hash present
         assert lic.valid is True
 
-    def test_tampered_key_is_invalid(self, monkeypatch):
+    def test_tampered_key_is_invalid(self, tmp_path, monkeypatch):
         """Tampered key should be rejected."""
         key = generate_key("pro", "user@example.com")
         # Tamper with the key
         tampered = key[:-5] + "XXXXX"
         monkeypatch.setenv("EVO_LICENSE_KEY", tampered)
+        monkeypatch.setenv("HOME", str(tmp_path))
 
         lic = get_license()
         assert lic.tier == "free"  # falls back to free
         assert lic.source == "default"
 
-    def test_expired_key_is_invalid(self, monkeypatch):
+    def test_expired_key_is_invalid(self, tmp_path, monkeypatch):
         """Expired key should be rejected."""
         key = generate_key("pro", "user@example.com", expires="2020-01-01")
         monkeypatch.setenv("EVO_LICENSE_KEY", key)
+        monkeypatch.setenv("HOME", str(tmp_path))
 
         lic = get_license()
         assert lic.tier == "free"  # falls back to free
@@ -259,7 +266,7 @@ class TestSigningKeyConfig:
         lic = get_license()
         assert lic.tier == "pro"
         assert lic.valid is True
-        assert lic.email == "user@example.com"
+        assert lic.email is not None  # email_hash present
 
     def test_mismatched_key_rejects(self, monkeypatch):
         """Key generated with one signing key should not validate with another."""

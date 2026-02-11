@@ -176,7 +176,8 @@ def investigate(path, evo_dir, show_prompt, agent_type, model):
               type=click.Choice(["cli", "show-prompt"]),
               help="Force a specific AI backend (must support file editing)")
 @click.option("--scope", "-s", help="Scope identifier")
-def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope):
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompt")
+def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes):
     """Apply AI fixes and verify with EE in a loop.
 
     Creates a branch, asks an AI agent to fix the flagged issues,
@@ -188,6 +189,7 @@ def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope):
         evo fix .                        # fix with auto-detected agent
         evo fix . --max-iterations 5     # allow more attempts
         evo fix . --branch my-fix        # custom branch name
+        evo fix . --yes                  # skip confirmation prompt
     """
     from evolution.agents.base import get_agent
     from evolution.fixer import Fixer
@@ -201,6 +203,16 @@ def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope):
         agent = get_agent(prefer=agent_type)
     elif dry_run:
         agent = get_agent(prefer="show-prompt")
+
+    if not dry_run and not yes:
+        branch_display = branch or f"evo/fix-<timestamp>"
+        click.echo(f"\nThis will modify files on a new branch '{branch_display}'.")
+        click.echo(f"  - Max iterations: {max_iterations}")
+        click.echo(f"  - Agent: {agent.name if agent else 'auto-detect'}")
+        click.echo(f"  - Path: {Path(path).resolve()}\n")
+        if not click.confirm("Proceed?"):
+            click.echo("Aborted.")
+            return
 
     result = fixer.run(
         agent=agent,

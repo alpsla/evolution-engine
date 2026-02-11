@@ -124,12 +124,20 @@ class handler(BaseHTTPRequestHandler):
 **Additional Details:**
 {description or '_Not specified_'}
 
-**Requested by:** {email or '_Anonymous_'}
-
 ---
 _Submitted via codequal.dev adapter request form._
 _Vote with a thumbs-up if you'd also like this adapter!_
 """
+
+        # Log email to Axiom only (never in public GitHub issues)
+        if email:
+            _axiom_send({
+                "type": "adapter_request_contact",
+                "adapter_name": adapter_name,
+                "family": family,
+                "email": email,
+                "timestamp": now,
+            })
 
         issue_data = {
             "title": f"Adapter request: {adapter_name} ({family})",

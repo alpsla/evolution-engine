@@ -15,8 +15,11 @@ class TestOrchestratorLicenseGating:
         """Free tier should disable LLM even if requested."""
         from evolution.orchestrator import Orchestrator
 
-        # Ensure free tier
+        # Ensure free tier (isolate from real ~/.evo/license.json)
         monkeypatch.delenv("EVO_LICENSE_KEY", raising=False)
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        monkeypatch.setenv("HOME", str(fake_home))
 
         # Create a minimal git repo
         repo = tmp_path / "repo"
@@ -61,8 +64,11 @@ class TestOrchestratorLicenseGating:
         """Free tier should block Tier 2 adapters even with token."""
         from evolution.orchestrator import Orchestrator
 
-        # Ensure free tier
+        # Ensure free tier (isolate from real ~/.evo/license.json)
         monkeypatch.delenv("EVO_LICENSE_KEY", raising=False)
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        monkeypatch.setenv("HOME", str(fake_home))
 
         # Create a minimal git repo
         repo = tmp_path / "repo"
