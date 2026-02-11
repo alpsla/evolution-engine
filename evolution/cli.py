@@ -177,7 +177,9 @@ def investigate(path, evo_dir, show_prompt, agent_type, model):
               help="Force a specific AI backend (must support file editing)")
 @click.option("--scope", "-s", help="Scope identifier")
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompt")
-def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes):
+@click.option("--interactive", "-i", is_flag=True,
+              help="Review git diff after each iteration and confirm before continuing")
+def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes, interactive):
     """Apply AI fixes and verify with EE in a loop.
 
     Creates a branch, asks an AI agent to fix the flagged issues,
@@ -190,7 +192,10 @@ def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes):
         evo fix . --max-iterations 5     # allow more attempts
         evo fix . --branch my-fix        # custom branch name
         evo fix . --yes                  # skip confirmation prompt
+        evo fix . --interactive          # review changes after each iteration
     """
+    import subprocess as _subprocess
+
     from evolution.agents.base import get_agent
     from evolution.fixer import Fixer
 
@@ -209,10 +214,55 @@ def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes):
         click.echo(f"\nThis will modify files on a new branch '{branch_display}'.")
         click.echo(f"  - Max iterations: {max_iterations}")
         click.echo(f"  - Agent: {agent.name if agent else 'auto-detect'}")
-        click.echo(f"  - Path: {Path(path).resolve()}\n")
+        click.echo(f"  - Path: {Path(path).resolve()}")
+        if interactive:
+            click.echo(f"  - Interactive: yes (will prompt after each iteration)")
+        click.echo()
         if not click.confirm("Proceed?"):
             click.echo("Aborted.")
             return
+
+    # Build interactive callback if --interactive is set
+    interactive_callback = None
+    if interactive:
+        repo_abs = str(Path(path).resolve())
+
+        def _interactive_review(iteration):
+            """Show git diff and prompt user to continue or abort."""
+            click.echo(f"\n{'=' * 60}")
+            click.echo(f"ITERATION {iteration.iteration} COMPLETE — Review changes")
+            click.echo(f"{'=' * 60}")
+
+            # Show the full git diff
+            try:
+                proc = _subprocess.run(
+                    ["git", "diff"],
+                    cwd=repo_abs,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                diff_output = proc.stdout.strip()
+                if diff_output:
+                    click.echo("\ngit diff:")
+                    click.echo(diff_output)
+                else:
+                    click.echo("\n(no uncommitted changes)")
+            except (OSError, _subprocess.TimeoutExpired):
+                click.echo("\n(could not capture git diff)")
+
+            click.echo(f"\n  Resolved: {iteration.resolved}, "
+                        f"Persisting: {iteration.persisting}, "
+                        f"New: {iteration.new_issues}, "
+                        f"Regressions: {iteration.regressions}")
+
+            if iteration.all_clear:
+                click.echo("\nAll issues resolved!")
+                return True
+
+            return click.confirm("\nContinue to next iteration?")
+
+        interactive_callback = _interactive_review
 
     result = fixer.run(
         agent=agent,
@@ -220,6 +270,7 @@ def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes):
         dry_run=dry_run,
         branch_name=branch,
         scope=scope,
+        interactive_callback=interactive_callback,
     )
 
     if dry_run:
@@ -235,6 +286,7 @@ def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes):
         "no_progress": "Fix loop stopped — no progress detected.",
         "max_iterations": f"Max iterations ({max_iterations}) reached.",
         "error": "Fix loop encountered an error.",
+        "aborted": "Fix loop aborted by user.",
     }
     click.echo(status_messages.get(result.status, f"Status: {result.status}"))
 

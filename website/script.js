@@ -134,6 +134,20 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeAdapterModal();
 });
 
+// ─── GDPR Consent Banner ───
+function acceptConsent() {
+  localStorage.setItem('evo_consent', 'true');
+  var banner = document.getElementById('consent-banner');
+  if (banner) banner.classList.add('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  var banner = document.getElementById('consent-banner');
+  if (banner && localStorage.getItem('evo_consent') !== 'true') {
+    banner.classList.remove('hidden');
+  }
+});
+
 // ─── Scroll animations ───
 document.addEventListener('DOMContentLoaded', () => {
   const observer = new IntersectionObserver(

@@ -566,6 +566,52 @@ footer {
 }
 .copy-tooltip.show { opacity: 1; }
 
+/* ─── Consent Banner ─── */
+.consent-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 150;
+  background: var(--surface);
+  border-top: 1px solid var(--border-light);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.consent-banner.hidden { display: none; }
+
+.consent-text {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  max-width: 600px;
+  text-align: center;
+}
+
+.consent-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.consent-actions .btn { white-space: nowrap; }
+
+/* ─── Billing Disclosure ─── */
+.billing-disclosure {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  text-align: center;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
 /* ─── Responsive ─── */
 @media (max-width: 900px) {
   .features-grid { grid-template-columns: repeat(2, 1fr); }

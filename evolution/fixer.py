@@ -24,7 +24,7 @@ import logging
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from evolution.agents.base import BaseAgent, get_agent
 
@@ -74,6 +74,9 @@ class FixIteration:
         persisting: int = 0,
         new_issues: int = 0,
         regressions: int = 0,
+        modified_files: Optional[list[str]] = None,
+        diff_before: Optional[str] = None,
+        diff_after: Optional[str] = None,
     ):
         self.iteration = iteration
         self.agent_response = agent_response
@@ -82,6 +85,9 @@ class FixIteration:
         self.persisting = persisting
         self.new_issues = new_issues
         self.regressions = regressions
+        self.modified_files = modified_files or []
+        self.diff_before = diff_before or ""
+        self.diff_after = diff_after or ""
 
     @property
     def all_clear(self) -> bool:
@@ -96,6 +102,9 @@ class FixIteration:
             "regressions": self.regressions,
             "all_clear": self.all_clear,
             "agent_response_length": len(self.agent_response),
+            "modified_files": self.modified_files,
+            "diff_before": self.diff_before,
+            "diff_after": self.diff_after,
         }
 
 
@@ -151,6 +160,7 @@ class Fixer:
         dry_run: bool = False,
         branch_name: str = None,
         scope: str = None,
+        interactive_callback: Optional[Callable[[FixIteration], bool]] = None,
     ) -> FixResult:
         """Execute the fix-verify loop.
 
@@ -160,6 +170,9 @@ class Fixer:
             dry_run: If True, show what would be fixed without modifying files.
             branch_name: Git branch name for fixes (default: evo/fix-<timestamp>).
             scope: Pipeline scope name (default: repo directory name).
+            interactive_callback: If provided, called after each iteration with
+                the FixIteration result. Should return True to continue or False
+                to abort. Used by --interactive mode in the CLI.
 
         Returns:
             FixResult with loop status and iteration details.
@@ -245,6 +258,9 @@ class Fixer:
                 residual_context=residual_context,
             )
 
+            # Capture pre-agent diff state
+            diff_before = self._capture_git_diff_stat()
+
             # Ask agent to apply fixes
             result = agent.complete_with_files(
                 prompt=prompt,
@@ -252,10 +268,32 @@ class Fixer:
                 system=FIX_SYSTEM_PROMPT,
             )
 
+            # Capture post-agent diff state
+            diff_after = self._capture_git_diff_stat()
+
+            # Collect modified files
+            modified_files = self._get_modified_files()
+
+            if modified_files:
+                import click
+                click.echo(f"\n  Modified files (iteration {i}):")
+                for f in modified_files:
+                    click.echo(f"    - {f}")
+            else:
+                import click
+                click.echo(f"\n  No files modified in iteration {i}.")
+
+            if diff_before or diff_after:
+                logger.info("Diff before agent (iteration %d):\n%s", i, diff_before)
+                logger.info("Diff after agent (iteration %d):\n%s", i, diff_after)
+
             if not result.success:
                 iterations.append(FixIteration(
                     iteration=i,
                     agent_response=result.error or "Agent failed",
+                    modified_files=modified_files,
+                    diff_before=diff_before,
+                    diff_after=diff_after,
                 ))
                 return FixResult(
                     status="error",
@@ -270,6 +308,9 @@ class Fixer:
                 iterations.append(FixIteration(
                     iteration=i,
                     agent_response=result.text,
+                    modified_files=modified_files,
+                    diff_before=diff_before,
+                    diff_after=diff_after,
                 ))
                 return FixResult(
                     status="error",
@@ -292,6 +333,9 @@ class Fixer:
                 persisting=persisting,
                 new_issues=new_issues,
                 regressions=regressions,
+                modified_files=modified_files,
+                diff_before=diff_before,
+                diff_after=diff_after,
             )
             iterations.append(iteration)
 
@@ -299,6 +343,19 @@ class Fixer:
                 "Iteration %d: resolved=%d, persisting=%d, new=%d, regressions=%d",
                 i, resolved, persisting, new_issues, regressions,
             )
+
+            # Interactive mode: let the caller review and decide
+            if interactive_callback is not None:
+                should_continue = interactive_callback(iteration)
+                if not should_continue:
+                    logger.info("User aborted fix loop after iteration %d.", i)
+                    return FixResult(
+                        status="aborted",
+                        iterations=iterations,
+                        branch=branch,
+                        total_resolved=resolved,
+                        total_remaining=remaining,
+                    )
 
             # Check termination conditions
             if iteration.all_clear:
@@ -338,6 +395,37 @@ class Fixer:
             total_resolved=total_resolved,
             total_remaining=total_remaining,
         )
+
+    def _capture_git_diff_stat(self) -> str:
+        """Capture `git diff --stat` output for audit trail."""
+        try:
+            proc = subprocess.run(
+                ["git", "diff", "--stat"],
+                cwd=str(self.repo_path),
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            return proc.stdout.strip()
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
+            logger.warning("Failed to capture git diff --stat: %s", e)
+            return ""
+
+    def _get_modified_files(self) -> list[str]:
+        """Get list of files modified in the working tree (staged + unstaged)."""
+        try:
+            proc = subprocess.run(
+                ["git", "diff", "--name-only", "HEAD"],
+                cwd=str(self.repo_path),
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            files = [f for f in proc.stdout.strip().split("\n") if f]
+            return files
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
+            logger.warning("Failed to get modified files: %s", e)
+            return []
 
     def _load_investigation(self) -> Optional[str]:
         """Load investigation report text, falling back to advisory prompt."""

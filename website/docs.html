@@ -153,7 +153,7 @@ evo analyze .</code></pre>
   <!-- Build Your Own Adapter -->
   <h2 id="build-adapter">Build Your Own Adapter</h2>
 
-  <p>Adapters connect external data sources to the Evolution Engine pipeline. Each adapter produces <strong>events</strong> that EE processes through its 5-phase analysis. You can build an adapter for any tool — CI systems, monitoring platforms, issue trackers, deployment tools, etc.</p>
+  <p>Adapters read from external data sources and feed events into the Evolution Engine pipeline. Each adapter produces <strong>events</strong> that EE processes through its 5-phase analysis. You can build an adapter for any tool — CI systems, monitoring platforms, issue trackers, deployment tools, etc.</p>
 
   <div class="callout">
     <p>Adapters you build and submit are reviewed by the EE team and, if approved, bundled for all users in future releases.</p>
@@ -300,6 +300,16 @@ jenkins = "evo_jenkins.adapter:JenkinsAdapter"</code></pre>
   </div>
 </footer>
 
+<!-- ─── GDPR Consent Banner ─── -->
+<div id="consent-banner" class="consent-banner hidden">
+  <p class="consent-text" data-i18n="consent.text">This site uses cookies for payment processing (Stripe) and optional anonymous telemetry. No tracking or advertising cookies are used.</p>
+  <div class="consent-actions">
+    <button class="btn btn-primary btn-sm" onclick="acceptConsent()" data-i18n="consent.accept">Accept</button>
+    <a href="privacy.html" class="btn btn-outline btn-sm" data-i18n="consent.learn_more">Learn More</a>
+  </div>
+</div>
+
+<script src="i18n.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
