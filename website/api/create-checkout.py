@@ -37,6 +37,7 @@ class handler(BaseHTTPRequestHandler):
                 success_url=f"{base_url}/success?session_id={{CHECKOUT_SESSION_ID}}",
                 cancel_url=f"{base_url}/#pricing",
                 metadata={"product": "evolution-engine-pro"},
+                allow_promotion_codes=True,
             )
             self._json({"url": session.url})
         except stripe.StripeError as e:

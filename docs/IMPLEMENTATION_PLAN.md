@@ -1194,6 +1194,8 @@ Docs page ✅                    Privacy page ✅
 34. **Custom domain** — configure codequal.dev for Vercel
 35. **Community beta** — announce, gather feedback
 
+**See `docs/LAUNCH_PLAN.md`** for detailed beta program, launch timeline, and go-to-market strategy.
+
 ---
 
 ## 12. Launch Checklist
@@ -1218,7 +1220,7 @@ The remaining items before public beta:
 
 ---
 
-> **Summary (February 10, 2026):**
+> **Summary (February 11, 2026):**
 >
 > **All priorities complete. Product launch infrastructure deployed.** All 5 engine phases,
 > open-core infrastructure, AI agent integration, GitHub Action, source prescan, cloud sync,
@@ -1257,9 +1259,16 @@ The remaining items before public beta:
 >
 > **Remaining:**
 > - PyPI package publication
-> - Stripe checkout end-to-end test
+> - Stripe checkout end-to-end test (+ `allow_promotion_codes=True` for beta discounts)
 > - Custom domain (codequal.dev) for Vercel
-> - Community beta testing
+> - Community beta launch (see `docs/LAUNCH_PLAN.md` for full timeline)
+>
+> **New (February 11, 2026):**
+> - Report: severity badges, risk banners, pattern grouping, IP sanitization
+> - `friendly.py`: pattern descriptions generated from structured fields, statistical internals stripped
+> - Website: language switcher fix (i18n routes + absolute paths)
+> - Launch plan: `docs/LAUNCH_PLAN.md` — beta program, Stripe discounts, Show HN timeline, EU AI Act compliance
+> - 545 tests passing (1.54s)
 >
 > **The engagement flow:**
 > ```
