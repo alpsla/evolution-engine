@@ -116,6 +116,12 @@
     "billing_disclosure": "Monatliche Abrechnung. Jederzeit k\u00fcndbar. 30-Tage-Geld-zur\u00fcck-Garantie.",
     "most_popular": "Beliebteste Wahl"
   },
+  "badges": {
+    "free": "Kostenlos",
+    "pro": "Pro",
+    "planned": "Geplant",
+    "community": "Community"
+  },
   "consent": {
     "text": "Diese Website verwendet Cookies f\u00fcr die Zahlungsabwicklung (Stripe) und optionale anonyme Telemetrie. Es werden keine Tracking- oder Werbe-Cookies verwendet.",
     "accept": "Akzeptieren",

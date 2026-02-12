@@ -151,49 +151,49 @@
           <td data-i18n="signals.git_family">Git</td>
           <td data-i18n="signals.git_source">Local git history</td>
           <td>files_touched, dispersion, change_locality, cochange_novelty</td>
-          <td><span class="badge badge-free">Free</span></td>
+          <td><span class="badge badge-free" data-i18n="badges.free">Free</span></td>
         </tr>
         <tr>
           <td data-i18n="signals.dependency_family">Dependency</td>
           <td data-i18n="signals.dependency_source">pip, npm, go, cargo, bundler lockfiles</td>
           <td>dependency_count, max_depth</td>
-          <td><span class="badge badge-free">Free</span></td>
+          <td><span class="badge badge-free" data-i18n="badges.free">Free</span></td>
         </tr>
         <tr>
           <td data-i18n="signals.ci_family">CI</td>
           <td data-i18n="signals.ci_source">GitHub Actions (more coming)</td>
           <td>run_duration, run_failed</td>
-          <td><span class="badge badge-pro">Pro</span></td>
+          <td><span class="badge badge-pro" data-i18n="badges.pro">Pro</span></td>
         </tr>
         <tr>
           <td data-i18n="signals.deployment_family">Deployment</td>
           <td data-i18n="signals.deployment_source">GitHub Releases (more coming)</td>
           <td>release_cadence_hours, is_prerelease, asset_count</td>
-          <td><span class="badge badge-pro">Pro</span></td>
+          <td><span class="badge badge-pro" data-i18n="badges.pro">Pro</span></td>
         </tr>
         <tr>
           <td data-i18n="signals.security_family">Security</td>
           <td data-i18n="signals.security_source">Dependabot, Snyk, Semgrep</td>
           <td>vulnerability_count, severity_score</td>
-          <td><span class="badge badge-pro">Pro</span></td>
+          <td><span class="badge badge-pro" data-i18n="badges.pro">Pro</span></td>
         </tr>
         <tr>
           <td data-i18n="signals.monitoring_family">Monitoring</td>
           <td data-i18n="signals.monitoring_source">Datadog, New Relic, Grafana</td>
           <td>error_rate, latency_p99</td>
-          <td><span class="badge badge-planned">Planned</span></td>
+          <td><span class="badge badge-planned" data-i18n="badges.planned">Planned</span></td>
         </tr>
         <tr>
           <td data-i18n="signals.incidents_family">Incidents</td>
           <td data-i18n="signals.incidents_source">PagerDuty, OpsGenie</td>
           <td>incident_frequency, mttr</td>
-          <td><span class="badge badge-planned">Planned</span></td>
+          <td><span class="badge badge-planned" data-i18n="badges.planned">Planned</span></td>
         </tr>
         <tr>
           <td data-i18n="signals.work_items_family">Work Items</td>
           <td data-i18n="signals.work_items_source">Jira, Linear</td>
           <td>cycle_time, wip_count</td>
-          <td><span class="badge badge-planned">Planned</span></td>
+          <td><span class="badge badge-planned" data-i18n="badges.planned">Planned</span></td>
         </tr>
       </tbody>
     </table>
@@ -210,7 +210,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>Git</h4>
-          <span class="badge badge-free">Free</span>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
         </div>
         <div class="adapter-family">version_control</div>
         <p data-i18n="adapters.git_desc">Local git history analysis — commits, file changes, co-change patterns.</p>
@@ -218,7 +218,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>pip</h4>
-          <span class="badge badge-free">Free</span>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
         </div>
         <div class="adapter-family">dependency</div>
         <p data-i18n="adapters.pip_desc">Python dependency tracking from requirements.txt and Pipfile.lock.</p>
@@ -226,7 +226,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>npm</h4>
-          <span class="badge badge-free">Free</span>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
         </div>
         <div class="adapter-family">dependency</div>
         <p data-i18n="adapters.npm_desc">Node.js dependency tracking from package-lock.json with depth analysis.</p>
@@ -234,7 +234,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>go modules</h4>
-          <span class="badge badge-free">Free</span>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
         </div>
         <div class="adapter-family">dependency</div>
         <p data-i18n="adapters.go_desc">Go module tracking from go.sum with dependency depth.</p>
@@ -242,7 +242,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>cargo</h4>
-          <span class="badge badge-free">Free</span>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
         </div>
         <div class="adapter-family">dependency</div>
         <p data-i18n="adapters.cargo_desc">Rust crate tracking from Cargo.lock with depth analysis.</p>
@@ -250,7 +250,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>bundler</h4>
-          <span class="badge badge-free">Free</span>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
         </div>
         <div class="adapter-family">dependency</div>
         <p data-i18n="adapters.bundler_desc">Ruby gem tracking from Gemfile.lock.</p>
@@ -258,7 +258,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>GitHub Actions</h4>
-          <span class="badge badge-pro">Pro</span>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
         </div>
         <div class="adapter-family">ci</div>
         <p data-i18n="adapters.github_actions_desc">CI pipeline monitoring — run duration, failure rates, workflow trends.</p>
@@ -266,7 +266,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>GitHub Releases</h4>
-          <span class="badge badge-pro">Pro</span>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
         </div>
         <div class="adapter-family">deployment</div>
         <p data-i18n="adapters.github_releases_desc">Release cadence tracking, pre-release detection, asset monitoring.</p>
@@ -274,7 +274,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>Dependabot</h4>
-          <span class="badge badge-pro">Pro</span>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
         </div>
         <div class="adapter-family">security</div>
         <p data-i18n="adapters.dependabot_desc">Reads security advisory data from repos that use Dependabot alerts.</p>
@@ -283,7 +283,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>Jenkins</h4>
-          <span class="badge badge-planned">Planned</span>
+          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
         </div>
         <div class="adapter-family">ci</div>
         <p data-i18n="adapters.jenkins_desc">Reads CI build data from repos that use Jenkins.</p>
@@ -291,7 +291,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>GitLab CI</h4>
-          <span class="badge badge-planned">Planned</span>
+          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
         </div>
         <div class="adapter-family">ci</div>
         <p data-i18n="adapters.gitlab_ci_desc">Reads CI/CD pipeline data from repos that use GitLab CI.</p>
@@ -299,7 +299,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>Datadog</h4>
-          <span class="badge badge-planned">Planned</span>
+          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
         </div>
         <div class="adapter-family">monitoring</div>
         <p data-i18n="adapters.datadog_desc">Reads APM metrics, error rates, and deployment markers from repos that use Datadog.</p>
@@ -307,7 +307,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>Sentry</h4>
-          <span class="badge badge-planned">Planned</span>
+          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
         </div>
         <div class="adapter-family">error_tracking</div>
         <p data-i18n="adapters.sentry_desc">Reads error rates and release health data from repos that use Sentry.</p>
@@ -315,7 +315,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>SonarQube</h4>
-          <span class="badge badge-planned">Planned</span>
+          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
         </div>
         <div class="adapter-family">quality_gate</div>
         <p data-i18n="adapters.sonarqube_desc">Reads quality gate status and code metrics from repos that use SonarQube.</p>
@@ -323,7 +323,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>Snyk</h4>
-          <span class="badge badge-planned">Planned</span>
+          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
         </div>
         <div class="adapter-family">security_scan</div>
         <p data-i18n="adapters.snyk_desc">Reads vulnerability and license compliance data from repos that use Snyk.</p>
@@ -331,7 +331,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>PagerDuty</h4>
-          <span class="badge badge-planned">Planned</span>
+          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
         </div>
         <div class="adapter-family">incidents</div>
         <p data-i18n="adapters.pagerduty_desc">Reads incident frequency, MTTR, and escalation pattern data from teams that use PagerDuty.</p>
@@ -339,7 +339,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>Jira</h4>
-          <span class="badge badge-planned">Planned</span>
+          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
         </div>
         <div class="adapter-family">work_items</div>
         <p data-i18n="adapters.jira_desc">Reads cycle time, WIP count, and sprint velocity from teams that use Jira.</p>
@@ -347,7 +347,7 @@
       <div class="adapter-card">
         <div class="adapter-card-header">
           <h4>ArgoCD</h4>
-          <span class="badge badge-planned">Planned</span>
+          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
         </div>
         <div class="adapter-family">deployment</div>
         <p data-i18n="adapters.argocd_desc">Reads GitOps deployment and sync status data from repos that use Argo CD.</p>
@@ -355,7 +355,7 @@
       <a href="docs.html#build-adapter" class="adapter-card" style="border-style: dashed; border-color: var(--secondary); text-decoration: none; color: inherit;">
         <div class="adapter-card-header">
           <h4 data-i18n="adapters.build_your_own_title">Build Your Own</h4>
-          <span class="badge badge-community">Community</span>
+          <span class="badge badge-community" data-i18n="badges.community">Community</span>
         </div>
         <div class="adapter-family">any family</div>
         <p data-i18n="adapters.build_your_own_desc">Create a custom adapter with our scaffold tool and step-by-step guide. Ship it as a pip package.</p>

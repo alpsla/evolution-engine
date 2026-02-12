@@ -116,6 +116,12 @@
     "billing_disclosure": "Billed monthly. Cancel anytime. 30-day money-back guarantee.",
     "most_popular": "Most Popular"
   },
+  "badges": {
+    "free": "Free",
+    "pro": "Pro",
+    "planned": "Planned",
+    "community": "Community"
+  },
   "consent": {
     "text": "This site uses cookies for payment processing (Stripe) and optional anonymous telemetry. No tracking or advertising cookies are used.",
     "accept": "Accept",

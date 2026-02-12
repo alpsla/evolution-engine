@@ -116,6 +116,12 @@
     "billing_disclosure": "Facturaci\u00f3n mensual. Cancela en cualquier momento. Garant\u00eda de devoluci\u00f3n de 30 d\u00edas.",
     "most_popular": "M\u00e1s popular"
   },
+  "badges": {
+    "free": "Gratis",
+    "pro": "Pro",
+    "planned": "Planificado",
+    "community": "Comunidad"
+  },
   "consent": {
     "text": "Este sitio utiliza cookies para el procesamiento de pagos (Stripe) y telemetr\u00eda an\u00f3nima opcional. No se utilizan cookies de seguimiento ni publicidad.",
     "accept": "Aceptar",
