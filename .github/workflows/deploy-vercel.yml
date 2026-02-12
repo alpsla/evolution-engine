@@ -21,12 +21,9 @@ jobs:
 
       - name: Pull Vercel config
         run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
-        working-directory: website
 
       - name: Build
         run: vercel build --prod --token=$VERCEL_TOKEN
-        working-directory: website
 
       - name: Deploy
         run: vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
-        working-directory: website
