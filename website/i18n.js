@@ -96,8 +96,8 @@
     currentLang = lang;
     localStorage.setItem(STORAGE_KEY, lang);
 
-    // Determine base path for i18n files (same directory as i18n.js)
-    var basePath = 'i18n/' + lang + '.json';
+    // Use absolute path so it works from any page context (/, /docs, etc.)
+    var basePath = '/i18n/' + lang + '.json';
 
     fetch(basePath)
       .then(function (res) {

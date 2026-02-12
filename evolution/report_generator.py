@@ -15,7 +15,10 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from evolution.friendly import risk_level, relative_change, metric_insight, friendly_pattern
+from evolution.friendly import (
+    risk_level, relative_change, metric_insight, friendly_pattern,
+    pattern_risk_assessment, _severity_rank,
+)
 
 FAMILY_LABELS = {
     "git": "Version Control",
@@ -118,10 +121,13 @@ def _render_html(advisory, evidence, title, cal=None):
 
     cover = _build_cover_page(scope, period_from, period_to, advisory_id, generated)
     exec_summary = _build_executive_summary(summary, families_affected, cal)
+    findings_html = _build_key_findings(changes, pattern_matches, candidate_patterns, families_affected)
     changes_html = _build_changes_section(changes)
     patterns_html = _build_pattern_section(pattern_matches, candidate_patterns)
+    all_patterns = list(pattern_matches) + list(candidate_patterns)
     invest_html = _build_investigation_section(
         scope, period_from, period_to, changes, commits, files_affected, timeline,
+        all_patterns,
     )
     evidence_html = _build_evidence_section(
         commits, files_affected, deps_changed, timeline, evidence,
@@ -140,6 +146,7 @@ def _render_html(advisory, evidence, title, cal=None):
         '</head>\n<body>\n'
         f'{cover}\n'
         f'{exec_summary}\n'
+        f'{findings_html}\n'
         f'{changes_html}\n'
         f'{patterns_html}\n'
         f'{invest_html}\n'
@@ -229,6 +236,81 @@ def _summary_card(value, label):
     )
 
 
+def _build_key_findings(changes, pattern_matches, candidate_patterns, families_affected):
+    """Build a concise narrative summary of all findings."""
+    if not changes and not pattern_matches and not candidate_patterns:
+        return (
+            '<section class="key-findings">\n'
+            '  <h2>Key Findings</h2>\n'
+            '  <p class="empty">No unusual activity detected. Your project\'s development '
+            'patterns are within normal ranges.</p>\n'
+            '</section>'
+        )
+
+    bullets = []
+
+    # Summarize changes by family
+    if changes:
+        family_changes = {}
+        for c in changes:
+            fam = FAMILY_LABELS.get(c.get("family", ""), c.get("family", ""))
+            family_changes.setdefault(fam, []).append(c)
+        for fam, items in family_changes.items():
+            high = [c for c in items if abs(c.get("deviation_stddev", 0)) >= 4.0]
+            med = [c for c in items if 2.0 <= abs(c.get("deviation_stddev", 0)) < 4.0]
+            if high:
+                metrics = ", ".join(
+                    METRIC_LABELS.get(c.get("metric", ""), c.get("metric", ""))
+                    for c in high
+                )
+                bullets.append(
+                    f'<strong>{_esc(fam)}</strong> showed significant deviations '
+                    f'in {_esc(metrics)}.'
+                )
+            elif med:
+                metrics = ", ".join(
+                    METRIC_LABELS.get(c.get("metric", ""), c.get("metric", ""))
+                    for c in med
+                )
+                bullets.append(
+                    f'<strong>{_esc(fam)}</strong> showed moderate deviations '
+                    f'in {_esc(metrics)}.'
+                )
+            else:
+                metrics = ", ".join(
+                    METRIC_LABELS.get(c.get("metric", ""), c.get("metric", ""))
+                    for c in items
+                )
+                bullets.append(
+                    f'<strong>{_esc(fam)}</strong> showed minor deviations '
+                    f'in {_esc(metrics)}.'
+                )
+
+    # Summarize patterns
+    if pattern_matches:
+        n = len(pattern_matches)
+        bullets.append(
+            f'{n} known pattern{"s" if n != 1 else ""} matched, '
+            'indicating previously observed cross-signal correlations.'
+        )
+    if candidate_patterns:
+        n = len(candidate_patterns)
+        bullets.append(
+            f'{n} emerging pattern{"s" if n != 1 else ""} detected '
+            'that may become recurring if observed again.'
+        )
+
+    items_html = "\n".join(f'    <li>{b}</li>' for b in bullets)
+    return (
+        '<section class="key-findings">\n'
+        '  <h2>Key Findings</h2>\n'
+        '  <ul class="findings-list">\n'
+        f'{items_html}\n'
+        '  </ul>\n'
+        '</section>'
+    )
+
+
 def _build_changes_section(changes):
     if not changes:
         return (
@@ -280,11 +362,21 @@ def _build_change_card(c):
         )
 
     mad = normal.get("mad", normal.get("stddev", 0))
-    tech = (
-        f"The {metric_key.replace('_', ' ')} for this change was {_fmt_num(current)}. "
-        f"Historically, similar changes had a value of {_fmt_num(median)} "
-        f"&plusmn; {_fmt_num(mad)}."
-    )
+
+    # Only show technical details when there's meaningful statistical data
+    tech_html = ""
+    if mad and mad > 0:
+        tech = (
+            f"The {metric_key.replace('_', ' ')} for this change was {_fmt_num(current)}. "
+            f"Historically, similar changes had a value of {_fmt_num(median)} "
+            f"&plusmn; {_fmt_num(mad)}."
+        )
+        tech_html = (
+            '  <details class="technical-detail">\n'
+            '    <summary>Show technical details</summary>\n'
+            f'    <p>{tech}</p>\n'
+            '  </details>\n'
+        )
 
     return (
         f'<div class="change-card {dev_class}">\n'
@@ -309,12 +401,126 @@ def _build_change_card(c):
         '    </div>\n'
         '  </div>\n'
         f'  <div class="deviation-badge">{abs_dev:.1f}x {direction} typical range</div>\n'
-        '  <details class="technical-detail">\n'
-        '    <summary>Show technical details</summary>\n'
-        f'    <p>{tech}</p>\n'
-        '  </details>\n'
+        f'{tech_html}'
         '</div>'
     )
+
+
+def _build_pattern_card(p, badge_label):
+    """Build a single pattern card with severity badge, impact, and recommendation."""
+    sources = ", ".join(FAMILY_LABELS.get(s, s) for s in p.get("sources", []))
+    metrics = ", ".join(METRIC_LABELS.get(m, m) for m in p.get("metrics", []))
+    desc = friendly_pattern(p)
+    risk = pattern_risk_assessment(p)
+    severity = risk["severity"]
+    sev_display = risk["severity_display"]
+    impact = risk["impact"]
+    recommendation = risk["recommendation"]
+
+    badge_style = ' style="background: var(--color-warning);"' if badge_label == "Emerging Pattern" else ""
+
+    return (
+        f'<div class="pattern-card severity-border-{severity}">\n'
+        f'  <span class="badge"{badge_style}>{badge_label}</span>\n'
+        f'  <span class="severity-badge severity-{severity}">'
+        f'{sev_display["icon"]} {_esc(sev_display["label"])}</span>\n'
+        f'  <h3 style="margin-top: 0.5em;">{_esc(sources)}</h3>\n'
+        f'  <div class="pattern-meta">{_esc(metrics)}</div>\n'
+        + (f'  <p>{_esc(desc)}</p>\n' if desc else '')
+        + f'  <div class="pattern-impact"><strong>What this means:</strong> {_esc(impact)}</div>\n'
+        f'  <div class="pattern-recommendation"><strong>Recommendation:</strong> {_esc(recommendation)}</div>\n'
+        '</div>'
+    )
+
+
+def _build_grouped_pattern_card(patterns, badge_label):
+    """Build a single card for multiple patterns sharing the same severity + impact.
+
+    Combines sources and metrics from all patterns, shows each pattern's description
+    as a bullet point, but uses the shared impact/recommendation only once.
+    """
+    risk = pattern_risk_assessment(patterns[0])
+    severity = risk["severity"]
+    sev_display = risk["severity_display"]
+    impact = risk["impact"]
+    recommendation = risk["recommendation"]
+
+    badge_style = ' style="background: var(--color-warning);"' if badge_label == "Emerging Pattern" else ""
+
+    # Collect unique sources and metrics across all patterns in the group
+    all_sources = []
+    all_metrics = []
+    descriptions = []
+    for p in patterns:
+        for s in p.get("sources", []):
+            label = FAMILY_LABELS.get(s, s)
+            if label not in all_sources:
+                all_sources.append(label)
+        for m in p.get("metrics", []):
+            label = METRIC_LABELS.get(m, m)
+            if label not in all_metrics:
+                all_metrics.append(label)
+        desc = friendly_pattern(p)
+        if desc:
+            descriptions.append(desc)
+
+    sources_str = ", ".join(all_sources)
+    metrics_str = ", ".join(all_metrics)
+
+    # Show each pattern's description as a bullet
+    desc_html = ""
+    if descriptions:
+        items = "\n".join(f'    <li>{_esc(d)}</li>' for d in descriptions)
+        desc_html = f'  <ul class="grouped-pattern-list">\n{items}\n  </ul>\n'
+
+    return (
+        f'<div class="pattern-card severity-border-{severity}">\n'
+        f'  <span class="badge"{badge_style}>{badge_label}</span>\n'
+        f'  <span class="severity-badge severity-{severity}">'
+        f'{sev_display["icon"]} {_esc(sev_display["label"])}</span>\n'
+        f'  <span class="pattern-group-count">{len(patterns)} related patterns</span>\n'
+        f'  <h3 style="margin-top: 0.5em;">{_esc(sources_str)}</h3>\n'
+        f'  <div class="pattern-meta">{_esc(metrics_str)}</div>\n'
+        f'{desc_html}'
+        f'  <div class="pattern-impact"><strong>What this means:</strong> {_esc(impact)}</div>\n'
+        f'  <div class="pattern-recommendation"><strong>Recommendation:</strong> {_esc(recommendation)}</div>\n'
+        '</div>'
+    )
+
+
+def _grouped_cards(patterns, badge_label):
+    """Group patterns by (severity, impact) and render cards.
+
+    Patterns with identical severity+impact text are combined into a single card
+    to avoid duplicate 'What this means' content.
+    """
+    if not patterns:
+        return []
+
+    # Group by (severity, impact) tuple
+    groups = {}
+    for p in patterns:
+        risk = pattern_risk_assessment(p)
+        key = (risk["severity"], risk["impact"])
+        groups.setdefault(key, []).append(p)
+
+    cards = []
+    # Iterate groups in the order of the first pattern in each group
+    # (patterns are already sorted by severity)
+    seen_keys = []
+    for p in patterns:
+        risk = pattern_risk_assessment(p)
+        key = (risk["severity"], risk["impact"])
+        if key in seen_keys:
+            continue
+        seen_keys.append(key)
+        group = groups[key]
+        if len(group) == 1:
+            cards.append(_build_pattern_card(group[0], badge_label))
+        else:
+            cards.append(_build_grouped_pattern_card(group, badge_label))
+
+    return cards
 
 
 def _build_pattern_section(matches, candidates):
@@ -323,43 +529,138 @@ def _build_pattern_section(matches, candidates):
 
     PATTERN_VISIBLE_LIMIT = 3
 
-    known_cards = []
-    for p in matches:
-        sources = ", ".join(FAMILY_LABELS.get(s, s) for s in p.get("sources", []))
-        metrics = ", ".join(METRIC_LABELS.get(m, m) for m in p.get("metrics", []))
-        desc = friendly_pattern(p)
-        known_cards.append(
-            '<div class="pattern-card">\n'
-            '  <span class="badge">Known Pattern</span>\n'
-            f'  <h3 style="margin-top: 0.5em;">{_esc(sources)}</h3>\n'
-            f'  <div class="pattern-meta">{_esc(metrics)}</div>\n'
-            + (f'  <p>{_esc(desc)}</p>\n' if desc else '')
-            + '</div>'
-        )
+    # Assess all patterns to determine overall risk
+    all_patterns = list(matches) + list(candidates)
+    all_risks = [pattern_risk_assessment(p) for p in all_patterns]
+    severity_counts = {}
+    highest_severity = "info"
+    for r in all_risks:
+        sev = r["severity"]
+        severity_counts[sev] = severity_counts.get(sev, 0) + 1
+        if _severity_rank(sev) > _severity_rank(highest_severity):
+            highest_severity = sev
 
-    emerging_cards = []
-    for p in candidates:
-        sources = ", ".join(FAMILY_LABELS.get(s, s) for s in p.get("sources", []))
-        metrics = ", ".join(METRIC_LABELS.get(m, m) for m in p.get("metrics", []))
-        desc = friendly_pattern(p)
-        emerging_cards.append(
-            '<div class="pattern-card">\n'
-            '  <span class="badge" style="background: var(--color-warning);">Emerging Pattern</span>\n'
-            f'  <h3 style="margin-top: 0.5em;">{_esc(sources)}</h3>\n'
-            f'  <div class="pattern-meta">{_esc(metrics)}</div>\n'
-            + (f'  <p>{_esc(desc)}</p>\n' if desc else '')
-            + '</div>'
-        )
+    # Sort patterns by severity (most critical first)
+    sorted_matches = sorted(
+        matches,
+        key=lambda p: _severity_rank(pattern_risk_assessment(p)["severity"]),
+        reverse=True,
+    )
+    sorted_candidates = sorted(
+        candidates,
+        key=lambda p: _severity_rank(pattern_risk_assessment(p)["severity"]),
+        reverse=True,
+    )
+
+    known_cards = _grouped_cards(sorted_matches, "Known Pattern")
+    emerging_cards = _grouped_cards(sorted_candidates, "Emerging Pattern")
 
     known_html = _collapsible_pattern_cards(known_cards, "Known Patterns", PATTERN_VISIBLE_LIMIT)
     emerging_html = _collapsible_pattern_cards(emerging_cards, "Emerging Patterns", PATTERN_VISIBLE_LIMIT)
 
+    # Build overall risk banner
+    banner_html = _build_pattern_risk_banner(highest_severity, severity_counts, len(all_patterns))
+
+    # User guidance
+    guidance = (
+        '<div class="pattern-guidance">\n'
+        '  <p><strong>What are patterns?</strong> Patterns are recurring correlations between '
+        'different areas of your project. When a change in one area (e.g. a deployment) '
+        'consistently coincides with unusual behavior in another (e.g. code dispersion), '
+        'we flag it so you can decide if it needs attention.</p>\n'
+        '  <p><strong>What should you do?</strong> Focus on items marked '
+        '<span class="severity-badge severity-critical">\u26a0\ufe0f Action Required</span> or '
+        '<span class="severity-badge severity-concern">\U0001f50d Needs Attention</span> first. '
+        'These indicate patterns that are most likely to affect code quality, stability, or security. '
+        'Items marked <span class="severity-badge severity-watch">\U0001f441\ufe0f Worth Monitoring</span> '
+        'don\'t need immediate action but should be reviewed if they persist. '
+        '<span class="severity-badge severity-positive">\u2705 Healthy Pattern</span> and '
+        '<span class="severity-badge severity-info">\u2139\ufe0f Informational</span> '
+        'confirm that things are working as expected.</p>\n'
+        '</div>\n'
+    )
+
     return (
         '<section class="patterns page-break-before">\n'
         '  <h2>Recurring Patterns</h2>\n'
+        f'  {banner_html}\n'
+        f'  {guidance}\n'
         f'  {known_html}\n'
         f'  {emerging_html}\n'
         '</section>'
+    )
+
+
+_OVERALL_RISK_TEXT = {
+    "critical": {
+        "class": "risk-banner-critical",
+        "title": "Immediate Review Required",
+        "text": (
+            "One or more patterns indicate serious risks that could affect code quality, "
+            "stability, or security. Review the items below and address "
+            '"Action Required" findings before your next release.'
+        ),
+    },
+    "concern": {
+        "class": "risk-banner-concern",
+        "title": "Attention Recommended",
+        "text": (
+            "Some patterns suggest developing issues that could grow into problems "
+            "if left unaddressed. Review the items marked "
+            '"Needs Attention" and plan follow-up actions.'
+        ),
+    },
+    "watch": {
+        "class": "risk-banner-watch",
+        "title": "Trends Worth Watching",
+        "text": (
+            "Several patterns are shifting outside normal ranges. None require immediate action, "
+            "but monitoring these trends will help you catch issues early."
+        ),
+    },
+    "info": {
+        "class": "risk-banner-info",
+        "title": "All Clear",
+        "text": (
+            "Patterns detected are informational or healthy. No issues require attention at this time."
+        ),
+    },
+    "positive": {
+        "class": "risk-banner-positive",
+        "title": "Looking Good",
+        "text": (
+            "All detected patterns are healthy. Your project's development patterns "
+            "are working well."
+        ),
+    },
+}
+
+
+def _build_pattern_risk_banner(highest_severity, severity_counts, total):
+    """Build the overall risk assessment banner for the patterns section."""
+    config = _OVERALL_RISK_TEXT.get(highest_severity, _OVERALL_RISK_TEXT["info"])
+
+    # Build severity breakdown chips
+    chips = []
+    for sev in ("critical", "concern", "watch", "info", "positive"):
+        count = severity_counts.get(sev, 0)
+        if count > 0:
+            from evolution.friendly import _SEVERITY_DISPLAY
+            display = _SEVERITY_DISPLAY[sev]
+            chips.append(
+                f'<span class="severity-chip severity-{sev}">'
+                f'{display["icon"]} {count} {display["label"]}'
+                f'</span>'
+            )
+
+    chips_html = " ".join(chips)
+
+    return (
+        f'<div class="risk-banner {config["class"]}">\n'
+        f'  <div class="risk-banner-title">{config["title"]}</div>\n'
+        f'  <p>{config["text"]}</p>\n'
+        f'  <div class="risk-banner-chips">{chips_html}</div>\n'
+        f'</div>'
     )
 
 
@@ -382,15 +683,17 @@ def _collapsible_pattern_cards(cards, heading, limit):
 
 
 def _build_investigation_section(scope, period_from, period_to, changes,
-                                  commits, files, timeline):
+                                  commits, files, timeline, patterns=None):
     if not changes:
         return ""
 
     preview = _build_prompt(
-        scope, period_from, period_to, changes, commits, files, timeline, full=False,
+        scope, period_from, period_to, changes, commits, files, timeline,
+        patterns=patterns, full=False,
     )
     full = _build_prompt(
-        scope, period_from, period_to, changes, commits, files, timeline, full=True,
+        scope, period_from, period_to, changes, commits, files, timeline,
+        patterns=patterns, full=True,
     )
 
     return (
@@ -402,6 +705,16 @@ def _build_investigation_section(scope, period_from, period_to, changes,
         '    We\'ve prepared an investigation prompt you can use with your AI assistant\n'
         '    (ChatGPT, Claude, etc.) to dig deeper into these changes.\n'
         '  </p>\n'
+        '  <div class="investigation-expectations">\n'
+        '    <h4>What to expect from the investigation:</h4>\n'
+        '    <ul>\n'
+        '      <li><strong>Root cause analysis</strong> \u2014 The AI will identify why these changes deviate from your normal patterns</li>\n'
+        '      <li><strong>Risk assessment</strong> \u2014 Which changes need immediate attention vs. monitoring</li>\n'
+        '      <li><strong>Actionable fixes</strong> \u2014 Specific code changes, config tweaks, or process adjustments to address the issues</li>\n'
+        '      <li><strong>Verification</strong> \u2014 After applying fixes, re-run <code>evo analyze</code> to confirm improvements. '
+        'The deviations should decrease and severity levels should drop</li>\n'
+        '    </ul>\n'
+        '  </div>\n'
         f'  <div class="prompt-preview">{_esc(preview)}</div>\n'
         '  <div class="action-buttons no-print">\n'
         '    <button class="btn btn-primary" onclick="copyPrompt()" id="copyBtn">Copy Prompt to Clipboard</button>\n'
@@ -621,7 +934,7 @@ def _build_timeline(timeline):
 
 
 def _build_prompt(scope, period_from, period_to, changes, commits, files,
-                  timeline, full=False):
+                  timeline, patterns=None, full=False):
     lines = [
         f"Here is a structural analysis of {scope} from {period_from} to {period_to}.",
         "",
@@ -646,6 +959,42 @@ def _build_prompt(scope, period_from, period_to, changes, commits, files,
         lines.append("")
         lines.append('Click "Show Full Prompt" to see the complete investigation prompt with all commits and files...')
         return "\n".join(lines)
+
+    # Pattern risk context (sorted by severity, most critical first, grouped by impact)
+    if patterns:
+        sorted_pats = sorted(
+            patterns,
+            key=lambda p: _severity_rank(pattern_risk_assessment(p)["severity"]),
+            reverse=True,
+        )
+        lines.extend(["", "RISK ASSESSMENT FROM RECURRING PATTERNS:", ""])
+
+        # Group patterns by (severity, impact) to avoid duplicate content
+        groups = {}
+        group_order = []
+        for p in sorted_pats:
+            risk = pattern_risk_assessment(p)
+            key = (risk["severity"], risk["impact"])
+            if key not in groups:
+                groups[key] = []
+                group_order.append(key)
+            groups[key].append(p)
+
+        for key in group_order:
+            group = groups[key]
+            risk = pattern_risk_assessment(group[0])
+            sev_label = risk["severity_display"]["label"]
+            if len(group) == 1:
+                desc = friendly_pattern(group[0])
+                lines.append(f"- [{sev_label}] {desc}")
+            else:
+                descs = [friendly_pattern(p) for p in group]
+                lines.append(f"- [{sev_label}] {len(group)} related patterns:")
+                for d in descs:
+                    lines.append(f"    * {d}")
+            lines.append(f"  Impact: {risk['impact']}")
+            lines.append(f"  Recommendation: {risk['recommendation']}")
+            lines.append("")
 
     lines.extend([
         "",
@@ -679,13 +1028,31 @@ def _build_prompt(scope, period_from, period_to, changes, commits, files,
         lines.append("")
 
     lines.extend([
-        "INVESTIGATION QUESTIONS:",
-        "1. What is the most likely root cause of these changes?",
-        "2. Which specific files should be reviewed first?",
-        "3. Are there any structural risks introduced by these changes?",
-        "4. What should the development team prioritize addressing?",
+        "INVESTIGATION TASKS:",
         "",
-        "Please analyze this evidence and provide specific, actionable recommendations.",
+        "1. ROOT CAUSE: Identify the most likely cause of each flagged change. Focus on",
+        "   items marked [Action Required] or [Needs Attention] first.",
+        "",
+        "2. IMPACT ANALYSIS: For each issue, explain what could go wrong if left",
+        "   unaddressed. Be specific about the affected components and users.",
+        "",
+        "3. PROPOSED FIXES: Provide concrete, actionable fixes for each issue:",
+        "   - Specific code changes (file paths, function names, what to change)",
+        "   - Configuration adjustments if applicable",
+        "   - Process changes (e.g. PR size limits, review checklists)",
+        "",
+        "4. PRIORITY ORDER: Rank the fixes by urgency. What should be done immediately",
+        "   vs. what can wait for the next sprint?",
+        "",
+        "5. VERIFICATION: After applying each fix, the team should re-run the analysis",
+        "   (using `evo analyze`) to confirm that:",
+        "   - The deviation levels have decreased",
+        "   - The severity ratings have improved (e.g. from 'Needs Attention' to 'Informational')",
+        "   - No new issues were introduced by the fix",
+        "",
+        "Please provide specific, actionable recommendations with file paths and code",
+        "examples where possible. The goal is to bring these metrics back within normal",
+        "ranges while maintaining development velocity.",
     ])
 
     return "\n".join(lines)
@@ -807,6 +1174,11 @@ pre { background: var(--color-bg-subtle); padding: 1em; border-radius: 8px;
   text-transform: uppercase; letter-spacing: 0.05em; }
 .summary-families { margin-top: 1em; padding: 1em; background: var(--color-bg-subtle);
   border-radius: 8px; border-left: 4px solid var(--color-secondary); }
+.key-findings { margin-top: 1.5em; }
+.findings-list { list-style: none; padding: 0; }
+.findings-list li { padding: 0.75em 1em; margin-bottom: 0.5em; background: var(--color-bg-subtle);
+  border-left: 3px solid var(--color-secondary); border-radius: 0 6px 6px 0; line-height: 1.5; }
+.findings-list li strong { color: var(--color-primary); }
 .change-card { border: 1px solid var(--color-border); border-left: 4px solid var(--color-secondary);
   padding: 1.5em; margin-bottom: 1.5em; background: var(--color-bg-subtle);
   border-radius: 8px; page-break-inside: avoid; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
@@ -840,6 +1212,64 @@ pre { background: var(--color-bg-subtle); padding: 1em; border-radius: 8px;
 .technical-detail summary:hover { text-decoration: underline; }
 .pattern-card { background: var(--color-bg-subtle); border: 1px solid var(--color-border);
   border-radius: 8px; padding: 1.5em; margin-bottom: 1.5em; }
+.severity-badge { display: inline-block; padding: 0.25em 0.75em; border-radius: 4px;
+  font-weight: 600; font-size: 9pt; margin-left: 0.5em; }
+.severity-badge.severity-critical { background: #dc2626; color: white; }
+.severity-badge.severity-concern { background: #ea580c; color: white; }
+.severity-badge.severity-watch { background: #d97706; color: white; }
+.severity-badge.severity-info { background: #0284c7; color: white; }
+.severity-badge.severity-positive { background: #16a34a; color: white; }
+.pattern-impact { background: #fff; padding: 1em; border-radius: 6px;
+  margin: 0.75em 0; border: 1px solid var(--color-border); }
+.pattern-recommendation { padding: 0.75em 1em; border-radius: 6px;
+  background: var(--color-bg-subtle); border-left: 3px solid var(--color-secondary);
+  font-size: 10pt; margin-top: 0.5em; }
+.severity-border-critical { border-left: 4px solid #dc2626 !important; }
+.severity-border-concern { border-left: 4px solid #ea580c !important; }
+.severity-border-watch { border-left: 4px solid #d97706 !important; }
+.severity-border-info { border-left: 4px solid #0284c7 !important; }
+.severity-border-positive { border-left: 4px solid #16a34a !important; }
+.risk-banner { padding: 1.5em; border-radius: 8px; margin-bottom: 1.5em; }
+.risk-banner-title { font-size: 14pt; font-weight: 700; margin-bottom: 0.5em; }
+.risk-banner p { margin-bottom: 0.75em; line-height: 1.6; }
+.risk-banner-chips { display: flex; gap: 0.75em; flex-wrap: wrap; margin-top: 0.5em; }
+.severity-chip { display: inline-flex; align-items: center; gap: 0.25em; padding: 0.3em 0.75em;
+  border-radius: 4px; font-size: 9pt; font-weight: 600; background: rgba(255,255,255,0.7); }
+.risk-banner-critical { background: #fef2f2; border: 2px solid #dc2626;
+  border-left: 6px solid #dc2626; }
+.risk-banner-critical .risk-banner-title { color: #991b1b; }
+.risk-banner-concern { background: #fff7ed; border: 2px solid #ea580c;
+  border-left: 6px solid #ea580c; }
+.risk-banner-concern .risk-banner-title { color: #9a3412; }
+.risk-banner-watch { background: #fffbeb; border: 2px solid #d97706;
+  border-left: 6px solid #d97706; }
+.risk-banner-watch .risk-banner-title { color: #92400e; }
+.risk-banner-info { background: #f0f9ff; border: 2px solid #0284c7;
+  border-left: 6px solid #0284c7; }
+.risk-banner-info .risk-banner-title { color: #075985; }
+.risk-banner-positive { background: #f0fdf4; border: 2px solid #16a34a;
+  border-left: 6px solid #16a34a; }
+.risk-banner-positive .risk-banner-title { color: #166534; }
+.pattern-guidance { background: var(--color-bg-subtle); padding: 1.25em 1.5em;
+  border-radius: 8px; margin-bottom: 1.5em; border: 1px solid var(--color-border);
+  font-size: 10pt; line-height: 1.7; }
+.pattern-guidance p { margin-bottom: 0.75em; }
+.pattern-guidance p:last-child { margin-bottom: 0; }
+.pattern-guidance .severity-badge { font-size: 8pt; vertical-align: middle; }
+.investigation-expectations { background: var(--color-bg-subtle); padding: 1.25em 1.5em;
+  border-radius: 8px; margin-bottom: 1.5em; border: 1px solid var(--color-border); }
+.investigation-expectations h4 { color: var(--color-primary); margin-bottom: 0.75em; }
+.investigation-expectations ul { list-style: none; padding: 0; }
+.investigation-expectations li { padding: 0.5em 0; padding-left: 1.5em; position: relative;
+  line-height: 1.6; }
+.investigation-expectations li:before { content: '\\2192'; position: absolute; left: 0;
+  color: var(--color-secondary); font-weight: 700; }
+.pattern-group-count { display: inline-block; padding: 0.2em 0.6em; border-radius: 4px;
+  font-size: 9pt; font-weight: 600; color: var(--color-text-muted);
+  background: var(--color-border); margin-left: 0.5em; }
+.grouped-pattern-list { list-style: disc; padding-left: 1.5em; margin: 0.5em 0 1em 0;
+  font-size: 10pt; line-height: 1.7; }
+.grouped-pattern-list li { margin-bottom: 0.3em; }
 .pattern-meta { display: flex; gap: 1em; margin: 0.5em 0 1em 0;
   font-size: 10pt; color: var(--color-text-muted); }
 .badge { background: var(--color-primary); color: white; padding: 0.25em 0.75em;

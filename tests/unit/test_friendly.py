@@ -125,7 +125,7 @@ class TestFriendlyPattern:
             "description": "dependency-changing commits tend to touch more spread-out files.",
             "support_count": 5,
         })
-        assert "Seen in 5 projects" in result
+        assert "Observed across 5 projects" in result
         assert "dependency-changing commits" in result
 
     def test_with_description_no_count(self):
@@ -140,9 +140,10 @@ class TestFriendlyPattern:
             "families": ["git", "dependency"],
             "metrics": ["dispersion"],
             "support_count": 3,
+            "correlation": 0.5,
         })
-        assert "Seen in 3 projects" in result
-        assert "git" in result
+        assert "Observed across 3 projects" in result
+        assert "code changes" in result
         assert "dependency" in result
 
     def test_empty_pattern(self):
@@ -154,7 +155,7 @@ class TestFriendlyPattern:
             "description": "test pattern",
             "support_count": 1,
         })
-        assert "Seen in 1 project:" in result
+        assert "Observed in 1 project:" in result
         assert "projects" not in result
 
     def test_repo_count_key(self):
@@ -162,7 +163,7 @@ class TestFriendlyPattern:
             "description": "test",
             "repo_count": 7,
         })
-        assert "Seen in 7 projects" in result
+        assert "Observed across 7 projects" in result
 
     def test_repo_count_preferred_over_occurrence_count(self):
         result = friendly_pattern({
@@ -170,4 +171,28 @@ class TestFriendlyPattern:
             "repo_count": 7,
             "occurrence_count": 27631,
         })
-        assert "Seen in 7 projects" in result
+        assert "Observed across 7 projects" in result
+
+    def test_sanitizes_statistical_details(self):
+        """Ensure internal methodology isn't leaked in descriptions."""
+        result = friendly_pattern({
+            "families": ["deployment"],
+            "metrics": ["dispersion"],
+            "correlation": 0.75,
+            "support_count": 9,
+            "description": "When deployment events occur, git.dispersion is systematically increased (effect size d=0.75, treated=9, control=3342).",
+        })
+        assert "effect size" not in result
+        assert "treated=" not in result
+        assert "control=" not in result
+        assert "Observed across 9 projects" in result
+
+    def test_sanitizes_temporal_details(self):
+        """Ensure temporal alignment internals aren't leaked."""
+        result = friendly_pattern({
+            "description": "Signals ci.run_duration and dependency.dependency_count co-occur with correlation -0.41 across 19 commit-aligned observations (of 98 shared commits).",
+            "support_count": 3,
+        })
+        assert "correlation" not in result
+        assert "commit-aligned" not in result
+        assert "24h windows" not in result
