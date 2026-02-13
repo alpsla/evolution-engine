@@ -411,7 +411,7 @@ nav {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 40px 32px;
+  padding: 40px 32px 80px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -420,7 +420,6 @@ nav {
 .pricing-card.featured {
   border-color: var(--secondary);
   box-shadow: 0 0 40px rgba(44, 165, 141, 0.1);
-  padding-bottom: 80px;
 }
 
 .pricing-card.featured::before {
