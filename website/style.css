@@ -441,7 +441,7 @@ nav {
 .pricing-price span { font-size: 1rem; font-weight: 400; color: var(--text-muted); }
 .pricing-desc { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; }
 
-.pricing-features { list-style: none; margin-bottom: 32px; flex: 1; }
+.pricing-features { list-style: none; margin-bottom: 0; }
 .pricing-features li {
   padding: 8px 0;
   font-size: 0.9rem;
@@ -458,7 +458,7 @@ nav {
 .pricing-features li.disabled { opacity: 0.4; }
 .pricing-features li.disabled::before { content: "\2717"; color: var(--text-dim); }
 
-.pricing-card .btn { width: 100%; }
+.pricing-card .btn { width: 100%; margin-top: auto; }
 
 /* ─── Footer ─── */
 footer {
