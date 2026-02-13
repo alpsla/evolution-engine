@@ -420,6 +420,7 @@ nav {
 .pricing-card.featured {
   border-color: var(--secondary);
   box-shadow: 0 0 40px rgba(44, 165, 141, 0.1);
+  padding-bottom: 80px;
 }
 
 .pricing-card.featured::before {
@@ -608,8 +609,11 @@ footer {
   color: var(--text-dim);
   font-size: 0.8rem;
   text-align: center;
-  margin-top: 10px;
   line-height: 1.5;
+  position: absolute;
+  bottom: 32px;
+  left: 32px;
+  right: 32px;
 }
 
 /* ─── Responsive ─── */
