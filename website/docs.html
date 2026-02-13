@@ -134,12 +134,28 @@ evo analyze .</code></pre>
 
   <h3>Adapters</h3>
   <ul>
-    <li><code>evo adapter list</code> — List all detected adapters and plugins</li>
+    <li><code>evo adapter list</code> — List detected adapters with trust badges</li>
     <li><code>evo adapter new &lt;name&gt; --family ci</code> — Scaffold a new adapter package</li>
     <li><code>evo adapter validate &lt;path&gt;</code> — Validate an adapter against the contract</li>
+    <li><code>evo adapter validate &lt;path&gt; --security</code> — Validate + security scan</li>
+    <li><code>evo adapter security-check &lt;target&gt;</code> — Standalone security scan</li>
     <li><code>evo adapter guide</code> — Show the full adapter building guide</li>
     <li><code>evo adapter prompt &lt;name&gt; --family ci</code> — Generate an AI prompt to build an adapter</li>
+    <li><code>evo adapter block &lt;name&gt; -r "reason"</code> — Block an adapter locally</li>
+    <li><code>evo adapter unblock &lt;name&gt;</code> — Unblock a blocked adapter</li>
+    <li><code>evo adapter check-updates</code> — Check PyPI for plugin updates</li>
+    <li><code>evo adapter report &lt;name&gt;</code> — Report a broken/malicious adapter</li>
   </ul>
+
+  <h3>Adapter Safety</h3>
+  <p>Every adapter is assigned a trust badge automatically:</p>
+  <ul>
+    <li><strong>[built-in]</strong> — Ships with Evolution Engine, maintained by the core team</li>
+    <li><strong>[verified]</strong> — Published on PyPI and reviewed by EE maintainers</li>
+    <li><strong>[community]</strong> — Published on PyPI, not yet reviewed</li>
+    <li><strong>[local]</strong> — Development mode, editable install only</li>
+  </ul>
+  <p>Adapters can be blocked locally (<code>evo adapter block</code>) or globally via the bundled blocklist. Use <code>evo adapter report</code> to flag broken or malicious adapters.</p>
 
   <h3>Configuration</h3>
   <ul>
@@ -207,8 +223,11 @@ evo analyze .</code></pre>
 cd evo-adapter-jenkins
 pip install -e .
 
-# Verify it passes the contract
-evo adapter validate evo_jenkins.JenkinsAdapter
+# Verify it passes the contract + security scan
+evo adapter validate evo_jenkins.JenkinsAdapter --security
+
+# Or run security scan separately
+evo adapter security-check evo_jenkins
 
 # Run EE — your adapter will be auto-detected
 evo analyze /path/to/repo-with-jenkinsfile</code></pre>

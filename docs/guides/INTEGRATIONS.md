@@ -282,21 +282,15 @@ You can also compare reports side by side — run once without adapters, once wi
 Any tool that produces structured data can become a signal family. Evolution Engine's plugin system auto-discovers adapters installed as Python packages.
 
 ```bash
-# Install a community adapter
-pip install evo-adapter-sonarqube
-
-# Or validate your own
-evo adapter validate ./my_adapter
+# Scaffold, validate, security-check, publish
+evo adapter new jenkins --family ci
+evo adapter validate evo_jenkins.JenkinsAdapter --security
+evo adapter security-check evo_jenkins
 ```
 
-See the [Adapter Development Guide](ADAPTER_GUIDE.md) for the full specification.
+Adapters pass 13 structural checks + security scanning before certification.
 
-An adapter needs to:
-1. Produce **events** (one per observation — a build, a scan, a review, a deploy)
-2. Define **metrics** (numeric values extracted from each event)
-3. Register via Python entry points (`evo.adapters` group)
-
-The Evolution Engine pipeline handles everything else: baselining, deviation detection, cross-family correlation, pattern discovery, and advisory generation.
+For the full guide — scaffolding, development, contract reference, testing, publishing, trust tiers, and governance — see **[docs/adapters/](../adapters/README.md)**.
 
 ## AI Agent Integration — Closing the Loop
 

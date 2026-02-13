@@ -35,6 +35,7 @@ Usage:
         print(f"{config.family}: {config.adapter_name} (tier {config.tier})")
 """
 
+import json
 import logging
 import os
 from dataclasses import dataclass, field
@@ -56,6 +57,7 @@ class AdapterConfig:
     token_key: Optional[str] = None    # env var / key needed (Tier 2)
     adapter_class: Optional[str] = None  # dotted path to adapter class (plugins)
     plugin_name: Optional[str] = None  # pip package that provided this adapter
+    trust_level: str = ""  # "built-in", "verified", "community", "local"
     extras: dict = field(default_factory=dict)
 
 
@@ -133,6 +135,9 @@ class AdapterRegistry:
     def __init__(self, repo_path: str | Path):
         self.repo_path = Path(repo_path).resolve()
         self._plugin_detectors = None  # lazy-loaded
+        self._blocked_configs: list[AdapterConfig] = []
+        self._blocklist: Optional[list[dict]] = None
+        self._verified: Optional[set[str]] = None
 
     def detect(self, tokens: dict[str, str] = None) -> list[AdapterConfig]:
         """Detect all available adapters for the repo.
@@ -141,6 +146,8 @@ class AdapterRegistry:
           1. Built-in Tier 1 detectors (file patterns)
           2. Built-in Tier 2 detectors (API tokens)
           3. Plugin adapters (installed pip packages with evo.adapters entry points)
+
+        Assigns trust_level automatically and filters out blocked adapters.
 
         Args:
             tokens: Optional dict of token_key -> token_value.
@@ -152,6 +159,10 @@ class AdapterRegistry:
         tokens = tokens or {}
         configs = []
         seen = set()  # (family, adapter_name) dedup
+        self._blocked_configs = []
+
+        blocklist = self._load_blocklist()
+        blocked_names = {b["name"] for b in blocklist}
 
         # ── Tier 1: File-based detection ──
         for pattern, adapter_name, family in TIER1_DETECTORS:
@@ -161,12 +172,17 @@ class AdapterRegistry:
 
             if self._match_pattern(pattern):
                 source_file = self._first_match(pattern) or pattern
-                configs.append(AdapterConfig(
+                config = AdapterConfig(
                     family=family,
                     adapter_name=adapter_name,
                     tier=1,
                     source_file=str(source_file),
-                ))
+                    trust_level="built-in",
+                )
+                if adapter_name in blocked_names:
+                    self._blocked_configs.append(config)
+                else:
+                    configs.append(config)
                 seen.add(key)
 
         # ── Tier 2: API-enriched detection ──
@@ -180,34 +196,49 @@ class AdapterRegistry:
                 key = (family, adapter_name)
                 if key in seen:
                     continue
-                configs.append(AdapterConfig(
+                config = AdapterConfig(
                     family=family,
                     adapter_name=adapter_name,
                     tier=2,
                     token_key=token_key,
-                ))
+                    trust_level="built-in",
+                )
+                if adapter_name in blocked_names:
+                    self._blocked_configs.append(config)
+                else:
+                    configs.append(config)
                 seen.add(key)
 
         # ── Tier 3: Plugin detection ──
+        verified_set = self._load_verified()
+
         for plugin in self._get_plugin_detectors():
             pname = plugin.get("adapter_name", "unknown")
             pfamily = plugin.get("family", "unknown")
+            ppackage = plugin.get("_plugin_name", "")
             key = (pfamily, pname)
             if key in seen:
                 continue
+
+            trust = self._determine_trust_level(ppackage, verified_set)
 
             # Plugin with file pattern → check if file exists
             if "pattern" in plugin:
                 if self._match_pattern(plugin["pattern"]):
                     source_file = self._first_match(plugin["pattern"]) or plugin["pattern"]
-                    configs.append(AdapterConfig(
+                    config = AdapterConfig(
                         family=pfamily,
                         adapter_name=pname,
                         tier=3,
                         source_file=str(source_file),
                         adapter_class=plugin.get("adapter_class"),
-                        plugin_name=plugin.get("_plugin_name"),
-                    ))
+                        plugin_name=ppackage,
+                        trust_level=trust,
+                    )
+                    if pname in blocked_names or ppackage in blocked_names:
+                        self._blocked_configs.append(config)
+                    else:
+                        configs.append(config)
                     seen.add(key)
 
             # Plugin with token → check if token available
@@ -215,14 +246,19 @@ class AdapterRegistry:
                 tkey = plugin["token_key"]
                 tval = tokens.get(tkey) or os.environ.get(tkey.upper())
                 if tval:
-                    configs.append(AdapterConfig(
+                    config = AdapterConfig(
                         family=pfamily,
                         adapter_name=pname,
                         tier=3,
                         token_key=tkey,
                         adapter_class=plugin.get("adapter_class"),
-                        plugin_name=plugin.get("_plugin_name"),
-                    ))
+                        plugin_name=ppackage,
+                        trust_level=trust,
+                    )
+                    if pname in blocked_names or ppackage in blocked_names:
+                        self._blocked_configs.append(config)
+                    else:
+                        configs.append(config)
                     seen.add(key)
 
         configs.sort(key=lambda c: (c.tier, c.family, c.adapter_name))
@@ -365,6 +401,128 @@ class AdapterRegistry:
             return pattern
         return None
 
+    def _load_blocklist(self) -> list[dict]:
+        """Load and merge bundled + local blocklists."""
+        if self._blocklist is not None:
+            return self._blocklist
+
+        entries: list[dict] = []
+
+        # Bundled blocklist (ships with package)
+        bundled = Path(__file__).parent / "data" / "adapter_blocklist.json"
+        if bundled.exists():
+            try:
+                data = json.loads(bundled.read_text())
+                if isinstance(data, list):
+                    entries.extend(data)
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        # Local user blocklist
+        local = Path.home() / ".evo" / "blocklist.json"
+        if local.exists():
+            try:
+                data = json.loads(local.read_text())
+                if isinstance(data, list):
+                    entries.extend(data)
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        self._blocklist = entries
+        return entries
+
+    def _load_verified(self) -> set[str]:
+        """Load the verified adapters list."""
+        if self._verified is not None:
+            return self._verified
+
+        verified_path = Path(__file__).parent / "data" / "verified_adapters.json"
+        try:
+            data = json.loads(verified_path.read_text())
+            self._verified = set(data) if isinstance(data, list) else set()
+        except (json.JSONDecodeError, OSError, FileNotFoundError):
+            self._verified = set()
+
+        return self._verified
+
+    def _determine_trust_level(self, plugin_name: str, verified_set: set[str]) -> str:
+        """Determine trust level for a Tier 3 plugin adapter."""
+        if not plugin_name:
+            return "local"
+
+        if plugin_name in verified_set:
+            return "verified"
+
+        # Check if the package has PyPI version metadata
+        try:
+            import importlib.metadata
+            importlib.metadata.version(plugin_name)
+            return "community"
+        except Exception:
+            return "local"
+
+    def get_blocked(self) -> list[dict]:
+        """Return blocked adapter configs with reasons.
+
+        Returns:
+            List of dicts with adapter info and block reason.
+        """
+        blocklist = self._load_blocklist()
+        reason_map = {b["name"]: b.get("reason", "") for b in blocklist}
+
+        results = []
+        for config in self._blocked_configs:
+            name = config.plugin_name or config.adapter_name
+            results.append({
+                "family": config.family,
+                "adapter_name": config.adapter_name,
+                "plugin_name": config.plugin_name,
+                "reason": reason_map.get(name, reason_map.get(config.adapter_name, "")),
+            })
+        return results
+
+    @staticmethod
+    def block_adapter(name: str, reason: str = ""):
+        """Add an adapter to the local blocklist."""
+        blocklist_path = Path.home() / ".evo" / "blocklist.json"
+        blocklist_path.parent.mkdir(parents=True, exist_ok=True)
+
+        entries: list[dict] = []
+        if blocklist_path.exists():
+            try:
+                entries = json.loads(blocklist_path.read_text())
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        # Check if already blocked
+        if any(e.get("name") == name for e in entries):
+            return False
+
+        entries.append({"name": name, "reason": reason})
+        blocklist_path.write_text(json.dumps(entries, indent=2))
+        return True
+
+    @staticmethod
+    def unblock_adapter(name: str) -> bool:
+        """Remove an adapter from the local blocklist."""
+        blocklist_path = Path.home() / ".evo" / "blocklist.json"
+        if not blocklist_path.exists():
+            return False
+
+        try:
+            entries = json.loads(blocklist_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            return False
+
+        original_len = len(entries)
+        entries = [e for e in entries if e.get("name") != name]
+
+        if len(entries) == original_len:
+            return False
+
+        blocklist_path.write_text(json.dumps(entries, indent=2))
+        return True
+
     def summary(self, tokens: dict[str, str] = None) -> dict:
         """Return a structured summary of detection results."""
         configs = self.detect(tokens)
@@ -380,6 +538,7 @@ class AdapterRegistry:
                 "tier": c.tier,
                 "source": c.source_file,
                 "plugin": c.plugin_name,
+                "trust_level": c.trust_level,
             })
 
         return {
@@ -391,4 +550,5 @@ class AdapterRegistry:
             "plugin_count": sum(1 for c in configs if c.tier == 3),
             "plugins_installed": len(plugins),
             "missing_tokens": missing,
+            "blocked": self.get_blocked(),
         }

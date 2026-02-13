@@ -116,6 +116,17 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, show
             click.echo("=" * 60)
             click.echo(prompt_path.read_text())
 
+    # Version update nudge (non-blocking, uses cache)
+    if result["status"] == "complete":
+        try:
+            from evolution.adapter_versions import check_self_update_nudge
+            nudge = check_self_update_nudge()
+            if nudge:
+                click.echo()
+                click.echo(nudge)
+        except Exception:
+            pass  # Never let version check break analyze
+
 
 # ─────────────────── evo accept ───────────────────
 
@@ -839,7 +850,8 @@ def adapter():
 @adapter.command("list")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--token", "-t", help="GitHub token for Tier 2 adapters")
-def adapter_list(path, token):
+@click.option("--json", "as_json", is_flag=True, help="Output machine-readable JSON")
+def adapter_list(path, token, as_json):
     """List all detected adapters including plugins and prescanned tools."""
     from evolution.prescan import SourcePrescan
     from evolution.registry import AdapterRegistry
@@ -854,15 +866,59 @@ def adapter_list(path, token):
     # Build a set of connected families for status display
     connected_families = set(c.family for c in configs)
 
+    if as_json:
+        data = {
+            "connected": [
+                {
+                    "tier": c.tier,
+                    "trust_level": c.trust_level,
+                    "family": c.family,
+                    "adapter_name": c.adapter_name,
+                    "plugin_name": c.plugin_name or None,
+                }
+                for c in configs
+            ],
+            "plugins": [
+                {
+                    "plugin_name": p["plugin_name"],
+                    "family": p["family"],
+                    "adapter_name": p["adapter_name"],
+                    "detected": p["detected"],
+                }
+                for p in plugins
+            ],
+            "detected": [
+                {
+                    "display_name": s.display_name,
+                    "family": s.family,
+                    "adapter": s.adapter,
+                    "detection_layers": list(s.detection_layers),
+                }
+                for s in detected_services
+                if s.family not in connected_families
+            ],
+            "blocked": registry.get_blocked(),
+        }
+        click.echo(json.dumps(data, indent=2))
+        return
+
     click.echo("Connected adapters:")
     if configs:
         for c in configs:
-            tier_label = {1: "built-in", 2: "API", 3: "plugin"}
-            badge = tier_label.get(c.tier, f"tier-{c.tier}")
-            plugin_note = f" (from {c.plugin_name})" if c.plugin_name else ""
-            click.echo(f"  \u2705 [{badge}] {c.family}/{c.adapter_name}{plugin_note}")
+            badge = c.trust_level or {1: "built-in", 2: "built-in", 3: "plugin"}.get(c.tier, f"tier-{c.tier}")
+            plugin_note = f"  (from {c.plugin_name})" if c.plugin_name else ""
+            click.echo(f"  [{badge:10s}] {c.family}/{c.adapter_name}{plugin_note}")
     else:
         click.echo("  (none)")
+
+    # Show blocked adapters
+    blocked = registry.get_blocked()
+    if blocked:
+        click.echo()
+        click.echo("Blocked adapters:")
+        for b in blocked:
+            reason = f" — {b['reason']}" if b.get("reason") else ""
+            click.echo(f"  \u26d4 {b['family']}/{b['adapter_name']}{reason}")
 
     if plugins:
         click.echo()
@@ -887,13 +943,15 @@ def adapter_list(path, token):
 @click.argument("adapter_path")
 @click.option("--args", "constructor_args", help="JSON constructor args (e.g. '{\"path\": \"/tmp\"}')")
 @click.option("--max-events", default=10, help="Max events to consume during validation")
-def adapter_validate(adapter_path, constructor_args, max_events):
+@click.option("--security", is_flag=True, help="Also run security scan on adapter source")
+def adapter_validate(adapter_path, constructor_args, max_events, security):
     """Validate a plugin adapter against the Adapter Contract.
 
     ADAPTER_PATH is a dotted Python path like 'my_package.MyAdapter'.
 
     Example:
         evo adapter validate evo_jenkins.JenkinsAdapter
+        evo adapter validate evo_jenkins.JenkinsAdapter --security
         evo adapter validate evo_jenkins.JenkinsAdapter --args '{"url": "http://ci"}'
     """
     from evolution.adapter_validator import load_adapter_class, validate_adapter
@@ -925,6 +983,21 @@ def adapter_validate(adapter_path, constructor_args, max_events):
     else:
         click.echo(f"{len(report.errors)} error(s) must be fixed before publishing.")
         sys.exit(1)
+
+    # Optional security scan
+    if security:
+        from evolution.adapter_security import scan_adapter_source
+
+        # Derive module name from dotted path (strip class name)
+        module_path = adapter_path.rpartition(".")[0]
+        click.echo()
+        click.echo("Running security scan...")
+        sec_report = scan_adapter_source(module_path)
+        click.echo(sec_report.summary())
+        if not sec_report.passed:
+            click.echo()
+            click.echo("Security scan found critical issues.")
+            sys.exit(1)
 
 
 @adapter.command("guide")
@@ -1070,6 +1143,260 @@ def adapter_request(description, family):
     safe_name = description.lower().split()[0] if description else "my-adapter"
     click.echo(f"  evo adapter new {safe_name} --family {family or 'ci'}")
     click.echo("  evo adapter guide")
+
+
+@adapter.command("requests")
+def adapter_requests():
+    """List pending local adapter requests.
+
+    Shows all requests saved via 'evo adapter request', with date,
+    family, and description.
+
+    Example:
+        evo adapter requests
+    """
+    requests_file = Path.home() / ".evo" / "adapter_requests" / "requests.json"
+    if not requests_file.exists():
+        click.echo("No adapter requests saved yet.")
+        click.echo()
+        click.echo("Submit one with:")
+        click.echo('  evo adapter request "Jenkins CI adapter" --family ci')
+        return
+
+    try:
+        data = json.loads(requests_file.read_text())
+    except json.JSONDecodeError:
+        click.echo("No adapter requests saved yet.")
+        return
+
+    if not data:
+        click.echo("No adapter requests saved yet.")
+        return
+
+    click.echo(f"Pending adapter requests ({len(data)}):")
+    click.echo()
+    for i, req in enumerate(data, 1):
+        family = req.get("family") or "unspecified"
+        desc = req.get("description", "")
+        date = req.get("requested_at", "")[:10]  # ISO date portion
+        click.echo(f"  {i}. [{family}] {desc}")
+        if date:
+            click.echo(f"     Requested: {date}")
+
+    click.echo()
+    click.echo("To submit to the community:")
+    click.echo("  https://github.com/evolution-engine/evolution-engine/issues/new")
+    click.echo("  Use the 'adapter-request' label")
+
+
+@adapter.command("security-check")
+@click.argument("target")
+def adapter_security_check(target):
+    """Run security scan on adapter source code.
+
+    TARGET is a dotted module path (e.g. 'evo_jenkins') or a directory path.
+
+    Example:
+        evo adapter security-check evo_jenkins
+        evo adapter security-check /path/to/evo-adapter-jenkins/
+    """
+    from evolution.adapter_security import scan_adapter_source
+
+    report = scan_adapter_source(target)
+
+    if report.error:
+        click.echo(f"Error: {report.error}")
+        sys.exit(1)
+
+    click.echo(report.summary())
+    click.echo()
+
+    if report.passed:
+        click.echo("No critical security issues found.")
+    else:
+        click.echo(f"{report.critical_count} critical issue(s) must be fixed.")
+        sys.exit(1)
+
+
+@adapter.command("block")
+@click.argument("name")
+@click.option("--reason", "-r", default="", help="Reason for blocking this adapter")
+def adapter_block(name, reason):
+    """Block an adapter from being detected.
+
+    Adds the adapter to your local blocklist (~/.evo/blocklist.json).
+    Blocked adapters are hidden from detection results.
+
+    Example:
+        evo adapter block bad-adapter -r "Known vulnerability"
+    """
+    from evolution.registry import AdapterRegistry
+
+    if AdapterRegistry.block_adapter(name, reason=reason):
+        click.echo(f"Blocked: {name}")
+        if reason:
+            click.echo(f"Reason: {reason}")
+    else:
+        click.echo(f"Already blocked: {name}")
+
+
+@adapter.command("unblock")
+@click.argument("name")
+def adapter_unblock(name):
+    """Unblock a previously blocked adapter.
+
+    Removes the adapter from your local blocklist.
+
+    Example:
+        evo adapter unblock bad-adapter
+    """
+    from evolution.registry import AdapterRegistry
+
+    if AdapterRegistry.unblock_adapter(name):
+        click.echo(f"Unblocked: {name}")
+    else:
+        click.echo(f"Not found in blocklist: {name}")
+        sys.exit(1)
+
+
+@adapter.command("check-updates")
+def adapter_check_updates():
+    """Check for updates to installed adapter plugins.
+
+    Queries PyPI for the latest versions of all installed adapter plugins
+    and evolution-engine itself.
+
+    Example:
+        evo adapter check-updates
+    """
+    from importlib.metadata import entry_points as _eps
+
+    from evolution.adapter_versions import check_pypi_version
+
+    click.echo("Checking for updates...")
+    click.echo()
+
+    # Check evolution-engine itself
+    from evolution import __version__ as current_version
+    latest = check_pypi_version("evolution-engine", use_cache=False)
+    if latest and latest != current_version:
+        click.echo(f"  evolution-engine: {current_version} → {latest} (update available)")
+    elif latest:
+        click.echo(f"  evolution-engine: {current_version} (up to date)")
+    else:
+        click.echo(f"  evolution-engine: {current_version} (could not check)")
+
+    # Check installed plugins
+    try:
+        eps = _eps(group="evo.adapters")
+    except TypeError:
+        eps = []
+
+    if not eps:
+        click.echo()
+        click.echo("No adapter plugins installed.")
+        return
+
+    import importlib.metadata
+    for ep in eps:
+        try:
+            current = importlib.metadata.version(ep.name)
+        except Exception:
+            current = "unknown"
+        latest = check_pypi_version(ep.name, use_cache=False)
+        if latest and latest != current:
+            click.echo(f"  {ep.name}: {current} → {latest} (update available)")
+        elif latest:
+            click.echo(f"  {ep.name}: {current} (up to date)")
+        else:
+            click.echo(f"  {ep.name}: {current} (could not check)")
+
+
+@adapter.command("report")
+@click.argument("adapter_name")
+@click.option("--category", "-c",
+              type=click.Choice(["crashes", "wrong-data", "security-concern", "other"]),
+              help="Report category (prompted if not provided)")
+@click.option("--description", "-d", default="", help="Description of the issue")
+def adapter_report(adapter_name, category, description):
+    """Report a broken or malicious adapter.
+
+    Saves a report locally with diagnostic information. If GITHUB_BOT_TOKEN
+    is set, also files a GitHub issue with the adapter-report label.
+
+    Example:
+        evo adapter report evo-adapter-bad --category security-concern
+        evo adapter report evo-adapter-bad -c crashes -d "Fails on Python 3.12"
+    """
+    import datetime
+
+    if not category:
+        category = click.prompt(
+            "Category",
+            type=click.Choice(["crashes", "wrong-data", "security-concern", "other"]),
+        )
+
+    if not description:
+        description = click.prompt("Description", default="")
+
+    report_data = {
+        "adapter_name": adapter_name,
+        "category": category,
+        "description": description,
+        "reported_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "evo_version": __version__,
+        "python_version": sys.version,
+    }
+
+    # Save locally
+    reports_dir = Path.home() / ".evo" / "adapter_reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    report_file = reports_dir / f"{adapter_name}_{timestamp}.json"
+    report_file.write_text(json.dumps(report_data, indent=2))
+
+    click.echo(f"Report saved: {report_file}")
+
+    # Try to file GitHub issue if token is available
+    gh_token = os.environ.get("GITHUB_BOT_TOKEN")
+    if gh_token:
+        click.echo("Filing GitHub issue...")
+        try:
+            import urllib.request
+            import urllib.error
+
+            issue_data = json.dumps({
+                "title": f"Adapter Report: {adapter_name} ({category})",
+                "body": (f"**Adapter:** {adapter_name}\n"
+                         f"**Category:** {category}\n"
+                         f"**Description:** {description}\n"
+                         f"**EE Version:** {report_data['evo_version']}\n"
+                         f"**Python:** {report_data['python_version']}"),
+                "labels": ["adapter-report"],
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                "https://api.github.com/repos/evolution-engine/evolution-engine/issues",
+                data=issue_data,
+                headers={
+                    "Authorization": f"token {gh_token}",
+                    "Accept": "application/vnd.github+json",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+                click.echo(f"Issue created: {result.get('html_url', 'unknown')}")
+        except Exception as e:
+            click.echo(f"Could not file GitHub issue: {e}")
+            click.echo("Report saved locally — you can file it manually:")
+            click.echo("  https://github.com/evolution-engine/evolution-engine/issues/new")
+    else:
+        click.echo()
+        click.echo("To submit this report to the community:")
+        click.echo("  https://github.com/evolution-engine/evolution-engine/issues/new")
+        click.echo("  Use the 'adapter-report' label")
 
 
 # ─────────────────── evo license ───────────────────

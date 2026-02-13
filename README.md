@@ -134,12 +134,18 @@ evo patterns import <file>       # Import community patterns
 evo patterns sync                # Sync universal patterns
 
 # Adapter Ecosystem
-evo adapter list                 # Show detected + installed adapters
+evo adapter list                 # Show detected adapters with trust badges
 evo adapter validate <class>     # Run 13-check certification
+evo adapter validate <class> --security  # + security scan
+evo adapter security-check <mod> # Standalone security scan
 evo adapter guide                # How to build an adapter
 evo adapter new <name> --family ci   # Scaffold a pip-installable package
 evo adapter prompt <name> --family ci  # Generate AI prompt for building
 evo adapter request <description>     # Request an adapter from the community
+evo adapter block <name> -r "reason"  # Block an adapter locally
+evo adapter unblock <name>       # Unblock a blocked adapter
+evo adapter check-updates        # Check PyPI for plugin updates
+evo adapter report <name>        # Report a broken/malicious adapter
 ```
 
 ---
@@ -168,7 +174,7 @@ pip install -e .
 evo adapter validate evo_jenkins.JenkinsAdapter
 ```
 
-Checks include: required class attributes, valid family, iter_events yields valid events, JSON serialization, attestation structure, and more.
+Adapters pass 13 structural checks + security scanning before certification.
 
 ### Learn More
 

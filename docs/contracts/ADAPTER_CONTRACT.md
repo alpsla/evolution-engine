@@ -158,7 +158,36 @@ The system is designed so that **each new adapter immediately benefits from all 
 
 ---
 
-## 8. Architectural Invariant
+## 8. Security Requirements
+
+Adapter source code is scanned for dangerous patterns before certification.
+
+**Prohibited patterns** (critical — blocks certification):
+- `eval()`, `exec()` — arbitrary code execution
+- `os.system()`, `os.popen()` — shell command execution
+- `pickle.load()`, `yaml.unsafe_load()`, `marshal.load()` — unsafe deserialization
+- Hardcoded secrets (`api_key = 'ABCDEF...'`)
+
+**Restricted patterns** (warning — should review):
+- `subprocess` — use explicit argument lists, never `shell=True`
+- `__import__()` — use standard `import` statements
+- Path traversal (`../`) — validate and sanitize paths
+
+**Network call placement:**
+- Network calls (requests, urllib, httpx, socket) must NOT occur in `__init__`
+- Place all network access in `iter_events()` where it's expected and timed
+
+**Verification:**
+```bash
+evo adapter security-check <module_or_path>
+evo adapter validate <adapter_class> --security
+```
+
+See [docs/adapters/SECURITY.md](../adapters/SECURITY.md) for the full reference.
+
+---
+
+## 9. Architectural Invariant
 
 > **No Evolution Engine may ingest data that does not originate from a Source Adapter.**
 

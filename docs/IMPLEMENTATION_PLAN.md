@@ -1402,3 +1402,18 @@ Pre-requisites:
 >                                                    Yes: done
 >                                                    No: loop back ↑
 > ```
+>
+> **New (February 13, 2026):**
+> - **Adapter ecosystem governance** — security scanning, trust tiers, blocklist, version checks, reporting
+> - `evolution/adapter_security.py` — regex + AST static analysis for dangerous patterns (9 critical, 4 warning, 1 info check)
+> - `evolution/adapter_versions.py` — PyPI version checking with 24h cache, self-update nudge
+> - Trust tiers: `built-in` → `verified` → `community` → `local` (auto-assigned in registry)
+> - Blocklist: bundled + local `~/.evo/blocklist.json`, block/unblock CLI commands
+> - New CLI commands: `security-check`, `block`, `unblock`, `check-updates`, `report`
+> - `--security` flag on `evo adapter validate`
+> - Version nudge in `evo analyze` output
+> - `docs/adapters/` — 5 docs (README, SECURITY, TRUST_TIERS, LIFECYCLE, BUILDING)
+> - `examples/evo-adapter-pytest-cov/` — reference adapter implementation
+> - E2E lifecycle test covering scaffold → validate → security-check → block/unblock
+> - 625 → ~662+ tests
+> - Updated: ADAPTER_CONTRACT.md (security requirements), INTEGRATIONS.md (link to new docs)

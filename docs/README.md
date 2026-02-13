@@ -14,6 +14,9 @@ Interface specifications for each phase and adapter family.
 Phase design documents and technical specifications.
 - [design/](design/) — Phase 2–5 designs + report generator spec
 
+## Adapters
+- [adapters/](adapters/) — adapter developer guide, security, trust tiers, lifecycle, building
+
 ## Guides
 - [guides/CALIBRATION_GUIDE.md](guides/CALIBRATION_GUIDE.md) — how to calibrate on new repos
 - [guides/INTEGRATIONS.md](guides/INTEGRATIONS.md) — connecting external tools

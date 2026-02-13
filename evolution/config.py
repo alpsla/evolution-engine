@@ -32,6 +32,9 @@ _DEFAULTS = {
     "report.theme": "dark",
     "telemetry.enabled": False,        # opt-in anonymous usage stats
     "telemetry.prompted": False,       # whether we've asked the user
+    "adapter.check_blocklist": True,   # check blocklist during adapter detection
+    "adapter.check_updates": True,     # show update reminders for adapters
+    "adapter.last_version_check": "",  # ISO timestamp of last PyPI version check
 }
 
 
