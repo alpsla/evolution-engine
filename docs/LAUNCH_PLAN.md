@@ -6,6 +6,7 @@
 > Stripe beta discounts, and existing documentation audit.
 >
 > **Created:** February 11, 2026
+> **Last updated:** February 12, 2026
 
 ---
 
@@ -14,11 +15,26 @@
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | 1 | PyPI publication | **BLOCKER** | `python -m build && twine upload dist/*` — test on TestPyPI first |
-| 2 | Stripe e2e test | **BLOCKER** | Sandbox purchase → webhook → license key → CLI activation |
-| 3 | Lawyer review | **BLOCKER** | ToS + Privacy drafts in `legals/` — need sign-off before accepting payments |
-| 4 | Translation review | Pending | DE/ES translations need native speaker validation |
-| 5 | Language switcher deploy | ✅ Done | Pushed 2026-02-11 (absolute paths + Vercel routes) |
-| 6 | Report improvements | ✅ Done | Severity badges, risk banners, grouped cards, IP sanitization |
+| 2 | Stripe e2e test | **BLOCKER** | Full test matrix below (Section 2.1), including FOUNDING50 coupon |
+| 3 | Lawyer review | **IN PROGRESS** | PDFs sent for review (`docs/legal/*.pdf`); after sign-off → upload corrected docs → translator verification |
+| 4 | Translation review | Blocked on #3 | DE/ES translations need native speaker validation after lawyer corrections |
+| 5 | Language switcher deploy | Done | Pushed 2026-02-11 (absolute paths + Vercel routes) |
+| 6 | Report improvements | Done | Severity badges, risk banners, grouped cards, IP sanitization |
+| 7 | GitLab manual testing | **BLOCKER** | 7-scenario test matrix (Section 12.2) — code verified, needs manual walkthrough |
+| 8 | User review flow testing | **BLOCKER** | End-to-end: analyze → accept → investigate → fix → verify (Section 12.4) |
+| 9 | Accept deviations | Done | `evo accept` + `evo accepted` (list/remove/clear), 12 tests |
+
+### 1.1 GitLab Compatibility Testing
+
+Before launch, verify Evolution Engine works with GitLab-hosted repositories:
+
+- [ ] Clone 3 public GitLab.com repos, run `evo analyze` on each
+- [ ] Verify git adapter handles GitLab remote URL formats (`https://gitlab.com/...` and `git@gitlab.com:...`)
+- [ ] Test `evo sources` detects `.gitlab-ci.yml` as a CI config
+- [ ] Document that Tier 2 API adapters (CI runs, releases, security) are GitHub-only for now
+- [ ] Confirm `_infer_github_remote()` in orchestrator returns `(None, None)` for GitLab remotes without crashing
+
+**Expected outcome:** Git-level analysis (Phase 1-5) works fully on GitLab repos. Tier 2 API features (CI run history, release data, security advisories) are GitHub-only and should degrade gracefully with a clear message.
 
 ---
 
@@ -27,7 +43,7 @@
 **Approach: 50% coupon for 3 months (auto-expires)**
 
 ### Steps:
-1. **Dashboard → Products → Coupons → New**
+1. **Dashboard -> Products -> Coupons -> New**
    - Percentage off: 50%
    - Duration: Repeating, 3 months
    - Max redemptions: 50
@@ -42,7 +58,7 @@
    checkout_session = stripe.checkout.Session.create(
        mode="subscription",
        line_items=[{"price": "price_xxx", "quantity": 1}],
-       allow_promotion_codes=True,  # ← only change needed
+       allow_promotion_codes=True,  # <- only change needed
        success_url="...",
        cancel_url="...",
    )
@@ -55,6 +71,39 @@
 **Transition:** Automatic. Stripe bills full price on month 4. Send email at week 11: "Your founding member rate expires in 2 weeks. Thank you for being an early tester."
 
 **Fallback:** If churn >40% at transition, offer $14/month "permanent founding member" rescue price.
+
+### 2.1 Comprehensive Stripe Test Scenarios
+
+Run all tests in Stripe test mode before launch:
+
+**Checkout Flow:**
+- [ ] Happy path: complete checkout with test card `4242 4242 4242 4242` -> verify subscription created
+- [ ] Apply coupon: enter `FOUNDING50` at checkout -> verify 50% discount applied
+- [ ] Abandoned checkout: start checkout, close browser -> verify no subscription created, no charge
+- [ ] Declined card: use test card `4000 0000 0000 0002` -> verify graceful error message
+
+**Webhook Reliability:**
+- [ ] Idempotency: send same webhook event twice -> verify license not duplicated
+- [ ] Signature mismatch: send webhook with invalid signature -> verify 400 response, no action taken
+- [ ] Missing env vars: remove `STRIPE_WEBHOOK_SECRET` -> verify handler returns error without crashing
+- [ ] Event ordering: send `invoice.paid` before `checkout.session.completed` -> verify correct handling
+
+**License Key Chain:**
+- [ ] Generate: complete checkout -> verify license key generated with correct tier and email
+- [ ] Validate: run `evo license status` with generated key -> verify "Pro" tier shown
+- [ ] Mismatch: use key from different email -> verify rejection with clear error
+- [ ] Clear: run `evo license clear` -> verify returns to free tier
+
+**Subscription Lifecycle:**
+- [ ] Renewal: trigger `invoice.paid` for month 2 -> verify license stays active
+- [ ] Coupon expiry: simulate month 4 billing at full price -> verify no disruption
+- [ ] Cancel: cancel subscription in dashboard -> verify license deactivated on next validation
+- [ ] Resubscribe: cancel then re-subscribe -> verify new license key works
+
+**Edge Cases:**
+- [ ] Duplicate email: two checkouts with same email -> verify only one active subscription
+- [ ] Cold start timeout: first webhook after deploy -> verify Vercel function responds within 10s
+- [ ] Currency: verify checkout shows USD (or user's local currency if configured)
 
 ---
 
@@ -70,7 +119,7 @@
 **Month 1 — Private Alpha (10 users)**
 - High-touch: DM each user, offer 15-min call
 - Focus: installation issues, false positive rates, critical bugs
-- Source: warm outreach to open-source maintainers
+- Source: Reddit posts to targeted subreddits
 
 **Months 2-3 — Private Beta (30-50 users)**
 - Lower-touch: weekly update email, respond to issues within 24 hours
@@ -103,63 +152,96 @@
 
 ## 4. Finding Beta Testers
 
-### Tier 1: Warm Outreach (First 10)
+### Tier 1: Reddit Posts (First 10-20 users)
 
-Find open-source maintainers of 100-5,000 star projects with dependency PR backlogs:
+Reddit is the primary acquisition channel. No cold emails, no DMs to strangers.
 
-```
-Criteria:
-- Has .github/dependabot.yml or renovate.json
-- 20+ open dependency PRs
-- Maintainer committed in last 30 days
-```
+| Subreddit | Angle | Key message |
+|-----------|-------|-------------|
+| **r/devops** | CI + dependency correlation | "I built a CLI that correlates CI failures with dependency changes to find which updates actually break things" |
+| **r/programming** | Cross-signal methodology | "What 43 open-source repos taught me about predicting CI failures from git patterns" |
+| **r/selfhosted** | Local-first, privacy | "Your code never leaves your machine — a local-first CLI for codebase evolution analysis" |
+| **r/Python** | 5-phase pipeline, Cython | "Building a 5-phase analysis pipeline in Python with Cython for the hot path" |
+| **r/commandline** | Terminal demo | "Terminal demo: correlating git, CI, and deployment signals in one command" |
+| **r/opensource** | Pattern dataset | "I'm open-sourcing correlation patterns from 43 repos — here's what I found" |
 
-**Outreach template:**
-> "Hi [name], I noticed [repo] has [N] open dependency PRs. I built a CLI that
-> correlates dependency changes with CI failures and code churn to flag which
-> updates actually matter. It runs locally — your code never leaves your machine.
-> I'm looking for 10 beta testers and offering founding member pricing (50% off
-> for 3 months). Happy to jump on a 10-minute call to see if it's relevant."
+**Rules:**
+- Disclose authorship clearly: "I built this" / "I'm the developer of..."
+- Lead with insight, not tool promotion — teach something valuable even without EE
+- Respond to every comment within 4 hours
+- Space posts 3-5 days apart — never post to multiple subreddits on the same day
+- Include beta application link in each post
 
-### Tier 2: Community Posts (Next 20-40)
+### Tier 2: DE/ES Social Media
 
-| Platform | Angle | Timing |
-|----------|-------|--------|
-| **HN Show HN** | "I built a CLI that finds patterns across git, CI, and deployment data" | Tuesday-Thursday, 9-11am ET |
-| **r/devops** | Problem-focused: dependency + CI correlation | 3 days after HN |
-| **r/programming** | Technical deep-dive | 5 days after HN |
-| **r/selfhosted** | "Local-first, code never leaves your machine" | 7 days after HN |
-| **r/Python** | Implementation: 5-phase pipeline with Cython | Separate week |
-| **Dev.to** | Blog post cross-post (canonical to codequal.dev) | Week +2 |
-| **Twitter/X + Bluesky** | Build-in-public thread with terminal screenshots | Ongoing |
-| **Mastodon** (fosstodon) | Local-first + privacy angle | Ongoing |
+**German audience:** Privacy-conscious, local-first resonates strongly.
+- **LinkedIn (DE):** Professional developer audience, post in German about local-first tooling and data sovereignty
+- **Mastodon** (fosstodon.org): Open-source community, privacy angle, post in German/English
+- **r/de_EDV:** German IT subreddit, technical deep-dive in German
+- Link directly to translated website pages (`/de/`)
 
-**Space Reddit posts 3-5 days apart.** Each community gets a unique angle.
+**Spanish audience:** Growing LatAm open-source community.
+- **Twitter/X (ES):** Thread in Spanish about cross-signal correlation methodology
+- **Dev.to (ES):** Blog post cross-post in Spanish (canonical to codequal.dev/es/)
+- **r/programacion:** Spanish programming subreddit, implementation deep-dive
+- Link directly to translated website pages (`/es/`)
 
-### Tier 3: Leveraged (If Needed)
-- DevOpsDays / local meetup lightning talks (5 min)
-- Small DevOps podcast guest spots (<5K listeners)
-- platformengineering.org Slack, DevOps Chat, Hangops
+### Tier 3: Community (Ongoing)
+
+- **Show HN** (main event, week 5) — Tuesday-Thursday, 9-11am ET
+- **Dev.to** cross-posts (canonical to codequal.dev)
+- **platformengineering.org Slack**, DevOps Chat, Hangops
+- **Podcast guest spots** (voice only, no video — see Section 5) — target <5K listener shows
+- **Twitter/X + Bluesky** — build-in-public thread with terminal screenshots (ongoing)
+
+**NOT doing:**
+- No cold emails or DMs to maintainers
+- No mass outreach campaigns
+- No paid ads (organic first, no ROI at this scale)
 
 ---
 
-## 5. Solo Founder Positioning
+## 5. Founder Positioning — Anonymity Strategy
 
-### Do
-- **Embrace "indie dev" identity** — developers trust solo founders over VC-funded startups
-- Use first person ("I built this because..."), never fake "we"
-- Real name and photo on the about page
-- Pin the repo on GitHub, keep contribution graph active
+### Alias Approach
+
+Operate under a consistent alias across all platforms to protect employment at current employer.
+
+**Do:**
+- Use a consistent alias (same handle everywhere)
+- Use an avatar/logo instead of a photo on all profiles
+- Write in first person ("I built this because..."), never fake "we"
+- Be transparent about being a solo founder under an alias
+- Pin the repo on GitHub (under alias account), keep contribution graph active
 - Respond to GitHub issues within hours (your #1 competitive advantage)
-- Record a 90-second `asciinema`/`vhs` terminal recording for the README
+- Record terminal demos (asciinema/vhs) — no face, no voice
 - Write technically deep blog posts that teach something even without the tool
 
-### Don't
-- Don't buy ads yet (organic first, no ROI at this scale)
+**Don't:**
+- No real name on any public-facing material
+- No employer references anywhere — not in bio, posts, or conversations
+- No live video without a presenter (see below)
+- No personal email — use a dedicated project email
+- Don't buy ads yet (organic first)
 - Don't create empty Discord/Slack communities
 - Don't hire a content writer (devs detect non-technical marketing instantly)
 - Don't launch on all channels simultaneously (stagger by 2-3 days)
-- Don't position against tools — position as the aggregation layer ("We see what Datadog can't because we analyze development, not production")
+- Don't position against tools — position as the aggregation layer
+
+### Presenter Option (Video/Audio)
+
+For content that requires a human presence:
+- **YouTube demos:** Hire a presenter for walkthrough videos
+- **Podcast appearances:** Presenter or voice-only (no video)
+- **Conference talks:** Presenter delivers, founder provides content
+- Founder stays behind the scenes for all video/audio content
+
+### Rules
+1. No real name appears in any commit, profile, or public communication
+2. No employer reference — ever, even casually
+3. Separate email for all project communication
+4. No live video without a presenter
+5. Consistent alias across GitHub, Reddit, Twitter, Mastodon, Dev.to
 
 ---
 
@@ -210,10 +292,10 @@ The `evo investigate` and `evo fix` features use third-party AI (Claude/ChatGPT)
 3. Write 1-2 page internal memo documenting minimal-risk classification (defensive measure)
 
 ### GDPR (Already Covered)
-- Privacy policy ✅ (website/privacy.html)
-- Telemetry is opt-in ✅
-- Code stays local ✅
-- Stripe handles payment data ✅
+- Privacy policy (website/privacy.html)
+- Telemetry is opt-in
+- Code stays local
+- Stripe handles payment data
 
 ### Not Required
 - No CE marking, no EU AI database registration
@@ -228,9 +310,14 @@ The `evo investigate` and `evo fix` features use third-party AI (Claude/ChatGPT)
 ### Week 0 (Current — Feb 11-14)
 - [x] Report improvements (severity, grouping, IP sanitization)
 - [x] Language switcher fix deployed
-- [ ] Stripe sandbox e2e test
-- [ ] Lawyer review of ToS + Privacy
-- [ ] Translation validation (DE/ES)
+- [x] Accept deviations (`evo accept` + `evo accepted`) — 12 tests
+- [x] Legal docs converted to PDF for lawyer review (5 docs)
+- [x] GitLab compatibility verified in code (516 commits, 677 events, 8 adapters)
+- [ ] Lawyer review of ToS + Privacy — **in progress**, awaiting sign-off
+- [ ] Stripe sandbox e2e test (full matrix — Section 2.1)
+- [ ] GitLab manual testing (7 scenarios — Section 12.2)
+- [ ] User review flow testing (analyze → accept → investigate → fix → verify — Section 12.4)
+- [ ] Translation validation (DE/ES) — blocked on lawyer review
 
 ### Week 1 (Feb 17-21) — Technical Readiness
 - [ ] PyPI TestPyPI upload + test install on clean machine
@@ -238,37 +325,42 @@ The `evo investigate` and `evo fix` features use third-party AI (Claude/ChatGPT)
 - [ ] Add `allow_promotion_codes=True` to checkout handler
 - [ ] Create Stripe coupon (FOUNDING50, 50% off, 3 months, max 50)
 - [ ] Add AI transparency disclosure to CLI (`evo investigate`, `evo fix`)
-- [ ] Record terminal demo (asciinema/vhs, 90 seconds)
+- [ ] Record terminal demo (asciinema, no face/voice — alias only)
+- [ ] README hero section with terminal demo embed
 
-### Week 2 (Feb 24-28) — Private Alpha
-- [ ] Identify 30 target repos for warm outreach
-- [ ] Send 30 personalized messages to maintainers
+### Week 2 (Feb 24-28) — Reddit Launch + Beta Applications
 - [ ] Create beta application form (Tally/Google Form)
+- [ ] Publish first Reddit post (**r/devops** — CI+dependency correlation angle)
 - [ ] Write blog post #1 ("What 43 Repos Taught Me")
-- [ ] Goal: 10 accepted alpha testers
+- [ ] Draft DE/ES social media posts (German LinkedIn, Spanish Twitter thread)
+- [ ] Goal: 10 beta applications
 
-### Week 3-4 (Mar 3-14) — Alpha Support
-- [ ] High-touch alpha support (DM each user, offer calls)
+### Week 3-4 (Mar 3-14) — Reddit Momentum + Alpha Support
+- [ ] Post to **r/programming** (technical deep-dive)
+- [ ] Post to **r/selfhosted** (local-first angle)
+- [ ] High-touch alpha support (DM each tester, offer calls)
 - [ ] Fix critical bugs from alpha feedback
 - [ ] Write blog post #2 ("Why Dependency Updates Break Code")
 - [ ] Draft Show HN post + first comment
-- [ ] Prepare Reddit posts (different angles per subreddit)
+- [ ] Monitor Reddit, engage every commenter
+- [ ] Collect beta sign-ups from Reddit engagement
+- [ ] Post to r/Python, r/commandline (staggered)
 
-### Week 5 (Mar 17-21) — Public Beta Launch
+### Week 5 (Mar 17-21) — Show HN + DE Social Media
 - [ ] **Monday: Show HN** (the main event)
   - Monitor comments for 12 hours, reply within 30 min
   - Post on Twitter/X linking to HN discussion
-- [ ] **Wednesday: r/devops** (problem-focused)
-- [ ] **Thursday: r/programming** (technical deep-dive)
-- [ ] **Friday: r/selfhosted** (local-first angle)
+- [ ] **Tuesday: German LinkedIn post** (privacy/local-first angle)
+- [ ] **Wednesday: Mastodon** (fosstodon, German/English)
+- [ ] **Thursday: r/de_EDV** (German IT community)
 - [ ] Goal: expand to 30-50 beta testers
 
-### Week 6-7 (Mar 24 - Apr 4) — Product Hunt + Momentum
-- [ ] Launch on Product Hunt (2-3 weeks after HN)
-- [ ] Ask beta users for genuine reviews
+### Week 6-7 (Mar 24 - Apr 4) — ES Social Media + Momentum
+- [ ] Spanish Twitter thread
+- [ ] Dev.to cross-post (Spanish, canonical to codequal.dev/es/)
+- [ ] r/programacion post
 - [ ] Write comparison pages (vs Snyk, vs Datadog)
-- [ ] Post to r/commandline, r/Python
-- [ ] Cross-post to Mastodon/Bluesky
+- [ ] Ask beta users for genuine reviews
 
 ### Weeks 8-12 (Apr 7 - May 16) — Beta Sustain
 - [ ] One blog post per week
@@ -319,15 +411,336 @@ The `evo investigate` and `evo fix` features use third-party AI (Claude/ChatGPT)
 
 | Risk | Mitigation |
 |------|------------|
-| HN post doesn't get traction | Reddit + Dev.to as backup channels. Stagger, don't batch. |
+| HN post doesn't get traction | Reddit posts already running as primary channel. Show HN is amplification, not sole strategy. |
 | High FP rate on user repos | 1.6% validated. Accept GitHub issues, fix within 24h. |
-| Stripe payment failures | Test sandbox thoroughly. 30-day money-back guarantee in ToS. |
+| Stripe payment failures | Comprehensive test matrix (Section 2.1). 30-day money-back guarantee in ToS. |
 | Big company copies the approach | Moat = accumulated patterns + Cython engines + community data. Keep shipping. |
 | EU AI Act enforcement | Minimal risk classification. Add transparency disclosure by Aug 2026. |
 | Solo founder burnout | Limit support to GitHub Issues + email. No Discord until 100+ users. |
+| Real identity discovered | All accounts under alias, no employer references, separate email, no live video without presenter. |
+| GitLab compatibility issues | Test pre-launch (Section 1.1). Document Tier 2 API adapters are GitHub-only. Git analysis works on any host. |
 
 ---
 
-> **Bottom line:** The product is ready. The two hard blockers are PyPI publication and Stripe
-> testing. Once those are done (estimated: 1-2 days), beta recruiting can begin immediately
-> with warm outreach to open-source maintainers, followed by a Show HN launch in week 5.
+## 12. Manual Testing Guide (New Features)
+
+Test everything implemented in this session before moving to beta.
+
+### 12.1 Run History Feature
+
+**Setup:** Use any analyzed repo (e.g., `.calibration/runs/bat-api` or a fresh GitLab clone).
+
+**Snapshot creation (auto):**
+```bash
+# First run — creates .evo/phase5/history/ with a snapshot
+evo analyze /path/to/repo
+
+# Verify snapshot was created
+evo history list /path/to/repo
+# Expected: 1 snapshot with timestamp, change count, families
+```
+
+**History list:**
+```bash
+# List all runs
+evo history list /path/to/repo
+
+# Limit to last 5
+evo history list /path/to/repo -n 5
+
+# JSON output (for scripting)
+evo history list /path/to/repo --json
+```
+
+**History show (view a specific run):**
+```bash
+# Use full timestamp from list output
+evo history show 20260212-042515-473148 /path/to/repo
+
+# Or use prefix match (like git short hashes)
+evo history show 20260212 /path/to/repo
+
+# JSON output
+evo history show 20260212 /path/to/repo --json
+```
+
+**History diff (compare two runs):**
+```bash
+# Clear .evo and run twice to get 2 snapshots
+rm -rf /path/to/repo/.evo
+evo analyze /path/to/repo
+# (make a change or wait)
+rm -rf /path/to/repo/.evo/events /path/to/repo/.evo/phase*signals*
+evo analyze /path/to/repo
+
+# Compare latest vs previous (default)
+evo history diff /path/to/repo
+
+# Compare specific runs
+evo history diff 20260212-041500 20260212-042500 /path/to/repo
+
+# JSON output
+evo history diff /path/to/repo --json
+```
+
+**Expected diff output categories:**
+- `RESOLVED` — changes that returned to normal
+- `STILL UNUSUAL` — changes that persist (with improving/not improving)
+- `NEW OBSERVATIONS` — new changes not in the previous run
+- `REGRESSIONS` — new deviations in families that had changes before
+- `Resolution rate: X%` — percentage of resolved changes
+
+**History clean:**
+```bash
+# Keep only the 5 most recent snapshots
+evo history clean /path/to/repo -k 5
+
+# Delete snapshots before a date
+evo history clean /path/to/repo --before 20260201
+
+# Skip confirmation
+evo history clean /path/to/repo -k 5 -y
+```
+
+**Edge cases to verify:**
+- [ ] `evo history list` on a repo with no `.evo/` directory -> shows helpful message
+- [ ] `evo history show nonexistent` -> shows error message
+- [ ] `evo history diff` with only 1 snapshot -> shows "need at least 2 runs" message
+- [ ] History never blocks the pipeline (if history dir is unwritable, analyze still completes)
+
+### 12.2 GitLab Compatibility
+
+**Prerequisites:**
+- GitLab Personal Access Token (create at GitLab -> Preferences -> Access Tokens, scopes: `read_api`, `read_repository`)
+- Token format: `glpat-...`
+
+**Test 1: Source detection**
+```bash
+git clone https://gitlab.com/gitlab-org/gitlab-styles.git /tmp/gl-test
+evo sources /tmp/gl-test
+# Expected: detects git, .gitlab-ci.yml, Gemfile.lock
+# Expected: suggests setting GITLAB_TOKEN for Tier 2
+```
+
+**Test 2: Full analysis (git-only, no token)**
+```bash
+evo analyze /tmp/gl-test
+# Expected: git + dependency events ingested, advisory generated
+# Expected: no crash from _infer_github_remote() returning (None, None)
+```
+
+**Test 3: Full analysis with GitLab token**
+```bash
+export GITLAB_TOKEN="glpat-your-token-here"
+evo analyze /tmp/gl-test
+# Expected: detects gitlab_pipelines (tier 2) and gitlab_releases (tier 2)
+# Expected: Tier 2 API adapters attempt to fetch data
+```
+
+**Test 4: HTML report**
+```bash
+evo report /tmp/gl-test
+open /tmp/gl-test/.evo/report.html
+# Expected: valid HTML report with severity badges, grouped cards
+```
+
+**Test 5: History auto-snapshot**
+```bash
+evo history list /tmp/gl-test
+# Expected: snapshot created from the analyze run
+evo history show 20260212 /tmp/gl-test
+# Expected: shows advisory details from GitLab repo analysis
+```
+
+**Test 6: Different GitLab URL formats**
+```bash
+# HTTPS format
+git clone https://gitlab.com/inkscape/inkscape.git /tmp/gl-test2
+evo analyze /tmp/gl-test2
+# Expected: works without crash
+
+# SSH format (if SSH key configured)
+git clone git@gitlab.com:gitlab-org/gitlab-styles.git /tmp/gl-test3
+evo analyze /tmp/gl-test3
+# Expected: works without crash
+```
+
+**Test 7: Verify graceful degradation**
+```bash
+# Without GITLAB_TOKEN, Tier 2 should be skipped gracefully
+unset GITLAB_TOKEN
+evo analyze /tmp/gl-test
+# Expected: only Tier 1 adapters run, no errors about missing token
+```
+
+**Results from automated testing (Feb 12, 2026):**
+- `evo sources` detects `.gitlab-ci.yml` -> PASS
+- `evo analyze` with GITLAB_TOKEN detects 8 adapters (3 Tier 1 + 5 Tier 2) -> PASS
+- 677 events ingested (516 git + 161 dependency) -> PASS
+- 5 significant changes detected in advisory -> PASS
+- HTML report generates successfully -> PASS
+- History snapshot auto-created -> PASS
+- `evo history show` with prefix match -> PASS
+- No crash from GitLab remote URL -> PASS
+
+### 12.3 Phase 5 Diff Refactor Verification
+
+The advisory diff logic was extracted from `phase5_engine.py` into `history.py`. Verify existing behavior is preserved:
+
+```bash
+# Run the full test suite
+.venv/bin/python -m pytest tests/ -v
+# Expected: 574 tests passing
+
+# Specifically check Phase 5 advisory diff tests
+.venv/bin/python -m pytest tests/unit/test_phase5_advisory.py -v -k "Diff"
+# Expected: TestAdvisoryDiff tests pass (resolved, persisting, new)
+
+# Check history tests
+.venv/bin/python -m pytest tests/unit/test_history.py -v
+# Expected: 29 tests passing
+
+# Verify fix verification loop still works
+evo verify /path/to/previous-advisory.json /path/to/repo
+# Expected: same behavior as before refactor
+```
+
+### 12.4 User Review Flow (End-to-End)
+
+Verify the complete user journey from analysis to fix verification, including the new accept deviations feature.
+
+**Test 1: Analyze → Accept → Re-analyze**
+```bash
+# Run analysis
+evo analyze /path/to/repo
+
+# Note the numbered changes in output (e.g., 1-4)
+# Accept changes #1 and #2 with a reason
+evo accept /path/to/repo 1 2 --reason "Known refactoring spike"
+# Expected: "Accepted 2 deviation(s): git / dispersion, ci / run_duration"
+
+# Re-analyze — accepted changes should be hidden
+evo analyze /path/to/repo
+# Expected: only the unaccepted changes appear
+```
+
+**Test 2: Accepted management**
+```bash
+# List all accepted deviations
+evo accepted list /path/to/repo
+# Expected: shows 2 entries with age ("accepted today") and reason
+
+# Remove one
+evo accepted remove /path/to/repo git:dispersion
+# Expected: "Removed: git:dispersion"
+
+# Clear all
+evo accepted clear /path/to/repo
+# Expected: confirmation prompt, then "Cleared 1 accepted deviation(s)."
+```
+
+**Test 3: Investigate with accepted deviations**
+```bash
+# Accept some deviations, then investigate
+evo accept /path/to/repo 1
+evo investigate /path/to/repo --show-prompt
+# Expected: investigation prompt only contains unaccepted changes
+```
+
+**Test 4: Fix loop respects accepted deviations**
+```bash
+# Accept known issues, fix only the unexpected ones
+evo accept /path/to/repo 1 --reason "Expected"
+evo fix /path/to/repo --dry-run
+# Expected: fix prompt focuses on unaccepted changes only
+```
+
+**Edge cases:**
+- [ ] `evo accept . 99` with invalid index -> shows "Invalid change number(s): 99 (valid range: 1-N)"
+- [ ] `evo accept .` with no indices -> shows usage error
+- [ ] `evo accepted list .` on repo with no accepted.json -> shows "No accepted deviations."
+- [ ] `evo accepted remove . nonexistent:key` -> shows "Not found: nonexistent:key"
+- [ ] Accept all changes -> next `evo analyze` shows no significant changes
+- [ ] `.evo/accepted.json` persists across multiple `evo analyze` runs
+
+---
+
+## 13. Supporting Materials Checklist
+
+### Week 1 (Before Launch)
+- [ ] Terminal demo recording (asciinema, no face/voice, alias watermark)
+- [ ] README hero section with demo embed and quick-start
+- [ ] Beta application form (Tally) with 4 fields
+- [ ] Blog post #1 draft: "What 43 Open-Source Repos Taught Me About CI Failure Patterns"
+
+### Week 2 (Before Reddit)
+- [ ] **r/devops post draft:** Lead with CI+dependency correlation insight, include demo link
+- [ ] **r/programming post draft:** Technical methodology, cross-signal analysis concept
+- [ ] **r/selfhosted post draft:** Local-first angle, privacy comparison with cloud tools
+- [ ] **r/Python post draft:** 5-phase pipeline architecture, Cython optimization story
+
+### Week 2-3 (Before DE/ES Push)
+- [ ] German LinkedIn post draft (privacy/data sovereignty angle)
+- [ ] German Mastodon post draft (fosstodon, open-source/local-first)
+- [ ] Spanish Twitter thread draft (cross-signal methodology, LatAm dev community)
+- [ ] Translation validation complete (native speakers reviewed DE/ES website pages)
+
+### Week 5 (Before Show HN)
+- [ ] Show HN post draft + prepared first comment (technical details, methodology)
+- [ ] FAQ page on codequal.dev (anticipate common questions from HN)
+- [ ] Comparison pages live (vs Snyk, vs Datadog, vs SonarQube)
+
+### Social Media Templates
+
+**English Twitter thread (template):**
+```
+1/ I analyzed 43 open-source repos and found that CI failures correlate with
+   file dispersion in commits — not just test coverage.
+
+2/ When a commit touches files across 5+ directories, CI failure rate jumps
+   3x compared to focused commits. Here's what the data shows...
+
+3/ I built a CLI that detects these patterns automatically.
+   It runs locally — your code never leaves your machine.
+   [link to repo]
+```
+
+**German Mastodon post (template):**
+```
+Ich habe ein CLI-Tool entwickelt, das Git-, CI- und Dependency-Signale
+korreliert, um Muster in der Codebase-Entwicklung zu erkennen.
+
+Alles laeuft lokal — kein Code verlaesst euren Rechner.
+
+Open Source, 5-Phasen-Pipeline, Python + Cython.
+[link to /de/ page]
+
+#OpenSource #DevOps #LocalFirst #Python
+```
+
+**Spanish Twitter post (template):**
+```
+Construi un CLI que correlaciona senales de git, CI y dependencias
+para detectar patrones de evolucion en tu codebase.
+
+Todo corre local — tu codigo nunca sale de tu maquina.
+
+Open source, pipeline de 5 fases, Python + Cython.
+[link to /es/ page]
+
+#OpenSource #DevOps #Python
+```
+
+---
+
+> **Bottom line:** The product is feature-complete (586 tests). The remaining blockers are:
+>
+> 1. **Lawyer review** (in progress) — sign-off on ToS + Privacy, then corrected docs to translator
+> 2. **GitLab manual testing** — 7-scenario walkthrough (code verified, needs hands-on run)
+> 3. **Stripe E2E testing** — full matrix including FOUNDING50 beta discount coupon
+> 4. **User review flow** — end-to-end: analyze → accept → investigate → fix → verify
+> 5. **PyPI publication** — `python -m build && twine upload dist/*`
+>
+> Once testing is complete (estimated: 2-3 days after lawyer sign-off), beta recruiting
+> begins with Reddit posts (r/devops first), followed by DE/ES social media outreach and
+> a Show HN launch in week 5. All activity under a consistent alias — no identity exposure.

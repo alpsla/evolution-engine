@@ -30,7 +30,36 @@ export GITHUB_TOKEN=<your-token>
 ### Verify Token Works
 
 ```bash
-curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/rate_limit | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Rate limit: {d[\"resources\"][\"core\"][\"remaining\"]}/{d[\"resources\"][\"core\"][\"limit\"]}')"
+# Option 1: Using gh CLI (recommended - handles auth automatically)
+gh api rate_limit --jq '.resources.core | "Rate limit: \(.remaining)/\(.limit) (resets: \(.reset | todateiso8601))"'
+
+# Option 2: Using curl with GITHUB_TOKEN env var
+if [ -z "$GITHUB_TOKEN" ]; then
+  echo "GITHUB_TOKEN not set. Using gh CLI instead:"
+  gh api rate_limit --jq '.resources.core | "Rate limit: \(.remaining)/\(.limit)"'
+else
+  # Use jq if available (simpler than Python)
+  if command -v jq &> /dev/null; then
+    curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/rate_limit | \
+      jq -r '.resources.core | "Rate limit: \(.remaining)/\(.limit) (resets: \(.reset | todateiso8601))"'
+  else
+    # Fallback to Python (handles errors gracefully)
+    curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/rate_limit | \
+      python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    core = data['resources']['core']
+    remaining = core['remaining']
+    limit = core['limit']
+    reset_time = core['reset']
+    print(f'Rate limit: {remaining}/{limit} (resets at {reset_time})')
+except (KeyError, json.JSONDecodeError) as e:
+    print(f'Error parsing rate limit response: {e}', file=sys.stderr)
+    sys.exit(1)
+"
+  fi
+fi
 ```
 
 GitHub free tier: 5,000 requests/hour. With 120 repos × ~55 API requests each = ~6,600 requests.

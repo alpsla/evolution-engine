@@ -7,7 +7,7 @@
 >
 > The plan is intentionally conservative: each step validates an architectural assumption before expanding scope.
 >
-> **Last updated:** February 10, 2026 (Axiom observability, product launch: website, Stripe, telemetry, PyPI prep; 542 tests)
+> **Last updated:** February 12, 2026 (Accept deviations, legal PDFs, testing backlog; 586 tests)
 
 ---
 
@@ -1009,13 +1009,102 @@ Single-page dark-themed marketing site using CodeQual's "Ocean Depth" design sys
 - [x] `website/requirements.txt` — Stripe dependency for serverless functions
 - [x] Env vars configured: STRIPE_SECRET_KEY, STRIPE_PRICE_ID, STRIPE_WEBHOOK_SECRET, BASE_URL, EVO_LICENSE_SIGNING_KEY, AXIOM_TOKEN, AXIOM_DATASET
 
-### 8.15 Future Enhancements
+### 8.15 Run History — Snapshot, Compare, Clean ✅
+
+> **Status: ✅ Complete — `evolution/history.py` + CLI commands + 29 tests**
+
+Advisory snapshots are saved after each Phase 5 run so users can track changes over time
+and verify whether fixes resolved issues.
+
+**Implemented:**
+- [x] `HistoryManager` class — manages `.evo/phase5/history/*.json` snapshots
+- [x] `snapshot(advisory, scope)` — saves advisory with envelope (version, timestamp, scope)
+- [x] `list_runs(limit=None)` — newest-first, returns metadata without loading full advisory
+- [x] `load_run(timestamp)` — exact or prefix match (like git short hashes)
+- [x] `compare(ts1, ts2)` — diffs two snapshots: resolved/persisting/new/regressions
+- [x] `clean(keep=N, before=date)` — retention cleanup with confirmation
+- [x] `diff_advisories()` — standalone function extracted from Phase 5 engine (shared code)
+- [x] `format_diff_summary()` — human-readable comparison output
+- [x] Auto-snapshot in orchestrator after Phase 5 (try/except, never blocks pipeline)
+- [x] Phase 5 `_diff_advisories()` refactored to delegate to shared function
+- [x] CLI: `evo history list|show|diff|clean` with `--json` flag on all commands
+
+**CLI commands:**
+```
+evo history              # defaults to list
+evo history list [-n 20] # show snapshots (timestamp, changes count, families)
+evo history show <run>   # view a specific run's summary (prefix match supported)
+evo history diff [r1 r2] # compare two runs (default: latest vs previous)
+evo history clean -k N   # keep N most recent, delete rest (with confirmation)
+```
+
+**Files:** `evolution/history.py`, `evolution/cli.py` (history group), `evolution/orchestrator.py` (auto-snapshot), `evolution/phase5_engine.py` (refactored diff) — 29 tests in `tests/unit/test_history.py`
+
+### 8.16 GitLab Compatibility ✅
+
+> **Status: ✅ Verified — git analysis works fully on GitLab repos**
+
+Tested on `gitlab-org/gitlab-styles` (516 commits, Gemfile.lock, .gitlab-ci.yml).
+
+**Results:**
+- [x] `evo sources` detects `.gitlab-ci.yml` as CI config
+- [x] `evo analyze` works with GITLAB_TOKEN (detects gitlab_pipelines + gitlab_releases Tier 2 adapters)
+- [x] `_infer_github_remote()` returns `(None, None)` for GitLab URLs without crashing
+- [x] HTML report generates correctly
+- [x] History auto-snapshot works on GitLab repos
+- [x] Graceful degradation: Tier 2 API adapters skipped cleanly without token
+
+**Limitations (documented):**
+- Tier 2 API adapters (CI run history, releases, security) are GitHub-only for now
+- GitLab Tier 2 adapters are registered in registry but require implementation for full API data
+- Git-level analysis (Phases 1-5) works identically on GitHub, GitLab, Bitbucket, or any git host
+
+### 8.17 Accept Deviations — `evo accept` + `evo accepted` ✅
+
+> **Status: ✅ Complete — `evolution/accepted.py` + CLI commands + 12 tests**
+
+Users can accept deviations they've reviewed and consider intentional. Accepted
+deviations are excluded from future Phase 5 advisories until explicitly removed.
+
+**Storage:** `.evo/accepted.json` — per-repo file with version, accepted entries
+keyed by `family:metric` (same composite key used in `diff_advisories()` and dedup).
+
+**CLI commands:**
+```bash
+evo analyze .                          # Shows 4 changes (numbered 1-4)
+evo accept . 1 3 --reason "Expected"   # Accept changes #1 and #3
+evo analyze .                          # Now shows 2 changes (accepted hidden)
+
+evo accepted list .                    # Review all accepted deviations
+evo accepted remove . git:dispersion   # Un-accept, will show in next analyze
+evo accepted clear .                   # Remove all acceptances
+```
+
+**Implementation:**
+- [x] `AcceptedDeviations` class — load, save, add, remove, clear, is_accepted, accepted_keys
+- [x] Phase 5 filtering — loads accepted keys in `__init__`, filters after dedup in `run()`
+- [x] `evo accept` — maps advisory change indices to family:metric keys, writes to accepted.json
+- [x] `evo accepted list` — shows all accepted deviations with age and reason
+- [x] `evo accepted remove` — removes by family:metric key
+- [x] `evo accepted clear` — removes all with confirmation
+- [x] 12 tests (storage CRUD, persistence, corruption recovery, Phase 5 integration)
+
+**Design decisions:**
+- No expiration by default — user explicitly removes when ready
+- `from_advisory` field tracks which advisory run triggered the acceptance (audit trail)
+- Filtering happens after dedup (same `family:metric` key), before building advisory
+- If all changes are accepted, Phase 5 returns `no_significant_changes`
+
+**Files:** `evolution/accepted.py`, `evolution/cli.py` (accept + accepted group), `evolution/phase5_engine.py` (filter), `tests/unit/test_accepted.py`
+
+### 8.18 Future Enhancements
 
 - PostgreSQL + pgvector migration (multi-tenant, when SaaS tier exists)
 - Additional vendor adapters (GitLab CI, Jenkins, npm, Cargo, etc.)
 - Real-time event streaming (webhooks vs batch polling)
 - IDE extensions (VS Code, JetBrains) — surfaces advisories where code is written
 - Trend dashboard — multi-run advisory comparison over time
+- ~~Advisory acknowledgment for expected changes~~ → **implemented as `evo accept`** (see §8.17)
 
 ---
 
@@ -1109,7 +1198,7 @@ This plan explicitly excludes:
 | **Report Generator** | ✅ Complete | PM-friendly HTML report with risk badges and insights |
 | **License System** | ✅ Complete | Free/Pro tier gating with HMAC-signed keys |
 | **Packaging (pip)** | ✅ Complete | `pip install -e .` → `evo analyze .` works |
-| **Test Suite** | ✅ Complete | 542 tests, 1.5s, >80% core coverage |
+| **Test Suite** | ✅ Complete | 586 tests, 1.9s, >80% core coverage |
 | **Source Prescan** | ✅ Complete | SDK fingerprint detection (Datadog, Sentry, etc.) |
 | **AI Agent: investigate** | ✅ Complete | Feed advisory into AI agent for root cause analysis |
 | **AI Agent: fix + validate** | ✅ Complete | AI proposes fixes, EE validates until clear |
@@ -1122,6 +1211,9 @@ This plan explicitly excludes:
 | **Website & Landing Page** | ✅ Complete | Ocean Depth theme, Vercel deployed, docs + privacy pages |
 | **Stripe Integration** | ✅ Complete | Checkout, webhook, license generation, success page |
 | **Adapter Catalog** | ✅ Complete | 26 adapters, request system → GitHub Issues |
+| **Run History** | ✅ Complete | Snapshot, compare, clean advisory runs over time |
+| **GitLab Compatibility** | ✅ Verified | Git analysis works on GitLab repos, Tier 2 GitHub-only |
+| **Accept Deviations** | ✅ Complete | `evo accept` + `evo accepted` — hide acknowledged deviations |
 
 ### Execution Timeline
 
@@ -1185,14 +1277,21 @@ Docs page ✅                    Privacy page ✅
 29. ~~Stripe Pro Integration~~ ✅ (checkout, webhook, license generation)
 30. ~~Adapter Catalog & Requests~~ ✅ (26 adapters, GitHub Issue creation)
 
-**Completed (31):**
+**Completed (31-35):**
 31. ~~Axiom observability~~ ✅ — direct ingest from all API endpoints (bypasses Vercel Pro log drain requirement)
+32. ~~Run history~~ ✅ — `evo history list|show|diff|clean`, auto-snapshot, shared diff logic (29 tests)
+33. ~~GitLab compatibility~~ ✅ — verified on gitlab-org/gitlab-styles (516 commits, 677 events)
+34. ~~Accept deviations~~ ✅ — `evo accept` + `evo accepted` (list/remove/clear), Phase 5 filtering (12 tests)
+35. ~~Legal docs~~ ✅ — 5 legal docs converted to PDF for lawyer review (privacy, ToS, 3rd-party API, AI safety, data flow)
 
-**Next — PyPI & Beta:**
-32. **PyPI publication** — `python -m build && twine upload dist/*`
-33. **Stripe end-to-end test** — test purchase in sandbox, verify license key
-34. **Custom domain** — configure codequal.dev for Vercel
-35. **Community beta** — announce, gather feedback
+**Next — Testing & Beta Launch:**
+36. **Lawyer review** — ToS + Privacy Policy under review; upload corrected docs after sign-off, send for translator verification
+37. **GitLab manual testing** — full 7-scenario test matrix (see LAUNCH_PLAN.md §12.2)
+38. **Stripe E2E testing** — full test matrix including beta discount coupon (see LAUNCH_PLAN.md §2.1)
+39. **User review flow testing** — end-to-end: `evo analyze` → `evo accept` → `evo investigate` → `evo fix` → `evo verify`
+40. **PyPI publication** — `python -m build && twine upload dist/*`
+41. **Custom domain** — configure codequal.dev for Vercel
+42. **Community beta** — announce, gather feedback
 
 **See `docs/LAUNCH_PLAN.md`** for detailed beta program, launch timeline, and go-to-market strategy.
 
@@ -1204,11 +1303,25 @@ The remaining items before public beta:
 
 | # | Task | Effort | Blocker? |
 |---|------|--------|----------|
-| 31 | ~~Axiom observability~~ ✅ — direct ingest, 30-day retention | Done | — |
-| 32 | **PyPI publication** — `python -m build && twine upload dist/*` | Low | Yes — users can't `pip install` without it |
-| 33 | **Stripe end-to-end test** — sandbox purchase, verify license key generation | Low | Yes — must work before accepting payments |
-| 34 | **Custom domain** — configure codequal.dev for Vercel | Low | No — vanity URL, current `.vercel.app` works |
-| 35 | **Community beta** — announce, gather feedback | Low | No — can begin once 32+33 are verified |
+| 31 | ~~Axiom observability~~ ✅ | Done | — |
+| 32 | ~~Run history~~ ✅ | Done | — |
+| 33 | ~~GitLab compatibility~~ ✅ | Done | — |
+| 34 | ~~Accept deviations~~ ✅ — `evo accept` + `evo accepted` | Done | — |
+| 35 | ~~Legal docs~~ ✅ — PDFs generated for lawyer review | Done | — |
+| 36 | **Lawyer review** — ToS + Privacy sign-off → corrected docs → translator | Medium | Yes — must complete before accepting payments |
+| 37 | **GitLab manual testing** — 7 scenarios (LAUNCH_PLAN.md §12.2) | Low | Yes — verify before launch |
+| 38 | **Stripe E2E testing** — full matrix + beta discount (LAUNCH_PLAN.md §2.1) | Low | Yes — must work before accepting payments |
+| 39 | **User review flow** — analyze → accept → investigate → fix → verify | Low | Yes — validate core UX |
+| 40 | **PyPI publication** — `python -m build && twine upload dist/*` | Low | Yes — users can't `pip install` without it |
+| 41 | **Custom domain** — configure codequal.dev for Vercel | Low | No — vanity URL, `.vercel.app` works |
+| 42 | **Community beta** — announce, gather feedback | Low | No — begins once 36-40 are verified |
+
+### Manual Testing (Before Beta)
+
+See `docs/LAUNCH_PLAN.md` §12 for step-by-step testing guide covering:
+- §12.1 — Run History: snapshot, list, show, diff, clean, edge cases
+- §12.2 — GitLab Compatibility: 7 test scenarios with commands
+- §12.3 — Phase 5 Diff Refactor: verify existing behavior preserved
 
 ---
 
@@ -1220,55 +1333,47 @@ The remaining items before public beta:
 
 ---
 
-> **Summary (February 11, 2026):**
+> **Summary (February 12, 2026):**
 >
 > **All priorities complete. Product launch infrastructure deployed.** All 5 engine phases,
 > open-core infrastructure, AI agent integration, GitHub Action, source prescan, cloud sync,
 > Cython build, FP validation, inline suggestions, CI wheel builds, website, Stripe integration,
-> and opt-in telemetry are implemented. **534 tests passing (1.53s).** The full pipeline runs
-> end-to-end in 6.6 seconds on fastapi (27,390 signals, 6 significant changes).
+> opt-in telemetry, run history, GitLab compatibility, and accept deviations are implemented.
+> **586 tests passing (1.88s).** The full pipeline runs end-to-end in 6.6 seconds on fastapi
+> (27,390 signals, 6 significant changes).
 >
 > **What's built:**
-> - `evo analyze .` — zero-config CLI with 25+ commands
+> - `evo analyze .` — zero-config CLI with 30+ commands
+> - `evo accept` + `evo accepted` — hide acknowledged deviations from future advisories
 > - PM-friendly output across all display layers (risk labels, relative comparisons, practical insights)
-> - `evolution/friendly.py` — centralized formatting helpers (no jargon in user-facing text)
-> - Phase 3.1 LLM retired (~$12/repo savings) — templates now produce equivalent quality
 > - 3-tier adapter ecosystem (built-in, API, plugins) with scaffold and validation
 > - License system (free/pro tiers, HMAC-signed keys, configurable signing key, Stripe checkout)
 > - HTML report generator (`evo report`) with risk badges, insight rows, friendly patterns
-> - **27 universal patterns bundled** from 43 repos across 8 languages (Go, Python, TS, JS, Rust, Ruby, Java, C++)
-> - 8 "confirmed" patterns seen in 5+ repos — top: ci→dispersion↑ (9 repos), deploy→dispersion↑ (7 repos)
-> - Universal pattern sync (auto-import during analyze + manual `evo patterns sync`)
-> - KB security (validates all imported patterns against 10+ attack vectors)
-> - SDK fingerprint database for 20 external services (Datadog, Sentry, etc.)
-> - Source prescan (`evo sources`) — 3-layer detection (config, lockfiles, imports)
+> - **27 universal patterns bundled** from 43 repos across 8 languages
 > - AI agent integration (`evo investigate`, `evo fix`) — RALF-style fix-verify loop
 > - GitHub Action (`action/action.yml`) — PR comments with risk + investigation + verify + inline suggestions
+> - Run history (`evo history`) — snapshot, compare, clean advisory runs over time
 > - Cloud KB sync (`evo patterns pull/push`) — opt-in anonymous pattern sharing
-> - User config (`evo config`) — persistent preferences in ~/.evo/config.toml
-> - Cython build script (`build_cython.py`) — IP protection for phase engines
-> - CI wheel builds (`.github/workflows/build-wheels.yml`) — cibuildwheel for Linux/macOS/Windows + PyPI publish
-> - FP validation (`evolution/fp_validation.py`) — 1.6% FP rate on production-format repos
-> - Inline fix suggestions (`evolution/inline_suggestions.py`) — GitHub PR review comments from AI investigation
-> - Demo script (`scripts/demo.sh`) + quickstart guide (`QUICKSTART.md`)
 > - **Website** (`website/`) — Ocean Depth dark theme on Vercel (landing, docs, privacy, success pages)
 > - **Stripe integration** — Pro subscription checkout, webhook license generation, success page
-> - **Opt-in telemetry** (`evolution/telemetry.py`) — anonymous usage stats, DO_NOT_TRACK support
-> - **Adapter catalog** (`evolution/data/adapter_catalog.json`) — 26 adapters with request system
-> - **Axiom observability** (`website/api/_axiom.py`) — direct ingest from all API endpoints (30-day retention, bypasses Vercel Pro log drain)
+> - **Legal docs** — 5 PDFs generated for lawyer review (privacy, ToS, 3rd-party API, AI safety, data flow)
 >
-> **Remaining:**
-> - PyPI package publication
-> - Stripe checkout end-to-end test (+ `allow_promotion_codes=True` for beta discounts)
-> - Custom domain (codequal.dev) for Vercel
-> - Community beta launch (see `docs/LAUNCH_PLAN.md` for full timeline)
+> **Remaining before beta (testing backlog):**
+> 1. **Lawyer review** — ToS + Privacy under review; corrected docs → translator verification
+> 2. **GitLab manual testing** — 7 scenarios (LAUNCH_PLAN.md §12.2)
+> 3. **Stripe E2E testing** — full matrix + beta discount coupon FOUNDING50 (LAUNCH_PLAN.md §2.1)
+> 4. **User review flow** — end-to-end: analyze → accept → investigate → fix → verify
+> 5. **PyPI publication** — `python -m build && twine upload dist/*`
+> 6. **Custom domain** — codequal.dev for Vercel
+> 7. **Community beta launch** (see `docs/LAUNCH_PLAN.md` for full timeline)
 >
-> **New (February 11, 2026):**
-> - Report: severity badges, risk banners, pattern grouping, IP sanitization
-> - `friendly.py`: pattern descriptions generated from structured fields, statistical internals stripped
-> - Website: language switcher fix (i18n routes + absolute paths)
-> - Launch plan: `docs/LAUNCH_PLAN.md` — beta program, Stripe discounts, Show HN timeline, EU AI Act compliance
-> - 545 tests passing (1.54s)
+> **New (February 12, 2026):**
+> - **Accept deviations** (`evolution/accepted.py`) — `evo accept` + `evo accepted` (list/remove/clear)
+> - **Legal PDFs** — 5 docs converted for lawyer review (privacy, ToS, 3rd-party API, AI safety, data flow)
+> - **Run history** — snapshot, list, show, diff, clean with CLI commands
+> - **GitLab compatibility** — verified on gitlab-org/gitlab-styles (516 commits, 677 events)
+> - Testing backlog consolidated: GitLab, Stripe E2E, user review flow
+> - 586 tests passing (1.88s)
 >
 > **The engagement flow:**
 > ```
