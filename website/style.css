@@ -411,7 +411,7 @@ nav {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 40px 32px;
+  padding: 40px 32px 72px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -441,7 +441,7 @@ nav {
 .pricing-price span { font-size: 1rem; font-weight: 400; color: var(--text-muted); }
 .pricing-desc { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; }
 
-.pricing-features { list-style: none; margin-bottom: 0; }
+.pricing-features { list-style: none; margin-bottom: 0; flex: 1; }
 .pricing-features li {
   padding: 8px 0;
   font-size: 0.9rem;
@@ -458,7 +458,12 @@ nav {
 .pricing-features li.disabled { opacity: 0.4; }
 .pricing-features li.disabled::before { content: "\2717"; color: var(--text-dim); }
 
-.pricing-card .btn { width: 100%; margin-top: auto; }
+.pricing-card .btn {
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
+  text-align: center;
+}
 
 /* ─── Footer ─── */
 footer {
@@ -609,7 +614,10 @@ footer {
   font-size: 0.8rem;
   text-align: center;
   line-height: 1.5;
-  margin-top: 10px;
+  position: absolute;
+  bottom: 24px;
+  left: 32px;
+  right: 32px;
 }
 
 /* ─── Responsive ─── */
