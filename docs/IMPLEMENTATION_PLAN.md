@@ -7,7 +7,7 @@
 >
 > The plan is intentionally conservative: each step validates an architectural assumption before expanding scope.
 >
-> **Last updated:** February 12, 2026 (Accept deviations, legal PDFs, testing backlog; 586 tests)
+> **Last updated:** February 12, 2026 (Stripe E2E tested, accept deviations, legal PDFs; 586 tests)
 
 ---
 
@@ -1287,7 +1287,8 @@ Docs page ✅                    Privacy page ✅
 **Next — Testing & Beta Launch:**
 36. **Lawyer review** — ToS + Privacy Policy under review; upload corrected docs after sign-off, send for translator verification
 37. **GitLab manual testing** — full 7-scenario test matrix (see LAUNCH_PLAN.md §12.2)
-38. **Stripe E2E testing** — full test matrix including beta discount coupon (see LAUNCH_PLAN.md §2.1)
+38. ~~Stripe E2E testing~~ ✅ — 10/10 sandbox tests passing (purchase, cancel, FOUNDING50 discount, payment failure)
+38b. **Stripe live-mode testing** — repeat all flows with real Stripe dashboard after going live
 39. **User review flow testing** — end-to-end: `evo analyze` → `evo accept` → `evo investigate` → `evo fix` → `evo verify`
 40. **PyPI publication** — `python -m build && twine upload dist/*`
 41. **Custom domain** — configure codequal.dev for Vercel
@@ -1310,7 +1311,8 @@ The remaining items before public beta:
 | 35 | ~~Legal docs~~ ✅ — PDFs generated for lawyer review | Done | — |
 | 36 | **Lawyer review** — ToS + Privacy sign-off → corrected docs → translator | Medium | Yes — must complete before accepting payments |
 | 37 | **GitLab manual testing** — 7 scenarios (LAUNCH_PLAN.md §12.2) | Low | Yes — verify before launch |
-| 38 | **Stripe E2E testing** — full matrix + beta discount (LAUNCH_PLAN.md §2.1) | Low | Yes — must work before accepting payments |
+| 38 | ~~Stripe E2E testing~~ ✅ — 10/10 sandbox tests passing (purchase, cancel, FOUNDING50 discount, payment failure) | Done | — |
+| 38b | **Stripe live-mode testing** — repeat all 3 flows with real Stripe dashboard after going live (see §12.4) | Low | Yes — before accepting real payments |
 | 39 | **User review flow** — analyze → accept → investigate → fix → verify | Low | Yes — validate core UX |
 | 40 | **PyPI publication** — `python -m build && twine upload dist/*` | Low | Yes — users can't `pip install` without it |
 | 41 | **Custom domain** — configure codequal.dev for Vercel | Low | No — vanity URL, `.vercel.app` works |
@@ -1322,6 +1324,21 @@ See `docs/LAUNCH_PLAN.md` §12 for step-by-step testing guide covering:
 - §12.1 — Run History: snapshot, list, show, diff, clean, edge cases
 - §12.2 — GitLab Compatibility: 7 test scenarios with commands
 - §12.3 — Phase 5 Diff Refactor: verify existing behavior preserved
+- §12.4 — Stripe Live-Mode Testing (below)
+
+### §12.4 — Stripe Live-Mode Testing
+
+After switching to Stripe live mode, repeat these flows with real dashboard:
+
+1. **Pro purchase** — complete checkout with real card, verify license key generated, `evo license status` shows Pro
+2. **Cancellation** — cancel subscription in dashboard, verify license revoked, CLI falls back to free tier
+3. **FOUNDING50 discount** — apply coupon at checkout, verify 50% off for 3 months, Pro license still valid
+4. **Payment failure** — simulate failed renewal, verify `past_due` flag set, appropriate user notification
+
+Pre-requisites:
+- Stripe live-mode API keys configured
+- FOUNDING50 coupon + promotion code created in live mode (duration: 3 months repeating, 50% off)
+- Webhook endpoint pointing to production Vercel URL with live signing secret
 
 ---
 
@@ -1361,7 +1378,8 @@ See `docs/LAUNCH_PLAN.md` §12 for step-by-step testing guide covering:
 > **Remaining before beta (testing backlog):**
 > 1. **Lawyer review** — ToS + Privacy under review; corrected docs → translator verification
 > 2. **GitLab manual testing** — 7 scenarios (LAUNCH_PLAN.md §12.2)
-> 3. **Stripe E2E testing** — full matrix + beta discount coupon FOUNDING50 (LAUNCH_PLAN.md §2.1)
+> 3. ~~Stripe E2E testing~~ ✅ — 10/10 sandbox tests passing
+> 3b. **Stripe live-mode testing** — repeat all flows after going live
 > 4. **User review flow** — end-to-end: analyze → accept → investigate → fix → verify
 > 5. **PyPI publication** — `python -m build && twine upload dist/*`
 > 6. **Custom domain** — codequal.dev for Vercel
@@ -1372,7 +1390,8 @@ See `docs/LAUNCH_PLAN.md` §12 for step-by-step testing guide covering:
 > - **Legal PDFs** — 5 docs converted for lawyer review (privacy, ToS, 3rd-party API, AI safety, data flow)
 > - **Run history** — snapshot, list, show, diff, clean with CLI commands
 > - **GitLab compatibility** — verified on gitlab-org/gitlab-styles (516 commits, 677 events)
-> - Testing backlog consolidated: GitLab, Stripe E2E, user review flow
+> - **Stripe E2E tested** — 10/10 sandbox tests passing (Pro purchase, cancellation, FOUNDING50 discount, payment failure)
+> - Testing backlog consolidated: GitLab, Stripe live-mode, user review flow
 > - 586 tests passing (1.88s)
 >
 > **The engagement flow:**
