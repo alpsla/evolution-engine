@@ -411,7 +411,7 @@ nav {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 40px 32px 80px;
+  padding: 40px 32px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -609,10 +609,7 @@ footer {
   font-size: 0.8rem;
   text-align: center;
   line-height: 1.5;
-  position: absolute;
-  bottom: 32px;
-  left: 32px;
-  right: 32px;
+  margin-top: 10px;
 }
 
 /* ─── Responsive ─── */
