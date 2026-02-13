@@ -112,7 +112,7 @@
         <h3>Activate in 2 steps:</h3>
         <ol>
           <li>Install (if you haven't already):<br><code>pip install evolution-engine</code></li>
-          <li>Activate your license:<br><code id="activate-cmd">evo license activate &lt;your-key&gt;</code></li>
+          <li>Activate your license:<br><code>evo license activate</code> <span style="color: var(--text-dim)">&larr; paste your key when prompted</span></li>
         </ol>
         <p style="color: var(--text-dim); font-size: 0.85rem; margin-top: 16px;">
           Your key is also saved to your Stripe account. You can retrieve it anytime from your billing portal.
@@ -142,8 +142,6 @@
           if (data.license_key) {
             document.getElementById('license-key').textContent = data.license_key;
             document.getElementById('copy-btn').disabled = false;
-            document.getElementById('activate-cmd').textContent =
-              'evo license activate ' + data.license_key;
           } else if (++attempts < maxAttempts) {
             setTimeout(pollLicense, 2000);
           } else {
