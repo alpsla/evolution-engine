@@ -7,6 +7,10 @@ Usage:
     evo analyze . --show-prompt      # Print investigation prompt after analysis
     evo sources [path]               # Show connected + detected data sources
     evo sources --what-if datadog    # Estimate impact of adding adapters
+    evo accept [path] 1 3            # Accept deviations by change number
+    evo accepted list [path]          # Show all accepted deviations
+    evo accepted remove [path] <key>  # Un-accept a deviation
+    evo accepted clear [path]         # Remove all acceptances
     evo investigate [path]           # AI investigation of advisory findings
     evo fix [path]                   # AI fix loop (iterate until EE confirms clear)
     evo fix . --dry-run              # Preview fix prompt without modifying files
@@ -23,6 +27,10 @@ Usage:
     evo license status               # Show current license status
     evo license activate <key>       # Save license key
     evo verify <previous>            # Fix verification loop
+    evo history list [-n 20]         # Show run snapshots
+    evo history show <run>           # View a specific run's summary
+    evo history diff [r1 r2]         # Compare two runs
+    evo history clean [-k N]         # Delete old snapshots
 """
 
 import json
@@ -107,6 +115,168 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, show
             click.echo("INVESTIGATION PROMPT (paste into any AI coding tool)")
             click.echo("=" * 60)
             click.echo(prompt_path.read_text())
+
+
+# ─────────────────── evo accept ───────────────────
+
+
+@main.command()
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.argument("indices", nargs=-1, type=int, required=True)
+@click.option("--reason", "-r", default="", help="Why this deviation is expected")
+@click.option("--evo-dir", help="Override .evo directory path")
+def accept(path, indices, reason, evo_dir):
+    """Accept deviations from the latest advisory by change number.
+
+    After running `evo analyze`, use the numbered change indices to mark
+    deviations as expected. Accepted deviations are hidden from future runs.
+
+    Examples:
+        evo accept . 1 3              # Accept changes #1 and #3
+        evo accept . 1 -r "Expected"  # Accept with a reason
+    """
+    from evolution.accepted import AcceptedDeviations
+
+    evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
+    advisory_path = evo_path / "phase5" / "advisory.json"
+
+    if not advisory_path.exists():
+        click.echo("No advisory found. Run `evo analyze` first.")
+        sys.exit(1)
+
+    advisory = json.loads(advisory_path.read_text())
+    changes = advisory.get("changes", [])
+    advisory_id = advisory.get("advisory_id", "")
+
+    if not changes:
+        click.echo("No changes in the latest advisory.")
+        return
+
+    # Validate indices (1-based)
+    invalid = [i for i in indices if i < 1 or i > len(changes)]
+    if invalid:
+        click.echo(f"Invalid change number(s): {', '.join(map(str, invalid))} "
+                    f"(valid range: 1-{len(changes)})")
+        sys.exit(1)
+
+    ad = AcceptedDeviations(evo_path)
+    accepted_items = []
+    for idx in indices:
+        change = changes[idx - 1]
+        key = f"{change['family']}:{change['metric']}"
+        if ad.add(key, change["family"], change["metric"],
+                  reason=reason, advisory_id=advisory_id):
+            accepted_items.append(change)
+
+    if accepted_items:
+        click.echo(f"Accepted {len(accepted_items)} deviation(s):")
+        for c in accepted_items:
+            family_label = c["family"]
+            metric_label = c["metric"]
+            click.echo(f"  {family_label} / {metric_label}")
+    else:
+        click.echo("All specified deviations were already accepted.")
+
+
+# ─────────────────── evo accepted ───────────────────
+
+
+@main.group(invoke_without_command=True)
+@click.pass_context
+def accepted(ctx):
+    """Manage accepted deviations."""
+    if ctx.invoked_subcommand is None:
+        ctx.invoke(accepted_list, path=".")
+
+
+@accepted.command("list")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--evo-dir", help="Override .evo directory path")
+def accepted_list(path, evo_dir):
+    """List all accepted deviations."""
+    from datetime import datetime, timezone
+
+    from evolution.accepted import AcceptedDeviations
+
+    evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
+    ad = AcceptedDeviations(evo_path)
+    entries = ad.load()
+
+    if not entries:
+        click.echo("No accepted deviations.")
+        return
+
+    now = datetime.now(timezone.utc)
+    click.echo(f"{len(entries)} accepted deviation(s):\n")
+    for e in entries:
+        age = ""
+        try:
+            accepted_dt = datetime.fromisoformat(e["accepted_at"])
+            days = (now - accepted_dt).days
+            if days == 0:
+                age = "today"
+            elif days == 1:
+                age = "1 day ago"
+            else:
+                age = f"{days} days ago"
+        except (ValueError, KeyError):
+            pass
+
+        line = f"  {e['family']} / {e['metric']}"
+        if age:
+            line += f" — accepted {age}"
+        if e.get("reason"):
+            line += f' — "{e["reason"]}"'
+        click.echo(line)
+
+
+@accepted.command("remove")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.argument("key")
+@click.option("--evo-dir", help="Override .evo directory path")
+def accepted_remove(path, key, evo_dir):
+    """Remove an accepted deviation by family:metric key.
+
+    Example:
+        evo accepted remove . git:dispersion
+    """
+    from evolution.accepted import AcceptedDeviations
+
+    evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
+    ad = AcceptedDeviations(evo_path)
+
+    if ad.remove(key):
+        click.echo(f"Removed: {key}")
+    else:
+        click.echo(f"Not found: {key}")
+        sys.exit(1)
+
+
+@accepted.command("clear")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--evo-dir", help="Override .evo directory path")
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation")
+def accepted_clear(path, evo_dir, yes):
+    """Remove all accepted deviations.
+
+    Example:
+        evo accepted clear .
+    """
+    from evolution.accepted import AcceptedDeviations
+
+    evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
+    ad = AcceptedDeviations(evo_path)
+    entries = ad.load()
+
+    if not entries:
+        click.echo("No accepted deviations to clear.")
+        return
+
+    if not yes:
+        click.confirm(f"Remove {len(entries)} accepted deviation(s)?", abort=True)
+
+    count = ad.clear()
+    click.echo(f"Cleared {count} accepted deviation(s).")
 
 
 # ─────────────────── evo investigate ───────────────────
@@ -1220,6 +1390,161 @@ def telemetry_status():
     else:
         click.echo("No usage stats are collected.")
         click.echo("Enable with: evo telemetry on")
+
+
+# ─────────────────── evo history ───────────────────
+
+
+@main.group(invoke_without_command=True)
+@click.pass_context
+def history(ctx):
+    """View and compare analysis run history."""
+    if ctx.invoked_subcommand is None:
+        ctx.invoke(history_list)
+
+
+@history.command("list")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("-n", "--limit", type=int, default=None, help="Max runs to show")
+@click.option("--json", "json_output", is_flag=True, help="Output JSON")
+def history_list(path, limit, json_output):
+    """List advisory snapshots, newest first."""
+    from evolution.history import HistoryManager
+
+    evo_dir = Path(path) / ".evo"
+    hm = HistoryManager(evo_dir)
+    runs = hm.list_runs(limit=limit)
+
+    if json_output:
+        click.echo(json.dumps(runs, indent=2))
+        return
+
+    if not runs:
+        click.echo("No run history found. Run `evo analyze` to create snapshots.")
+        return
+
+    click.echo(f"Run history ({len(runs)} snapshot{'s' if len(runs) != 1 else ''}):\n")
+    for r in runs:
+        families = ", ".join(r["families"]) if r["families"] else "none"
+        click.echo(f"  {r['timestamp']}  {r['changes_count']} changes  [{families}]"
+                    f"  scope={r['scope']}")
+
+
+@history.command("show")
+@click.argument("run")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--json", "json_output", is_flag=True, help="Output JSON")
+def history_show(run, path, json_output):
+    """View a specific run's advisory (supports prefix match)."""
+    from evolution.history import HistoryManager
+
+    evo_dir = Path(path) / ".evo"
+    hm = HistoryManager(evo_dir)
+
+    try:
+        snapshot = hm.load_run(run)
+    except (FileNotFoundError, ValueError) as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+    if json_output:
+        click.echo(json.dumps(snapshot, indent=2))
+        return
+
+    advisory = snapshot.get("advisory", {})
+    click.echo(f"Snapshot: {snapshot.get('timestamp')}")
+    click.echo(f"Scope:    {snapshot.get('scope')}")
+    click.echo(f"Saved:    {snapshot.get('saved_at')}")
+    click.echo()
+
+    changes = advisory.get("changes", [])
+    if not changes:
+        click.echo("No significant changes in this run.")
+        return
+
+    click.echo(f"{len(changes)} significant change(s):\n")
+    for c in changes:
+        dev = c.get("deviation_stddev", 0)
+        click.echo(f"  {c['family']} / {c['metric']}  "
+                    f"deviation={dev:.1f}  observed={c.get('observed', '?')}")
+
+
+@history.command("diff")
+@click.argument("r1", default=None, required=False)
+@click.argument("r2", default=None, required=False)
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--json", "json_output", is_flag=True, help="Output JSON")
+def history_diff(r1, r2, path, json_output):
+    """Compare two runs (default: latest vs previous)."""
+    from evolution.history import HistoryManager
+
+    evo_dir = Path(path) / ".evo"
+    hm = HistoryManager(evo_dir)
+
+    if r1 is None or r2 is None:
+        runs = hm.list_runs(limit=2)
+        if len(runs) < 2:
+            click.echo("Need at least 2 runs to compare. "
+                        "Run `evo analyze` again to create another snapshot.")
+            sys.exit(1)
+        # Default: compare previous (before) vs latest (after)
+        r1 = r1 or runs[1]["timestamp"]  # older = before
+        r2 = r2 or runs[0]["timestamp"]  # newer = after
+
+    try:
+        diff = hm.compare(r1, r2)
+    except (FileNotFoundError, ValueError) as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+    if json_output:
+        # Remove summary_text for clean JSON
+        out = {k: v for k, v in diff.items() if k != "summary_text"}
+        click.echo(json.dumps(out, indent=2))
+        return
+
+    click.echo(diff["summary_text"])
+
+
+@history.command("clean")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("-k", "--keep", type=int, default=None,
+              help="Keep the N most recent snapshots")
+@click.option("--before", type=str, default=None,
+              help="Delete snapshots before this timestamp")
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation")
+@click.option("--json", "json_output", is_flag=True, help="Output JSON")
+def history_clean(path, keep, before, yes, json_output):
+    """Delete old snapshots."""
+    from evolution.history import HistoryManager
+
+    evo_dir = Path(path) / ".evo"
+    hm = HistoryManager(evo_dir)
+
+    if keep is None and before is None:
+        click.echo("Specify --keep N or --before TIMESTAMP.")
+        sys.exit(1)
+
+    # Preview what would be deleted
+    runs = hm.list_runs()
+    if keep is not None:
+        to_delete = len(runs) - keep if len(runs) > keep else 0
+    else:
+        to_delete = sum(1 for r in runs if r["timestamp"] < before)
+
+    if to_delete == 0:
+        click.echo("Nothing to delete.")
+        return
+
+    if not yes and not json_output:
+        click.confirm(f"Delete {to_delete} snapshot(s)?", abort=True)
+
+    deleted = hm.clean(keep=keep, before=before)
+
+    if json_output:
+        click.echo(json.dumps({"deleted": deleted}))
+    else:
+        click.echo(f"Deleted {deleted} snapshot(s).")
 
 
 if __name__ == "__main__":

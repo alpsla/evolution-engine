@@ -207,6 +207,15 @@ class Orchestrator:
         p5_result = phase5.run(scope=scope)
         log(f"  Status: {p5_result['status']} ({time.monotonic() - t0:.1f}s)")
 
+        # ── Auto-snapshot advisory for run history ──
+        if p5_result["status"] == "complete" and p5_result.get("advisory"):
+            try:
+                from evolution.history import HistoryManager
+                hm = HistoryManager(self.evo_dir)
+                hm.snapshot(p5_result["advisory"], scope)
+            except Exception:
+                pass  # History should never block the pipeline
+
         elapsed = round(time.monotonic() - start, 1)
 
         result = {

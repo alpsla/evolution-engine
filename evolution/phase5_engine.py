@@ -98,6 +98,9 @@ class Phase5Engine:
         self.output_path.mkdir(parents=True, exist_ok=True)
         self.significance_threshold = significance_threshold
 
+        from evolution.accepted import AcceptedDeviations
+        self._accepted = AcceptedDeviations(evo_dir).accepted_keys()
+
     # ─────────────────── Data Loading ───────────────────
 
     def _load_signals(self) -> list[dict]:
@@ -712,78 +715,10 @@ class Phase5Engine:
         """
         Compare two advisories and classify each change.
 
-        Returns a verification report with:
-          - resolved: changes that returned to normal
-          - persisting: changes still flagged
-          - new: changes not present in the original advisory
-          - regression: metrics that were normal before but now deviate
+        Delegates to the shared diff_advisories() in evolution.history.
         """
-        # Index "before" changes by family:metric
-        before_changes = {}
-        for c in before.get("changes", []):
-            key = f"{c['family']}:{c['metric']}"
-            before_changes[key] = c
-
-        # Index "after" changes by family:metric
-        after_changes = {}
-        for c in after.get("changes", []):
-            key = f"{c['family']}:{c['metric']}"
-            after_changes[key] = c
-
-        resolved = []
-        persisting = []
-        new_changes = []
-        regressions = []
-
-        # Check what was flagged before
-        for key, before_change in before_changes.items():
-            if key in after_changes:
-                after_change = after_changes[key]
-                # Still flagged — check if it improved
-                before_dev = abs(before_change["deviation_stddev"])
-                after_dev = abs(after_change["deviation_stddev"])
-                improvement = before_dev - after_dev
-
-                persisting.append({
-                    **after_change,
-                    "was_deviation": before_change["deviation_stddev"],
-                    "now_deviation": after_change["deviation_stddev"],
-                    "improvement": round(improvement, 2),
-                    "improved": improvement > 0,
-                })
-            else:
-                # No longer flagged — resolved!
-                resolved.append({
-                    **before_change,
-                    "was_deviation": before_change["deviation_stddev"],
-                    "resolution": "returned_to_normal",
-                })
-
-        # Check for new changes not in the original
-        for key, after_change in after_changes.items():
-            if key not in before_changes:
-                new_changes.append({
-                    **after_change,
-                    "classification": "new_observation",
-                })
-
-        # Detect regressions: metrics that were normal before but
-        # now deviate in the opposite direction or newly appear
-        for nc in new_changes:
-            # If this metric existed in the before advisory's period
-            # but was within normal range, it's a regression
-            nc["classification"] = "regression" if any(
-                nc["family"] == bc["family"] for bc in before.get("changes", [])
-            ) else "new_observation"
-            if nc["classification"] == "regression":
-                regressions.append(nc)
-
-        return {
-            "resolved": resolved,
-            "persisting": persisting,
-            "new": [n for n in new_changes if n["classification"] != "regression"],
-            "regressions": regressions,
-        }
+        from evolution.history import diff_advisories
+        return diff_advisories(before, after)
 
     def _format_verification_summary(self, before: dict, after: dict,
                                       diff: dict) -> str:
@@ -1003,6 +938,13 @@ class Phase5Engine:
             if key not in seen_changes or abs(c["deviation_stddev"]) > abs(seen_changes[key]["deviation_stddev"]):
                 seen_changes[key] = c
         changes = sorted(seen_changes.values(), key=lambda c: abs(c["deviation_stddev"]), reverse=True)
+
+        # Filter out accepted deviations
+        if self._accepted:
+            changes = [c for c in changes if f"{c['family']}:{c['metric']}" not in self._accepted]
+
+        if not changes:
+            return {"status": "no_significant_changes", "advisory": None}
 
         # Families affected
         families_affected = sorted(set(c["family"] for c in changes))
