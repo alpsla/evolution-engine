@@ -7,7 +7,10 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 
 from evolution.agents.base import AgentResult
-from evolution.fixer import FixIteration, FixResult, Fixer
+from evolution.fixer import (
+    FixIteration, FixResult, Fixer,
+    RESIDUAL_PROMPT_TEMPLATE,
+)
 
 
 @pytest.fixture
@@ -420,3 +423,269 @@ class TestFixerHelpers:
         text = Fixer._format_residual(verification)
         assert "RESIDUAL FINDINGS" in text
         assert "ALREADY RESOLVED: 1" in text
+
+
+# ── Residual mode fixtures ──
+
+@pytest.fixture
+def repo_with_both_advisories(tmp_path):
+    """Create a mock repo with current and previous advisories for residual testing."""
+    evo_dir = tmp_path / ".evo"
+    phase5 = evo_dir / "phase5"
+    phase5.mkdir(parents=True)
+
+    # Previous advisory (before fix attempt): 3 issues
+    previous_advisory = {
+        "advisory_id": "prev-001",
+        "scope": "test-repo",
+        "changes": [
+            {"family": "git", "metric": "files_touched", "current": 47,
+             "normal": {"mean": 4.5}, "deviation_stddev": 14.2},
+            {"family": "ci", "metric": "run_duration", "current": 340,
+             "normal": {"mean": 45}, "deviation_stddev": 19.7},
+            {"family": "git", "metric": "dispersion", "current": 0.95,
+             "normal": {"mean": 0.3}, "deviation_stddev": 8.1},
+        ],
+    }
+    (phase5 / "advisory_previous.json").write_text(json.dumps(previous_advisory))
+
+    # Current advisory (after fix attempt): 1 resolved, 1 persisting, 1 new
+    current_advisory = {
+        "advisory_id": "curr-001",
+        "scope": "test-repo",
+        "changes": [
+            # files_touched resolved (not present) — was in previous
+            # run_duration still persisting
+            {"family": "ci", "metric": "run_duration", "current": 200,
+             "normal": {"mean": 45}, "deviation_stddev": 10.3},
+            # dispersion still persisting
+            {"family": "git", "metric": "dispersion", "current": 0.8,
+             "normal": {"mean": 0.3}, "deviation_stddev": 6.2},
+            # new issue not in previous
+            {"family": "dep", "metric": "dependency_count", "current": 150,
+             "normal": {"mean": 30}, "deviation_stddev": 4.0},
+        ],
+    }
+    (phase5 / "advisory.json").write_text(json.dumps(current_advisory))
+
+    # Investigation report
+    inv_dir = evo_dir / "investigation"
+    inv_dir.mkdir(parents=True)
+    (inv_dir / "investigation.txt").write_text(
+        "## Finding 1: files_touched\nRoot cause: Auth refactor\n\n"
+        "## Finding 2: run_duration\nRoot cause: DB tests\n\n"
+        "## Finding 3: dispersion\nRoot cause: Scattered changes\n"
+    )
+
+    return tmp_path, evo_dir
+
+
+class TestResidualMode:
+    """Tests for --residual mode (iteration-aware external prompts)."""
+
+    def test_residual_prompt_no_previous(self, repo_with_advisory):
+        """Falls back to normal dry_run when no previous advisory exists."""
+        repo_path, evo_dir = repo_with_advisory
+        # repo_with_advisory has no advisory_previous.json
+        fixer = Fixer(repo_path=repo_path, evo_dir=evo_dir)
+
+        result = fixer.run(dry_run=True, residual=True)
+
+        # Should fall back to normal dry_run
+        assert result.status == "dry_run"
+        assert result.dry_run is True
+        assert "FIX PROMPT" in result.iterations[0].agent_response
+
+    def test_residual_prompt_with_resolved(self, repo_with_both_advisories):
+        """Items in previous but not current are shown as resolved."""
+        repo_path, evo_dir = repo_with_both_advisories
+        fixer = Fixer(repo_path=repo_path, evo_dir=evo_dir)
+
+        with patch.object(fixer, "_get_recent_changes_context",
+                          return_value="(mocked changes)"):
+            result = fixer.run(dry_run=True, residual=True)
+
+        assert result.status == "dry_run_residual"
+        assert result.dry_run is True
+
+        prompt = result.iterations[0].agent_response
+        # git/files_touched was in previous but not current => resolved
+        assert "git / files_touched" in prompt
+        assert "Already Fixed" in prompt or "was deviation" in prompt
+
+        # Metadata
+        assert result.resolved_count == 1  # git/files_touched
+        assert result.total_resolved == 1
+
+    def test_residual_prompt_with_persisting(self, repo_with_both_advisories):
+        """Items in both current and previous are shown as persisting."""
+        repo_path, evo_dir = repo_with_both_advisories
+        fixer = Fixer(repo_path=repo_path, evo_dir=evo_dir)
+
+        with patch.object(fixer, "_get_recent_changes_context",
+                          return_value="(mocked changes)"):
+            result = fixer.run(dry_run=True, residual=True)
+
+        prompt = result.iterations[0].agent_response
+        # ci/run_duration and git/dispersion are in both => persisting
+        assert "ci / run_duration" in prompt
+        assert "git / dispersion" in prompt
+        # Should show deviation change (before -> after)
+        assert "19.7" in prompt or "10.3" in prompt  # previous or current deviation
+
+        assert result.persisting_count == 2
+
+    def test_residual_prompt_with_new_issues(self, repo_with_both_advisories):
+        """Items only in current (not in previous) are shown as new issues."""
+        repo_path, evo_dir = repo_with_both_advisories
+        fixer = Fixer(repo_path=repo_path, evo_dir=evo_dir)
+
+        with patch.object(fixer, "_get_recent_changes_context",
+                          return_value="(mocked changes)"):
+            result = fixer.run(dry_run=True, residual=True)
+
+        prompt = result.iterations[0].agent_response
+        # dep/dependency_count is only in current => new
+        assert "dep / dependency_count" in prompt
+        assert "New Issues" in prompt
+
+        assert result.new_count == 1
+        assert result.total_remaining == 3  # 2 persisting + 1 new
+
+    def test_build_residual_prompt_format(self, repo_with_both_advisories):
+        """Verify the residual prompt template is filled correctly."""
+        repo_path, evo_dir = repo_with_both_advisories
+        fixer = Fixer(repo_path=repo_path, evo_dir=evo_dir)
+
+        previous_advisory = json.loads(
+            (evo_dir / "phase5" / "advisory_previous.json").read_text()
+        )
+        current_advisory = json.loads(
+            (evo_dir / "phase5" / "advisory.json").read_text()
+        )
+
+        with patch.object(fixer, "_get_recent_changes_context",
+                          return_value="Modified files:\n  auth.py"):
+            prompt = fixer._build_residual_prompt(
+                current_advisory, previous_advisory,
+                "Investigation text here",
+            )
+
+        # Check all template sections are present
+        assert "ITERATION of a fix loop" in prompt
+        assert "Already Fixed" in prompt
+        assert "Still Broken" in prompt
+        assert "Previous Fix Context" in prompt
+        assert "Original Investigation" in prompt
+        assert "Investigation text here" in prompt
+        assert "Modified files:" in prompt
+        assert "auth.py" in prompt
+
+        # Resolved section has the right item
+        assert "git / files_touched" in prompt
+        assert "was deviation 14.2" in prompt
+
+        # Persisting section has the right items with before->after deviations
+        assert "ci / run_duration: deviation 19.7 -> 10.3" in prompt
+        assert "git / dispersion: deviation 8.1 -> 6.2" in prompt
+
+        # New section
+        assert "dep / dependency_count: deviation 4.0" in prompt
+
+        # Footer guidance
+        assert "don't undo them" in prompt
+
+    def test_save_previous_advisory(self, repo_with_advisory):
+        """Verify save_previous_advisory copies advisory.json to advisory_previous.json."""
+        repo_path, evo_dir = repo_with_advisory
+        fixer = Fixer(repo_path=repo_path, evo_dir=evo_dir)
+
+        previous_path = evo_dir / "phase5" / "advisory_previous.json"
+        assert not previous_path.exists()
+
+        result = fixer.save_previous_advisory()
+
+        assert result is True
+        assert previous_path.exists()
+
+        # Content should match original advisory
+        original = json.loads((evo_dir / "phase5" / "advisory.json").read_text())
+        copied = json.loads(previous_path.read_text())
+        assert copied == original
+
+    def test_save_previous_advisory_no_current(self, tmp_path):
+        """Returns False when no current advisory exists."""
+        evo_dir = tmp_path / ".evo"
+        phase5 = evo_dir / "phase5"
+        phase5.mkdir(parents=True)
+
+        fixer = Fixer(repo_path=tmp_path, evo_dir=evo_dir)
+        result = fixer.save_previous_advisory()
+
+        assert result is False
+
+    def test_load_advisory_valid(self, tmp_path):
+        """_load_advisory returns parsed dict for valid JSON."""
+        path = tmp_path / "test.json"
+        data = {"advisory_id": "test", "changes": []}
+        path.write_text(json.dumps(data))
+
+        result = Fixer._load_advisory(path)
+        assert result == data
+
+    def test_load_advisory_missing(self, tmp_path):
+        """_load_advisory returns None for missing file."""
+        path = tmp_path / "nonexistent.json"
+        result = Fixer._load_advisory(path)
+        assert result is None
+
+    def test_load_advisory_invalid_json(self, tmp_path):
+        """_load_advisory returns None for invalid JSON."""
+        path = tmp_path / "bad.json"
+        path.write_text("not valid json {{{")
+
+        result = Fixer._load_advisory(path)
+        assert result is None
+
+    def test_residual_deviation_below_threshold(self, tmp_path):
+        """Items in both advisories but with deviation < 1.0 are treated as resolved."""
+        evo_dir = tmp_path / ".evo"
+        phase5 = evo_dir / "phase5"
+        phase5.mkdir(parents=True)
+
+        # Previous: one issue with high deviation
+        previous = {
+            "advisory_id": "prev",
+            "changes": [
+                {"family": "ci", "metric": "run_duration",
+                 "deviation_stddev": 5.0},
+            ],
+        }
+        (phase5 / "advisory_previous.json").write_text(json.dumps(previous))
+
+        # Current: same issue but deviation now below 1.0
+        current = {
+            "advisory_id": "curr",
+            "changes": [
+                {"family": "ci", "metric": "run_duration",
+                 "deviation_stddev": 0.8},
+            ],
+        }
+        (phase5 / "advisory.json").write_text(json.dumps(current))
+
+        inv_dir = evo_dir / "investigation"
+        inv_dir.mkdir(parents=True)
+        (inv_dir / "investigation.txt").write_text("CI slow")
+
+        fixer = Fixer(repo_path=tmp_path, evo_dir=evo_dir)
+
+        with patch.object(fixer, "_get_recent_changes_context",
+                          return_value="(mocked)"):
+            result = fixer.run(dry_run=True, residual=True)
+
+        assert result.status == "dry_run_residual"
+        prompt = result.iterations[0].agent_response
+        # The item should be in the resolved section since deviation < 1.0
+        assert "was deviation 5.0" in prompt
+        # Persisting section should say none
+        assert "all previous issues resolved" in prompt

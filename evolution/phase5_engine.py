@@ -99,7 +99,7 @@ class Phase5Engine:
         self.significance_threshold = significance_threshold
 
         from evolution.accepted import AcceptedDeviations
-        self._accepted = AcceptedDeviations(evo_dir).accepted_keys()
+        self._accepted_devs = AcceptedDeviations(evo_dir)
 
     # ─────────────────── Data Loading ───────────────────
 
@@ -890,6 +890,23 @@ class Phase5Engine:
             },
         }
 
+    def _get_commit_list(self, all_events: dict) -> list[str]:
+        """Extract ordered commit SHAs from events for range checking."""
+        commits = []
+        for eid, event in all_events.items():
+            sha = None
+            payload = event.get("payload", {})
+            if event.get("source_type") == "git":
+                sha = payload.get("commit_hash", "")
+            else:
+                trigger = payload.get("trigger", {})
+                sha = trigger.get("commit_sha", "")
+            if sha:
+                commits.append((event.get("observed_at", ""), sha))
+        # Sort by timestamp (oldest first)
+        commits.sort(key=lambda x: x[0])
+        return [sha for _, sha in commits]
+
     # ─────────────────── Main Execution ───────────────────
 
     def run(self, scope: str = "evolution-engine") -> dict:
@@ -898,6 +915,9 @@ class Phase5Engine:
         Returns the complete advisory report dict.
         """
         now = datetime.utcnow().isoformat() + "Z"
+
+        # Clean up expired this-run acceptances
+        self._accepted_devs.cleanup_expired(current_advisory_id="")
 
         # Load all data
         all_signals = self._load_signals()
@@ -939,9 +959,21 @@ class Phase5Engine:
                 seen_changes[key] = c
         changes = sorted(seen_changes.values(), key=lambda c: abs(c["deviation_stddev"]), reverse=True)
 
-        # Filter out accepted deviations
-        if self._accepted:
-            changes = [c for c in changes if f"{c['family']}:{c['metric']}" not in self._accepted]
+        # Filter out accepted deviations (scope-aware)
+        commit_list = self._get_commit_list(all_events)
+        filtered_changes = []
+        for c in changes:
+            commit_sha = c.get("trigger_commit", "")
+            event_date = c.get("observed_at", "")
+            if self._accepted_devs.is_accepted_in_context(
+                c["family"], c["metric"],
+                commit_sha=commit_sha,
+                event_date=event_date,
+                commit_list=commit_list,
+            ):
+                continue
+            filtered_changes.append(c)
+        changes = filtered_changes
 
         if not changes:
             return {"status": "no_significant_changes", "advisory": None}
@@ -985,6 +1017,10 @@ class Phase5Engine:
             "changes_count": len(changes),
         })
         evidence_package["advisory_ref"] = advisory["advisory_id"]
+
+        # Compute overall advisory status rollup
+        from evolution.friendly import advisory_status as _compute_status
+        advisory["status"] = _compute_status(advisory)
 
         # Generate formatted outputs
         human_summary = self._format_human_summary(advisory)

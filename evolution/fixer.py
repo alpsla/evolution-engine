@@ -12,15 +12,22 @@ Termination conditions:
   - Max iterations reached (default 3)
   - No progress (same advisory after fix → stop to avoid infinite loop)
 
+Residual mode (dry_run + residual):
+  When used with --residual, generates an iteration-aware prompt for external
+  AI tools (Cursor, Copilot, etc.) that shows what was already fixed vs. what's
+  still broken, so the external tool can build on previous progress.
+
 Usage:
     fixer = Fixer(repo_path=".", evo_dir=".evo")
     result = fixer.run()
     result = fixer.run(dry_run=True)
+    result = fixer.run(dry_run=True, residual=True)
     result = fixer.run(max_iterations=5)
 """
 
 import json
 import logging
+import shutil
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -60,6 +67,98 @@ Apply minimal fixes to resolve the flagged issues. Focus on:
 - The suggested fixes from the investigation
 - Preserving existing behavior — do not refactor unrelated code
 """
+
+RESIDUAL_PROMPT_TEMPLATE = """\
+This is an ITERATION of a fix loop. A previous fix attempt was made.
+
+## What's Already Fixed (DO NOT re-introduce)
+{resolved_section}
+
+## What's Still Broken (FOCUS HERE)
+{persisting_section}
+
+## Previous Fix Context
+{previous_changes}
+
+## Original Investigation
+{investigation_text}
+
+Focus ONLY on the "Still Broken" items above. The previous fix partially worked —
+build on those changes, don't undo them.
+"""
+
+
+def compare_advisories(current: dict, previous: dict) -> dict:
+    """Compare two advisory dicts and classify each finding.
+
+    Matching is by (family, metric) tuple from the changes list.
+
+    Args:
+        current: The current (newer) advisory dict.
+        previous: The previous (older) advisory dict.
+
+    Returns:
+        Dict with resolved, persisting, new, and regressions lists.
+        Each list contains dicts with at minimum {family, metric}.
+    """
+    prev_by_key = {}
+    for c in previous.get("changes", []):
+        key = (c["family"], c["metric"])
+        prev_by_key[key] = c
+
+    curr_by_key = {}
+    for c in current.get("changes", []):
+        key = (c["family"], c["metric"])
+        curr_by_key[key] = c
+
+    prev_keys = set(prev_by_key.keys())
+    curr_keys = set(curr_by_key.keys())
+
+    resolved = []
+    for key in sorted(prev_keys - curr_keys):
+        item = prev_by_key[key]
+        resolved.append({
+            "family": key[0],
+            "metric": key[1],
+            "was_deviation": item.get("deviation_stddev", 0),
+        })
+
+    persisting = []
+    for key in sorted(prev_keys & curr_keys):
+        prev_item = prev_by_key[key]
+        curr_item = curr_by_key[key]
+        prev_dev = abs(prev_item.get("deviation_stddev", 0))
+        curr_dev = abs(curr_item.get("deviation_stddev", 0))
+        persisting.append({
+            "family": key[0],
+            "metric": key[1],
+            "was_deviation": prev_item.get("deviation_stddev", 0),
+            "now_deviation": curr_item.get("deviation_stddev", 0),
+            "improved": curr_dev < prev_dev,
+        })
+
+    new = []
+    regressions = []
+    prev_families = {k[0] for k in prev_keys}
+    for key in sorted(curr_keys - prev_keys):
+        curr_item = curr_by_key[key]
+        entry = {
+            "family": key[0],
+            "metric": key[1],
+            "deviation": curr_item.get("deviation_stddev", 0),
+        }
+        # A new finding in a family that previously had issues is a regression
+        if key[0] in prev_families:
+            regressions.append(entry)
+        else:
+            new.append(entry)
+
+    return {
+        "resolved": resolved,
+        "persisting": persisting,
+        "new": new,
+        "regressions": regressions,
+    }
 
 
 class FixIteration:
@@ -158,6 +257,7 @@ class Fixer:
         agent: BaseAgent = None,
         max_iterations: int = 3,
         dry_run: bool = False,
+        residual: bool = False,
         branch_name: str = None,
         scope: str = None,
         interactive_callback: Optional[Callable[[FixIteration], bool]] = None,
@@ -168,6 +268,9 @@ class Fixer:
             agent: AI agent for applying fixes (auto-detected if None).
             max_iterations: Max fix attempts before stopping (default 3).
             dry_run: If True, show what would be fixed without modifying files.
+            residual: If True (with dry_run), generate an iteration-aware prompt
+                that compares current advisory with previous advisory to show
+                what's fixed, what's still broken, and previous fix context.
             branch_name: Git branch name for fixes (default: evo/fix-<timestamp>).
             scope: Pipeline scope name (default: repo directory name).
             interactive_callback: If provided, called after each iteration with
@@ -187,6 +290,14 @@ class Fixer:
                 iterations=[],
                 dry_run=dry_run,
             )
+
+        # Dry run with residual mode: compare current vs previous advisory
+        if dry_run and residual:
+            result = self._run_residual_dry_run(investigation_text)
+            if result is not None:
+                return result
+            # Fall through to normal dry_run if no previous advisory
+            logger.info("No previous advisory found, falling back to normal dry_run.")
 
         # Dry run: just show the fix prompt
         if dry_run:
@@ -525,3 +636,229 @@ class Fixer:
                       "The previous fix attempt partially worked — build on it.")
 
         return "\n".join(lines)
+
+    # ── Residual mode helpers ──
+
+    @staticmethod
+    def _load_advisory(path: Path) -> Optional[dict]:
+        """Load and parse an advisory JSON file.
+
+        Args:
+            path: Path to the advisory JSON file.
+
+        Returns:
+            Parsed advisory dict, or None if file doesn't exist or is invalid.
+        """
+        if not path.exists():
+            return None
+        try:
+            return json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to load advisory from %s: %s", path, e)
+            return None
+
+    def save_previous_advisory(self) -> bool:
+        """Copy current advisory.json to advisory_previous.json.
+
+        Called by `evo verify` (or externally) to snapshot the pre-fix advisory
+        so that residual mode can compare against it later.
+
+        Returns:
+            True if the copy was made, False if no current advisory exists.
+        """
+        current = self.evo_dir / "phase5" / "advisory.json"
+        previous = self.evo_dir / "phase5" / "advisory_previous.json"
+        if not current.exists():
+            logger.warning("No current advisory to save as previous.")
+            return False
+        try:
+            shutil.copy2(str(current), str(previous))
+            logger.info("Saved previous advisory: %s", previous)
+            return True
+        except OSError as e:
+            logger.error("Failed to save previous advisory: %s", e)
+            return False
+
+    def _run_residual_dry_run(self, investigation_text: str) -> Optional[FixResult]:
+        """Build a residual-aware dry-run prompt comparing current vs previous advisory.
+
+        Returns a FixResult with status "dry_run_residual", or None if no previous
+        advisory is available (caller should fall back to normal dry_run).
+        """
+        current_path = self.evo_dir / "phase5" / "advisory.json"
+        previous_path = self.evo_dir / "phase5" / "advisory_previous.json"
+
+        current_advisory = self._load_advisory(current_path)
+        previous_advisory = self._load_advisory(previous_path)
+
+        if current_advisory is None or previous_advisory is None:
+            return None
+
+        prompt = self._build_residual_prompt(
+            current_advisory, previous_advisory, investigation_text,
+        )
+
+        # Count resolved/persisting/new for metadata
+        current_keys = {
+            (c["family"], c["metric"]) for c in current_advisory.get("changes", [])
+        }
+        previous_keys = {
+            (c["family"], c["metric"]) for c in previous_advisory.get("changes", [])
+        }
+
+        resolved_count = len(previous_keys - current_keys)
+        persisting_count = len(previous_keys & current_keys)
+        new_count = len(current_keys - previous_keys)
+
+        iteration = FixIteration(
+            iteration=0,
+            agent_response=prompt,
+            resolved=resolved_count,
+            persisting=persisting_count,
+            new_issues=new_count,
+        )
+
+        result = FixResult(
+            status="dry_run_residual",
+            iterations=[iteration],
+            dry_run=True,
+            total_resolved=resolved_count,
+            total_remaining=persisting_count + new_count,
+        )
+        # Attach extra metadata for callers
+        result.resolved_count = resolved_count
+        result.persisting_count = persisting_count
+        result.new_count = new_count
+
+        return result
+
+    def _build_residual_prompt(
+        self,
+        current_advisory: dict,
+        previous_advisory: dict,
+        investigation_text: str,
+    ) -> str:
+        """Build an iteration-aware prompt comparing current vs previous advisory.
+
+        Compares advisory changes by (family, metric) key to classify items as:
+        - Resolved: in previous but not in current (or deviation dropped below 1.0)
+        - Persisting: in both current and previous
+        - New: in current but not in previous
+
+        Args:
+            current_advisory: The current advisory dict (post-fix-attempt).
+            previous_advisory: The previous advisory dict (pre-fix-attempt).
+            investigation_text: Original investigation report text.
+
+        Returns:
+            Formatted residual prompt string.
+        """
+        # Index changes by (family, metric)
+        prev_by_key = {}
+        for c in previous_advisory.get("changes", []):
+            key = (c["family"], c["metric"])
+            prev_by_key[key] = c
+
+        curr_by_key = {}
+        for c in current_advisory.get("changes", []):
+            key = (c["family"], c["metric"])
+            curr_by_key[key] = c
+
+        prev_keys = set(prev_by_key.keys())
+        curr_keys = set(curr_by_key.keys())
+
+        # Classify
+        resolved_keys = prev_keys - curr_keys
+        persisting_keys = prev_keys & curr_keys
+        new_keys = curr_keys - prev_keys
+
+        # Also check for items in both but with deviation now below 1.0
+        still_persisting = set()
+        for key in persisting_keys:
+            dev = curr_by_key[key].get("deviation_stddev", curr_by_key[key].get("deviation", 999))
+            if dev < 1.0:
+                resolved_keys.add(key)
+            else:
+                still_persisting.add(key)
+        persisting_keys = still_persisting
+
+        # Build resolved section
+        if resolved_keys:
+            resolved_lines = []
+            for key in sorted(resolved_keys):
+                item = prev_by_key[key]
+                resolved_lines.append(
+                    f"- {key[0]} / {key[1]}: was deviation "
+                    f"{item.get('deviation_stddev', item.get('deviation', '?'))}"
+                )
+            resolved_section = "\n".join(resolved_lines)
+        else:
+            resolved_section = "(none resolved yet)"
+
+        # Build persisting section
+        if persisting_keys:
+            persisting_lines = []
+            for key in sorted(persisting_keys):
+                prev_item = prev_by_key[key]
+                curr_item = curr_by_key[key]
+                prev_dev = prev_item.get("deviation_stddev", prev_item.get("deviation", "?"))
+                curr_dev = curr_item.get("deviation_stddev", curr_item.get("deviation", "?"))
+                persisting_lines.append(
+                    f"- {key[0]} / {key[1]}: deviation {prev_dev} -> {curr_dev}"
+                )
+            persisting_section = "\n".join(persisting_lines)
+        else:
+            persisting_section = "(none — all previous issues resolved!)"
+
+        # Build new issues section (append to persisting)
+        if new_keys:
+            new_lines = ["\n### New Issues (not in previous advisory)"]
+            for key in sorted(new_keys):
+                curr_item = curr_by_key[key]
+                curr_dev = curr_item.get("deviation_stddev", curr_item.get("deviation", "?"))
+                new_lines.append(
+                    f"- {key[0]} / {key[1]}: deviation {curr_dev}"
+                )
+            persisting_section += "\n" + "\n".join(new_lines)
+
+        # Get recent changes context
+        previous_changes = self._get_recent_changes_context()
+
+        return RESIDUAL_PROMPT_TEMPLATE.format(
+            resolved_section=resolved_section,
+            persisting_section=persisting_section,
+            previous_changes=previous_changes,
+            investigation_text=investigation_text,
+        )
+
+    def _get_recent_changes_context(self) -> str:
+        """Get a summary of recent git changes for residual prompt context."""
+        try:
+            # Get diff stat of modified files
+            proc = subprocess.run(
+                ["git", "diff", "--stat", "HEAD~1"],
+                cwd=str(self.repo_path),
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if proc.returncode == 0 and proc.stdout.strip():
+                return f"Recent changes (git diff --stat HEAD~1):\n{proc.stdout.strip()}"
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+        # Fallback: list modified files from working tree
+        try:
+            proc = subprocess.run(
+                ["git", "diff", "--name-only"],
+                cwd=str(self.repo_path),
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if proc.returncode == 0 and proc.stdout.strip():
+                return f"Modified files:\n{proc.stdout.strip()}"
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+        return "(no recent changes detected)"

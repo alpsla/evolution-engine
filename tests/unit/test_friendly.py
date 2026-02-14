@@ -2,7 +2,10 @@
 
 import pytest
 
-from evolution.friendly import risk_level, relative_change, metric_insight, friendly_pattern
+from evolution.friendly import (
+    risk_level, relative_change, metric_insight, friendly_pattern,
+    advisory_status, status_meets_threshold,
+)
 
 
 class TestRiskLevel:
@@ -205,3 +208,100 @@ class TestFriendlyPattern:
         })
         assert "27631" not in result
         assert "projects" not in result
+
+
+class TestAdvisoryStatus:
+    def test_action_required(self):
+        advisory = {"changes": [{"deviation_stddev": 5.0}]}
+        result = advisory_status(advisory)
+        assert result["level"] == "action_required"
+        assert result["label"] == "Action Required"
+
+    def test_needs_attention(self):
+        advisory = {"changes": [{"deviation_stddev": 3.0}]}
+        result = advisory_status(advisory)
+        assert result["level"] == "needs_attention"
+        assert result["label"] == "Needs Attention"
+
+    def test_worth_monitoring(self):
+        advisory = {"changes": [{"deviation_stddev": 1.5}]}
+        result = advisory_status(advisory)
+        assert result["level"] == "worth_monitoring"
+
+    def test_all_clear_low_deviation(self):
+        advisory = {"changes": [{"deviation_stddev": 0.5}]}
+        result = advisory_status(advisory)
+        assert result["level"] == "all_clear"
+        assert result["label"] == "All Clear"
+
+    def test_all_clear_no_changes(self):
+        result = advisory_status({"changes": []})
+        assert result["level"] == "all_clear"
+
+    def test_all_clear_empty_advisory(self):
+        result = advisory_status({})
+        assert result["level"] == "all_clear"
+
+    def test_uses_max_deviation(self):
+        advisory = {"changes": [
+            {"deviation_stddev": 1.0},
+            {"deviation_stddev": 4.5},
+            {"deviation_stddev": 2.0},
+        ]}
+        result = advisory_status(advisory)
+        assert result["level"] == "action_required"
+
+    def test_negative_deviation(self):
+        advisory = {"changes": [{"deviation_stddev": -5.0}]}
+        result = advisory_status(advisory)
+        assert result["level"] == "action_required"
+
+    def test_boundary_4(self):
+        advisory = {"changes": [{"deviation_stddev": 4.0}]}
+        assert advisory_status(advisory)["level"] == "action_required"
+
+    def test_boundary_2(self):
+        advisory = {"changes": [{"deviation_stddev": 2.0}]}
+        assert advisory_status(advisory)["level"] == "needs_attention"
+
+    def test_boundary_1(self):
+        advisory = {"changes": [{"deviation_stddev": 1.0}]}
+        assert advisory_status(advisory)["level"] == "worth_monitoring"
+
+    def test_returns_copy(self):
+        """Ensure returned dict is a copy, not a reference to internal state."""
+        r1 = advisory_status({"changes": []})
+        r2 = advisory_status({"changes": []})
+        r1["level"] = "modified"
+        assert r2["level"] == "all_clear"
+
+
+class TestStatusMeetsThreshold:
+    def test_critical_threshold(self):
+        assert status_meets_threshold("action_required", "critical") is True
+        assert status_meets_threshold("needs_attention", "critical") is False
+        assert status_meets_threshold("worth_monitoring", "critical") is False
+        assert status_meets_threshold("all_clear", "critical") is False
+
+    def test_concern_threshold(self):
+        assert status_meets_threshold("action_required", "concern") is True
+        assert status_meets_threshold("needs_attention", "concern") is True
+        assert status_meets_threshold("worth_monitoring", "concern") is False
+        assert status_meets_threshold("all_clear", "concern") is False
+
+    def test_watch_threshold(self):
+        assert status_meets_threshold("action_required", "watch") is True
+        assert status_meets_threshold("needs_attention", "watch") is True
+        assert status_meets_threshold("worth_monitoring", "watch") is True
+        assert status_meets_threshold("all_clear", "watch") is False
+
+    def test_info_threshold(self):
+        assert status_meets_threshold("action_required", "info") is True
+        assert status_meets_threshold("needs_attention", "info") is True
+        assert status_meets_threshold("worth_monitoring", "info") is True
+        assert status_meets_threshold("all_clear", "info") is True
+
+    def test_unknown_threshold_defaults_to_concern(self):
+        assert status_meets_threshold("action_required", "bogus") is True
+        assert status_meets_threshold("needs_attention", "bogus") is True
+        assert status_meets_threshold("worth_monitoring", "bogus") is False
