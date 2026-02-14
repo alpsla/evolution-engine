@@ -1,0 +1,51 @@
+name: Snapshot Community Patterns
+
+on:
+  schedule:
+    # Weekly on Sunday at 06:00 UTC
+    - cron: "0 6 * * 0"
+  workflow_dispatch:
+    inputs:
+      test_pypi:
+        description: "Upload to Test PyPI instead of PyPI"
+        required: false
+        default: "false"
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: pip install build twine
+
+      - name: Fetch and build snapshot
+        run: python scripts/snapshot_to_pypi.py --build --output-dir build/patterns-snapshot
+
+      - name: Upload to PyPI
+        if: inputs.test_pypi != 'true'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_PATTERNS_TOKEN }}
+        run: |
+          python -m twine upload build/patterns-snapshot/dist/*.whl || echo "Version may already exist — skipping"
+
+      - name: Upload to Test PyPI
+        if: inputs.test_pypi == 'true'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PATTERNS_TOKEN }}
+        run: |
+          python -m twine upload --repository testpypi build/patterns-snapshot/dist/*.whl
+
+      - name: Upload wheel as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: evo-patterns-community
+          path: build/patterns-snapshot/dist/*.whl
+          retention-days: 90
