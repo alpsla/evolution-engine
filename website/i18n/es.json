@@ -23,7 +23,9 @@
     "evidence_based_title": "Basado en evidencia",
     "evidence_based_desc": "Desviaci\u00f3n estad\u00edstica respecto a la l\u00ednea base de tu propio repo. Z-scores modificados, no umbrales arbitrarios. Calibrado en 43 repos open-source.",
     "cross_signal_title": "Se\u00f1al cruzada",
-    "cross_signal_desc": "Correlaciona git + CI + dependencias + despliegues. \u00abCI falla despu\u00e9s de grandes actualizaciones de dependencias\u00bb es un patr\u00f3n que ninguna herramienta detecta sola."
+    "cross_signal_desc": "Correlaciona git + CI + dependencias + despliegues. \u00abCI falla despu\u00e9s de grandes actualizaciones de dependencias\u00bb es un patr\u00f3n que ninguna herramienta detecta sola.",
+    "extensible_title": "Extensible",
+    "extensible_desc": "Ecosistema abierto de adaptadores. EE descubre adaptadores disponibles para tus herramientas, notifica sobre actualizaciones y descarga patrones comunitarios autom\u00e1ticamente."
   },
   "how_it_works": {
     "title": "C\u00f3mo funciona",
@@ -83,7 +85,36 @@
     "build_your_own_title": "Crea el tuyo",
     "build_your_own_desc": "Crea un adaptador personalizado con nuestra herramienta scaffold y gu\u00eda paso a paso. Publ\u00edcalo como paquete pip.",
     "dont_see": "\u00bfNo ves tu herramienta? Priorizamos seg\u00fan la demanda de la comunidad.",
-    "request_adapter": "Solicitar un adaptador"
+    "request_adapter": "Solicitar un adaptador",
+    "explore_all": "Explora todo el ecosistema de adaptadores \u2192"
+  },
+  "adapters_page": {
+    "title": "Ecosistema de Adaptadores",
+    "subtitle": "Adaptadores incluidos, un sistema de plugins para extensiones y un ecosistema abierto. Cualquier herramienta con datos de proyecto puede convertirse en un adaptador.",
+    "builtin_title": "Adaptadores Incluidos",
+    "builtin_subtitle": "Incluidos con Evolution Engine. Sin configuraci\u00f3n, detectados autom\u00e1ticamente desde tu repo.",
+    "composer_desc": "Seguimiento de dependencias PHP desde composer.lock.",
+    "openapi_desc": "Seguimiento de cambios en esquemas API desde especificaciones OpenAPI/Swagger.",
+    "terraform_desc": "Seguimiento de cambios en infraestructura como c\u00f3digo desde archivos .tf.",
+    "docker_desc": "Seguimiento de cambios en configuraci\u00f3n de contenedores desde Dockerfiles y archivos compose.",
+    "ci_local_desc": "An\u00e1lisis local de workflows CI desde archivos de configuraci\u00f3n de GitHub Actions, GitLab CI, Jenkins y CircleCI.",
+    "gitlab_pipelines_desc": "Monitoreo de pipelines GitLab CI/CD via API.",
+    "gitlab_releases_desc": "Seguimiento de cadencia de releases GitLab via API.",
+    "plugin_title": "Ecosistema de Plugins",
+    "plugin_subtitle": "Instala cualquier adaptador via pip. Crea el tuyo en minutos. Los plugins se descubren autom\u00e1ticamente en tiempo de ejecuci\u00f3n.",
+    "install_title": "Instalar un Plugin",
+    "install_desc": "Los adaptadores de terceros son paquetes pip normales. Instala uno y EE lo descubre autom\u00e1ticamente en la siguiente ejecuci\u00f3n.",
+    "build_title": "Crea el Tuyo",
+    "build_desc": "Genera la estructura de un nuevo adaptador con un comando. Implementa iter_events(), valida y publica.",
+    "build_cta": "Leer la Gu\u00eda",
+    "reference_title": "Adaptador de Referencia: pytest-cov",
+    "reference_desc": "Un ejemplo funcional de adaptador que lee datos de cobertura de tests. Inst\u00e1lalo para ver c\u00f3mo los plugins se integran con el pipeline.",
+    "ecosystem_title": "Posibilidades del Ecosistema",
+    "ecosystem_subtitle": "EE ya detecta estas herramientas en tu repo via prescan. Adaptadores comunitarios pr\u00f3ximamente \u2014 o crea uno t\u00fa mismo.",
+    "badge_detected": "Detectado",
+    "open_ended": "...y cualquier otra herramienta con datos de proyecto. La lista anterior no es exhaustiva.",
+    "request_title": "\u00bfNo Ves Tu Herramienta?",
+    "request_subtitle": "Priorizamos adaptadores seg\u00fan la demanda de la comunidad. Dinos lo que necesitas, o crea uno t\u00fa mismo."
   },
   "pricing": {
     "title": "Precios simples y transparentes",

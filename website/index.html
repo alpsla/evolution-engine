@@ -23,7 +23,7 @@
     <ul class="nav-links">
       <li><a href="#features" data-i18n="nav.features">Features</a></li>
       <li><a href="#pricing" data-i18n="nav.pricing">Pricing</a></li>
-      <li><a href="#adapters" data-i18n="nav.adapters">Adapters</a></li>
+      <li><a href="/adapters" data-i18n="nav.adapters">Adapters</a></li>
       <li><a href="docs.html" data-i18n="nav.docs">Docs</a></li>
       <li><a href="privacy.html" data-i18n="nav.privacy">Privacy</a></li>
       <li><a href="#install" class="btn btn-primary btn-sm" data-i18n="nav.get_started">Get Started</a></li>
@@ -99,6 +99,11 @@
         <span class="feature-icon">&#128279;</span>
         <h3 data-i18n="features.cross_signal_title">Cross-signal</h3>
         <p data-i18n="features.cross_signal_desc">Correlates git + CI + deps + deploys. "CI fails after big dependency updates" is a pattern no single tool sees.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">&#128268;</span>
+        <h3 data-i18n="features.extensible_title">Extensible</h3>
+        <p data-i18n="features.extensible_desc">Open adapter ecosystem. EE discovers available adapters for your tools, notifies you about updates, and auto-pulls community patterns.</p>
       </div>
     </div>
   </div>
@@ -279,79 +284,6 @@
         <div class="adapter-family">security</div>
         <p data-i18n="adapters.dependabot_desc">Reads security advisory data from repos that use Dependabot alerts.</p>
       </div>
-      <!-- Planned -->
-      <div class="adapter-card">
-        <div class="adapter-card-header">
-          <h4>Jenkins</h4>
-          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
-        </div>
-        <div class="adapter-family">ci</div>
-        <p data-i18n="adapters.jenkins_desc">Reads CI build data from repos that use Jenkins.</p>
-      </div>
-      <div class="adapter-card">
-        <div class="adapter-card-header">
-          <h4>GitLab CI</h4>
-          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
-        </div>
-        <div class="adapter-family">ci</div>
-        <p data-i18n="adapters.gitlab_ci_desc">Reads CI/CD pipeline data from repos that use GitLab CI.</p>
-      </div>
-      <div class="adapter-card">
-        <div class="adapter-card-header">
-          <h4>Datadog</h4>
-          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
-        </div>
-        <div class="adapter-family">monitoring</div>
-        <p data-i18n="adapters.datadog_desc">Reads APM metrics, error rates, and deployment markers from repos that use Datadog.</p>
-      </div>
-      <div class="adapter-card">
-        <div class="adapter-card-header">
-          <h4>Sentry</h4>
-          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
-        </div>
-        <div class="adapter-family">error_tracking</div>
-        <p data-i18n="adapters.sentry_desc">Reads error rates and release health data from repos that use Sentry.</p>
-      </div>
-      <div class="adapter-card">
-        <div class="adapter-card-header">
-          <h4>SonarQube</h4>
-          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
-        </div>
-        <div class="adapter-family">quality_gate</div>
-        <p data-i18n="adapters.sonarqube_desc">Reads quality gate status and code metrics from repos that use SonarQube.</p>
-      </div>
-      <div class="adapter-card">
-        <div class="adapter-card-header">
-          <h4>Snyk</h4>
-          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
-        </div>
-        <div class="adapter-family">security_scan</div>
-        <p data-i18n="adapters.snyk_desc">Reads vulnerability and license compliance data from repos that use Snyk.</p>
-      </div>
-      <div class="adapter-card">
-        <div class="adapter-card-header">
-          <h4>PagerDuty</h4>
-          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
-        </div>
-        <div class="adapter-family">incidents</div>
-        <p data-i18n="adapters.pagerduty_desc">Reads incident frequency, MTTR, and escalation pattern data from teams that use PagerDuty.</p>
-      </div>
-      <div class="adapter-card">
-        <div class="adapter-card-header">
-          <h4>Jira</h4>
-          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
-        </div>
-        <div class="adapter-family">work_items</div>
-        <p data-i18n="adapters.jira_desc">Reads cycle time, WIP count, and sprint velocity from teams that use Jira.</p>
-      </div>
-      <div class="adapter-card">
-        <div class="adapter-card-header">
-          <h4>ArgoCD</h4>
-          <span class="badge badge-planned" data-i18n="badges.planned">Planned</span>
-        </div>
-        <div class="adapter-family">deployment</div>
-        <p data-i18n="adapters.argocd_desc">Reads GitOps deployment and sync status data from repos that use Argo CD.</p>
-      </div>
       <a href="docs.html#build-adapter" class="adapter-card" style="border-style: dashed; border-color: var(--secondary); text-decoration: none; color: inherit;">
         <div class="adapter-card-header">
           <h4 data-i18n="adapters.build_your_own_title">Build Your Own</h4>
@@ -363,7 +295,8 @@
       </a>
     </div>
     <div class="adapter-cta">
-      <p style="color: var(--text-muted); margin-bottom: 16px;" data-i18n="adapters.dont_see">Don't see your tool? We prioritize by community demand.</p>
+      <a href="/adapters" style="color: var(--secondary); font-weight: 600; font-size: 0.95rem;" data-i18n="adapters.explore_all">Explore the full adapter ecosystem &rarr;</a>
+      <p style="color: var(--text-muted); margin-bottom: 16px; margin-top: 16px;" data-i18n="adapters.dont_see">Don't see your tool? We prioritize by community demand.</p>
       <button class="btn btn-accent" onclick="openAdapterModal()" data-i18n="adapters.request_adapter">Request an Adapter</button>
     </div>
   </div>

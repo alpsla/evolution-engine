@@ -65,7 +65,7 @@
     <ul class="nav-links">
       <li><a href="/#features">Features</a></li>
       <li><a href="/#pricing">Pricing</a></li>
-      <li><a href="/#adapters">Adapters</a></li>
+      <li><a href="/adapters">Adapters</a></li>
       <li><a href="docs.html">Docs</a></li>
     </ul>
     <button class="mobile-toggle" aria-label="Menu">&#9776;</button>
@@ -80,6 +80,7 @@
     <ul>
       <li><a href="#quickstart">Quickstart</a></li>
       <li><a href="#commands">CLI Commands</a></li>
+      <li><a href="#discovery-updates">Discovery & Updates</a></li>
       <li><a href="#build-adapter">Build Your Own Adapter</a></li>
       <li><a href="#adapter-contract">Adapter Contract</a></li>
       <li><a href="#submit-adapter">Submit Your Adapter</a></li>
@@ -124,17 +125,10 @@ evo analyze .</code></pre>
     <li><code>evo fix . --dry-run</code> — Preview fix prompt without modifying files</li>
   </ul>
 
-  <h3>Patterns &amp; Knowledge Base</h3>
-  <ul>
-    <li><code>evo patterns list</code> — Show patterns in the knowledge base</li>
-    <li><code>evo patterns sync</code> — Import bundled universal patterns</li>
-    <li><code>evo patterns export</code> — Export anonymized pattern digests</li>
-    <li><code>evo patterns import &lt;file&gt;</code> — Import community patterns</li>
-  </ul>
-
   <h3>Adapters</h3>
   <ul>
     <li><code>evo adapter list</code> — List detected adapters with trust badges</li>
+    <li><code>evo adapter discover [path]</code> — Find available adapters for tools in your repo</li>
     <li><code>evo adapter new &lt;name&gt; --family ci</code> — Scaffold a new adapter package</li>
     <li><code>evo adapter validate &lt;path&gt;</code> — Validate an adapter against the contract</li>
     <li><code>evo adapter validate &lt;path&gt; --security</code> — Validate + security scan</li>
@@ -145,6 +139,30 @@ evo analyze .</code></pre>
     <li><code>evo adapter unblock &lt;name&gt;</code> — Unblock a blocked adapter</li>
     <li><code>evo adapter check-updates</code> — Check PyPI for plugin updates</li>
     <li><code>evo adapter report &lt;name&gt;</code> — Report a broken/malicious adapter</li>
+  </ul>
+
+  <h3>Notifications</h3>
+  <ul>
+    <li><code>evo notifications list</code> — Show pending update notifications</li>
+    <li><code>evo notifications dismiss</code> — Dismiss all notifications</li>
+    <li><code>evo notifications check [path]</code> — Force a notification check (ignores 24h cache)</li>
+  </ul>
+
+  <h3>Patterns &amp; Knowledge Base</h3>
+  <ul>
+    <li><code>evo patterns list</code> — Show patterns in the knowledge base</li>
+    <li><code>evo patterns pull [path]</code> — Fetch community patterns from the registry</li>
+    <li><code>evo patterns push [path]</code> — Share anonymized patterns (requires privacy_level &ge; 1)</li>
+    <li><code>evo patterns export</code> — Export anonymized pattern digests</li>
+    <li><code>evo patterns import &lt;file&gt;</code> — Import community patterns</li>
+  </ul>
+
+  <h3>History</h3>
+  <ul>
+    <li><code>evo history list [path]</code> — Show past run snapshots</li>
+    <li><code>evo history show &lt;run&gt;</code> — View a specific run's advisory</li>
+    <li><code>evo history diff [r1 r2]</code> — Compare two runs</li>
+    <li><code>evo history clean --keep N</code> — Delete old snapshots</li>
   </ul>
 
   <h3>Adapter Safety</h3>
@@ -165,6 +183,52 @@ evo analyze .</code></pre>
     <li><code>evo license activate &lt;key&gt;</code> — Activate a Pro license</li>
     <li><code>evo telemetry on|off|status</code> — Manage anonymous usage telemetry</li>
   </ul>
+
+  <!-- Discovery & Updates -->
+  <h2 id="discovery-updates">Discovery & Updates</h2>
+
+  <p>EE includes a lightweight notification system that keeps you informed about available adapters, updates, and community patterns. All checks are privacy-respecting — they only read public PyPI metadata and never send data from your machine.</p>
+
+  <h3>Adapter Discovery</h3>
+  <p>EE scans your repo for known tools (via config files, lockfiles, and import statements) and checks PyPI for matching adapter packages:</p>
+  <pre><code>evo adapter discover .
+# Available adapters (install via pip):
+#   evo-adapter-datadog       v1.0.0   ← Datadog (monitoring)
+#   evo-adapter-sentry        v0.2.0   ← Sentry (error_tracking)
+#
+# Not yet on PyPI (build your own?):
+#   evo-adapter-pagerduty     ← PagerDuty (incidents)
+#     Scaffold: evo adapter new pagerduty --family incidents</code></pre>
+
+  <h3>Automatic Notifications</h3>
+  <p>After <code>evo analyze</code> completes, EE checks for adapter updates and new adapters matching detected tools. Notifications appear at the end of the output:</p>
+  <pre><code># After evo analyze output:
+Notifications:
+  Update available: evo-adapter-jenkins 0.1.0 → 0.2.0
+  Adapter available: evo-adapter-datadog v1.0.0 (detected Datadog in repo)
+  Run `evo notifications dismiss` to clear.</code></pre>
+  <p>Manage notifications with:</p>
+  <pre><code>evo notifications list              # View all pending
+evo notifications dismiss            # Clear all
+evo notifications check .            # Force check now</code></pre>
+
+  <h3>Community Patterns</h3>
+  <p>EE ships with 27 universal patterns calibrated across 43 open-source repos. Opt into automatic community pattern updates:</p>
+  <pre><code>evo config set sync.auto_pull true</code></pre>
+  <p>When enabled, <code>evo analyze</code> fetches new patterns from the community registry before running Phase 4 discovery. Throttled to once per 24 hours.</p>
+
+  <h3>Configuration</h3>
+  <p>All update and notification behavior is configurable:</p>
+  <ul>
+    <li><code>adapter.check_updates</code> — Enable/disable update notifications (default: <code>true</code>)</li>
+    <li><code>sync.auto_pull</code> — Auto-pull community patterns on analyze (default: <code>false</code>)</li>
+    <li><code>sync.privacy_level</code> — Pattern sharing level: 0=off, 1=metadata, 2=anonymized digests (default: <code>0</code>)</li>
+  </ul>
+  <p>Set <code>DO_NOT_TRACK=1</code> in your environment to disable all network checks.</p>
+
+  <div class="callout">
+    <p><strong>How PyPI discovery works:</strong> EE queries the public PyPI JSON API (<code>https://pypi.org/pypi/{package}/json</code>) using Python's stdlib <code>urllib.request</code>. No API keys or authentication needed. Results are cached for 24 hours at <code>~/.evo/version_cache.json</code>.</p>
+  </div>
 
   <!-- Build Your Own Adapter -->
   <h2 id="build-adapter">Build Your Own Adapter</h2>

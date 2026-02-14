@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adapters — Evolution Engine</title>
+  <meta name="description" content="Built-in adapters, plugin ecosystem, and community integrations for Evolution Engine. Connect any tool with project data.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="assets/codequal-logo.svg" type="image/svg+xml">
+  <style>
+    .adapters-page { padding: 120px 0 80px; }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+    .filter-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: all 0.2s;
+    }
+    .filter-btn:hover { border-color: var(--secondary); color: var(--text); }
+    .filter-btn.active { background: rgba(44, 165, 141, 0.15); border-color: var(--secondary); color: var(--secondary); }
+
+    /* ── Section headers ── */
+    .section-header {
+      margin-top: 64px;
+      margin-bottom: 24px;
+    }
+    .section-header:first-of-type { margin-top: 0; }
+    .section-header h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .section-header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 640px;
+    }
+
+    /* ── Adapter cards ── */
+    .adapters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .adapter-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: border-color 0.2s;
+    }
+    .adapter-card:hover { border-color: var(--border-light); }
+    .adapter-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .adapter-card h4 { font-size: 0.95rem; }
+    .adapter-card .adapter-family { color: var(--text-dim); font-size: 0.8rem; }
+    .adapter-card p { color: var(--text-muted); font-size: 0.85rem; flex: 1; }
+    .adapter-card .detect-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .detect-tag {
+      background: var(--surface-elevated);
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    /* ── Ecosystem possibilities (lighter) ── */
+    .ecosystem-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .ecosystem-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      opacity: 0.85;
+      transition: opacity 0.2s, border-color 0.2s;
+    }
+    .ecosystem-card:hover { opacity: 1; border-color: var(--border-light); }
+    .ecosystem-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .ecosystem-card h4 { font-size: 0.9rem; }
+    .ecosystem-card .adapter-family { color: var(--text-dim); font-size: 0.75rem; }
+    .ecosystem-card p { color: var(--text-dim); font-size: 0.8rem; margin-top: 4px; }
+    .ecosystem-card .detect-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+
+    .badge-ecosystem { background: rgba(148, 163, 184, 0.1); color: var(--text-dim); }
+
+    /* ── Plugin section ── */
+    .plugin-highlight {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      margin-top: 16px;
+    }
+    .plugin-highlight h3 { font-size: 1.1rem; margin-bottom: 12px; }
+    .plugin-highlight p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px; line-height: 1.7; }
+    .plugin-highlight pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+    .plugin-highlight code { font-family: var(--font-mono); color: var(--secondary); font-size: 0.85rem; }
+
+    .plugin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 24px;
+    }
+
+    /* ── Open-ended note ── */
+    .open-ended {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      margin-top: 24px;
+      font-style: italic;
+    }
+
+    /* ── CTA ── */
+    .adapters-cta {
+      text-align: center;
+      margin-top: 64px;
+      padding-top: 48px;
+      border-top: 1px solid var(--border);
+    }
+    .adapters-cta p {
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">
+      <img src="assets/codequal-logo.svg" alt="CodeQual" width="28" height="32">
+      evo <span>by CodeQual</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="/#features" data-i18n="nav.features">Features</a></li>
+      <li><a href="/#pricing" data-i18n="nav.pricing">Pricing</a></li>
+      <li><a href="/adapters" data-i18n="nav.adapters" style="color: var(--text)">Adapters</a></li>
+      <li><a href="docs.html" data-i18n="nav.docs">Docs</a></li>
+      <li><a href="privacy.html" data-i18n="nav.privacy">Privacy</a></li>
+      <li><a href="/#install" class="btn btn-primary btn-sm" data-i18n="nav.get_started">Get Started</a></li>
+      <li class="lang-switcher">
+        <button class="lang-btn active" data-lang="en" onclick="switchLanguage('en')">EN</button>
+        <button class="lang-btn" data-lang="de" onclick="switchLanguage('de')">DE</button>
+        <button class="lang-btn" data-lang="es" onclick="switchLanguage('es')">ES</button>
+      </li>
+    </ul>
+    <button class="mobile-toggle" aria-label="Menu">&#9776;</button>
+  </div>
+</nav>
+
+<div class="adapters-page">
+  <div class="container">
+    <h1 class="section-title" data-i18n="adapters_page.title">Adapter Ecosystem</h1>
+    <p class="section-subtitle" data-i18n="adapters_page.subtitle">Built-in adapters, a plugin system for extensions, and an open ecosystem. Any tool with project data can become an adapter.</p>
+
+    <!-- ── Filter Bar ── -->
+    <div class="filter-bar">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="version_control">Git</button>
+      <button class="filter-btn" data-filter="dependency">Dependency</button>
+      <button class="filter-btn" data-filter="ci">CI</button>
+      <button class="filter-btn" data-filter="deployment">Deployment</button>
+      <button class="filter-btn" data-filter="security">Security</button>
+      <button class="filter-btn" data-filter="schema">Schema</button>
+      <button class="filter-btn" data-filter="config">Config</button>
+      <button class="filter-btn" data-filter="monitoring">Monitoring</button>
+      <button class="filter-btn" data-filter="incidents">Incidents</button>
+    </div>
+
+    <!-- ═══════════ Section 1: Built-in Adapters ═══════════ -->
+    <div class="section-header">
+      <h2 data-i18n="adapters_page.builtin_title">Built-in Adapters</h2>
+      <p data-i18n="adapters_page.builtin_subtitle">Ships with Evolution Engine. Zero config, auto-detected from your repo.</p>
+    </div>
+
+    <div class="adapters-grid" id="builtin-grid">
+      <!-- Tier 1: Free -->
+      <div class="adapter-card" data-family="version_control">
+        <div class="adapter-card-header">
+          <h4>Git</h4>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
+        </div>
+        <div class="adapter-family">version_control</div>
+        <p data-i18n="adapters.git_desc">Local git history analysis — commits, file changes, co-change patterns.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">.git/</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="dependency">
+        <div class="adapter-card-header">
+          <h4>pip</h4>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
+        </div>
+        <div class="adapter-family">dependency</div>
+        <p data-i18n="adapters.pip_desc">Python dependency tracking from requirements.txt and Pipfile.lock.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">requirements.txt</span>
+          <span class="detect-tag">pyproject.toml</span>
+          <span class="detect-tag">Pipfile.lock</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="dependency">
+        <div class="adapter-card-header">
+          <h4>npm</h4>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
+        </div>
+        <div class="adapter-family">dependency</div>
+        <p data-i18n="adapters.npm_desc">Node.js dependency tracking from package-lock.json with depth analysis.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">package-lock.json</span>
+          <span class="detect-tag">yarn.lock</span>
+          <span class="detect-tag">pnpm-lock.yaml</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="dependency">
+        <div class="adapter-card-header">
+          <h4>go modules</h4>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
+        </div>
+        <div class="adapter-family">dependency</div>
+        <p data-i18n="adapters.go_desc">Go module tracking from go.sum with dependency depth.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">go.mod</span>
+          <span class="detect-tag">go.sum</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="dependency">
+        <div class="adapter-card-header">
+          <h4>cargo</h4>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
+        </div>
+        <div class="adapter-family">dependency</div>
+        <p data-i18n="adapters.cargo_desc">Rust crate tracking from Cargo.lock with depth analysis.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">Cargo.toml</span>
+          <span class="detect-tag">Cargo.lock</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="dependency">
+        <div class="adapter-card-header">
+          <h4>bundler</h4>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
+        </div>
+        <div class="adapter-family">dependency</div>
+        <p data-i18n="adapters.bundler_desc">Ruby gem tracking from Gemfile.lock.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">Gemfile</span>
+          <span class="detect-tag">Gemfile.lock</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="dependency">
+        <div class="adapter-card-header">
+          <h4>composer</h4>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
+        </div>
+        <div class="adapter-family">dependency</div>
+        <p data-i18n="adapters_page.composer_desc">PHP dependency tracking from composer.lock.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">composer.lock</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="schema">
+        <div class="adapter-card-header">
+          <h4>OpenAPI</h4>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
+        </div>
+        <div class="adapter-family">schema</div>
+        <p data-i18n="adapters_page.openapi_desc">API schema change tracking from OpenAPI/Swagger specs.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">openapi.yaml</span>
+          <span class="detect-tag">swagger.json</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="config">
+        <div class="adapter-card-header">
+          <h4>Terraform</h4>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
+        </div>
+        <div class="adapter-family">config</div>
+        <p data-i18n="adapters_page.terraform_desc">Infrastructure-as-code change tracking from .tf files.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">*.tf</span>
+          <span class="detect-tag">terraform.tfstate</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="config">
+        <div class="adapter-card-header">
+          <h4>Docker</h4>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
+        </div>
+        <div class="adapter-family">config</div>
+        <p data-i18n="adapters_page.docker_desc">Container config change tracking from Dockerfiles and compose files.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">Dockerfile</span>
+          <span class="detect-tag">docker-compose.yml</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="ci">
+        <div class="adapter-card-header">
+          <h4>CI Workflow Files</h4>
+          <span class="badge badge-free" data-i18n="badges.free">Free</span>
+        </div>
+        <div class="adapter-family">ci</div>
+        <p data-i18n="adapters_page.ci_local_desc">Local CI workflow analysis from GitHub Actions, GitLab CI, Jenkins, and CircleCI config files.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">.github/workflows/</span>
+          <span class="detect-tag">.gitlab-ci.yml</span>
+          <span class="detect-tag">Jenkinsfile</span>
+        </div>
+      </div>
+
+      <!-- Tier 2: Pro -->
+      <div class="adapter-card" data-family="ci">
+        <div class="adapter-card-header">
+          <h4>GitHub Actions</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">ci</div>
+        <p data-i18n="adapters.github_actions_desc">CI pipeline monitoring — run duration, failure rates, workflow trends.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">GITHUB_TOKEN</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="deployment">
+        <div class="adapter-card-header">
+          <h4>GitHub Releases</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">deployment</div>
+        <p data-i18n="adapters.github_releases_desc">Release cadence tracking, pre-release detection, asset monitoring.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">GITHUB_TOKEN</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="security">
+        <div class="adapter-card-header">
+          <h4>Dependabot</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">security</div>
+        <p data-i18n="adapters.dependabot_desc">Reads security advisory data from repos that use Dependabot alerts.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">GITHUB_TOKEN</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="ci">
+        <div class="adapter-card-header">
+          <h4>GitLab Pipelines</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">ci</div>
+        <p data-i18n="adapters_page.gitlab_pipelines_desc">GitLab CI/CD pipeline monitoring via API.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">GITLAB_TOKEN</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="deployment">
+        <div class="adapter-card-header">
+          <h4>GitLab Releases</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">deployment</div>
+        <p data-i18n="adapters_page.gitlab_releases_desc">GitLab release cadence tracking via API.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">GITLAB_TOKEN</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ Section 2: Plugin Ecosystem ═══════════ -->
+    <div class="section-header" style="margin-top: 80px;">
+      <h2 data-i18n="adapters_page.plugin_title">Plugin Ecosystem</h2>
+      <p data-i18n="adapters_page.plugin_subtitle">Install any adapter via pip. Build your own in minutes. Plugins are auto-discovered at runtime.</p>
+    </div>
+
+    <div class="plugin-grid">
+      <div class="plugin-highlight">
+        <h3 data-i18n="adapters_page.install_title">Install a Plugin</h3>
+        <p data-i18n="adapters_page.install_desc">Third-party adapters are regular pip packages. Install one and EE discovers it automatically on the next run.</p>
+        <pre>pip install evo-adapter-jenkins
+evo analyze .
+# → Detected: git, pip, jenkins (plugin)</pre>
+      </div>
+
+      <div class="plugin-highlight">
+        <h3 data-i18n="adapters_page.build_title">Build Your Own</h3>
+        <p data-i18n="adapters_page.build_desc">Scaffold a new adapter in one command. Implement <code>iter_events()</code>, validate, and publish.</p>
+        <pre>evo adapter new myapp --family ci
+cd evo-adapter-myapp
+# implement iter_events() ...
+evo adapter validate evo_myapp.MyAppAdapter
+pip install -e .</pre>
+        <a href="docs.html#build-adapter" class="btn btn-outline btn-sm" data-i18n="adapters_page.build_cta">Read the Guide</a>
+      </div>
+    </div>
+
+    <div class="plugin-grid" style="margin-top: 16px;">
+      <div class="plugin-highlight" style="border-style: dashed; border-color: var(--secondary); text-align: center;">
+        <h3>Reference: pytest-cov</h3>
+        <p>Reads Python test coverage data (coverage.xml). A working example of a file-based adapter.</p>
+        <pre style="text-align: left; font-size: 0.8rem;">pip install evo-adapter-pytest-cov
+evo adapter list .    # → [community] testing/pytest_cov
+evo analyze .         # → Ingesting from plugin...</pre>
+      </div>
+
+      <div class="plugin-highlight" style="border-style: dashed; border-color: var(--secondary); text-align: center;">
+        <h3>Reference: jest-cov</h3>
+        <p>Reads Jest coverage-summary.json. Shows the same pattern for JavaScript projects.</p>
+        <pre style="text-align: left; font-size: 0.8rem;">pip install evo-adapter-jest-cov
+evo adapter list .    # → [community] testing/jest_cov
+evo analyze .         # → Ingesting from plugin...</pre>
+      </div>
+    </div>
+
+    <!-- ═══════════ Section 3: Discovery & Updates ═══════════ -->
+    <div class="section-header" style="margin-top: 80px;">
+      <h2>Discovery & Updates</h2>
+      <p>EE automatically finds adapters for tools you use, notifies you about updates, and keeps your knowledge base current. No manual checking needed.</p>
+    </div>
+
+    <div class="plugin-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+      <div class="plugin-highlight" style="padding: 24px;">
+        <h3>Auto-Discovery</h3>
+        <p>EE scans your repo for known tools and checks PyPI for matching adapters. Run one command to see what's available:</p>
+        <pre style="font-size: 0.8rem; margin-bottom: 0;">evo adapter discover .
+# Available adapters:
+#   evo-adapter-datadog v1.0.0
+#   evo-adapter-sentry  v0.2.0
+# Install all: pip install ...</pre>
+      </div>
+
+      <div class="plugin-highlight" style="padding: 24px;">
+        <h3>Update Notifications</h3>
+        <p>After each analysis, EE checks for adapter updates and new adapters matching your tools. Notifications appear inline:</p>
+        <pre style="font-size: 0.8rem; margin-bottom: 0;">evo analyze .
+# ... analysis output ...
+# Notifications:
+#   Update: evo-adapter-sentry
+#   0.1.0 → 0.2.0</pre>
+      </div>
+
+      <div class="plugin-highlight" style="padding: 24px;">
+        <h3>Community Patterns</h3>
+        <p>Opt into auto-pulling community-discovered patterns. Your knowledge base stays current without manual intervention:</p>
+        <pre style="font-size: 0.8rem; margin-bottom: 0;">evo config set sync.auto_pull true
+evo analyze .
+# Auto-pulled 5 community patterns
+# "Observed across 9 projects"</pre>
+      </div>
+    </div>
+
+    <div class="plugin-highlight" style="margin-top: 16px; padding: 20px 24px;">
+      <p style="margin: 0; font-size: 0.85rem;"><strong>Privacy by design:</strong> All checks use the public PyPI API — no authentication needed, no data sent from your machine. Cached for 24 hours to minimize network requests. Respects <code>DO_NOT_TRACK=1</code> and can be fully disabled with <code>evo config set adapter.check_updates false</code>.</p>
+    </div>
+
+    <!-- ═══════════ Section 4: Ecosystem Possibilities ═══════════ -->
+    <div class="section-header" style="margin-top: 80px;">
+      <h2 data-i18n="adapters_page.ecosystem_title">Ecosystem Possibilities</h2>
+      <p data-i18n="adapters_page.ecosystem_subtitle">EE already detects these tools in your repo via prescan. Community adapters coming soon — or build one yourself.</p>
+    </div>
+
+    <div class="ecosystem-grid" id="ecosystem-grid">
+      <!-- Monitoring -->
+      <div class="ecosystem-card" data-family="monitoring">
+        <div class="ecosystem-card-header">
+          <h4>Datadog</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">monitoring</div>
+        <p>APM metrics, error rates, deployment markers</p>
+        <div class="detect-tags">
+          <span class="detect-tag">ddtrace</span>
+          <span class="detect-tag">datadog.yaml</span>
+        </div>
+      </div>
+
+      <div class="ecosystem-card" data-family="monitoring">
+        <div class="ecosystem-card-header">
+          <h4>New Relic</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">monitoring</div>
+        <p>Application performance and error monitoring</p>
+        <div class="detect-tags">
+          <span class="detect-tag">newrelic</span>
+          <span class="detect-tag">newrelic.yml</span>
+        </div>
+      </div>
+
+      <div class="ecosystem-card" data-family="monitoring">
+        <div class="ecosystem-card-header">
+          <h4>Grafana</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">monitoring</div>
+        <p>Dashboard metrics and alerting data</p>
+        <div class="detect-tags">
+          <span class="detect-tag">@grafana/data</span>
+          <span class="detect-tag">grafana.ini</span>
+        </div>
+      </div>
+
+      <div class="ecosystem-card" data-family="monitoring">
+        <div class="ecosystem-card-header">
+          <h4>Prometheus</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">monitoring</div>
+        <p>Metrics collection and alerting</p>
+        <div class="detect-tags">
+          <span class="detect-tag">prometheus_client</span>
+          <span class="detect-tag">prometheus.yml</span>
+        </div>
+      </div>
+
+      <div class="ecosystem-card" data-family="monitoring">
+        <div class="ecosystem-card-header">
+          <h4>OpenTelemetry</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">monitoring</div>
+        <p>Vendor-neutral observability framework</p>
+        <div class="detect-tags">
+          <span class="detect-tag">@opentelemetry/api</span>
+          <span class="detect-tag">opentelemetry-sdk</span>
+        </div>
+      </div>
+
+      <div class="ecosystem-card" data-family="monitoring">
+        <div class="ecosystem-card-header">
+          <h4>Azure Monitor</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">monitoring</div>
+        <p>Application Insights and Azure diagnostics</p>
+        <div class="detect-tags">
+          <span class="detect-tag">applicationinsights</span>
+        </div>
+      </div>
+
+      <div class="ecosystem-card" data-family="monitoring">
+        <div class="ecosystem-card-header">
+          <h4>Elastic APM</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">monitoring</div>
+        <p>Elasticsearch-based application monitoring</p>
+        <div class="detect-tags">
+          <span class="detect-tag">elasticapm</span>
+          <span class="detect-tag">elastic-apm-node</span>
+        </div>
+      </div>
+
+      <!-- Error Tracking -->
+      <div class="ecosystem-card" data-family="error_tracking">
+        <div class="ecosystem-card-header">
+          <h4>Sentry</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">error_tracking</div>
+        <p>Error rates and release health data</p>
+        <div class="detect-tags">
+          <span class="detect-tag">sentry_sdk</span>
+          <span class="detect-tag">@sentry/node</span>
+        </div>
+      </div>
+
+      <!-- Incidents -->
+      <div class="ecosystem-card" data-family="incidents">
+        <div class="ecosystem-card-header">
+          <h4>PagerDuty</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">incidents</div>
+        <p>Incident frequency, MTTR, escalation patterns</p>
+        <div class="detect-tags">
+          <span class="detect-tag">pypd</span>
+          <span class="detect-tag">@pagerduty/pdjs</span>
+        </div>
+      </div>
+
+      <div class="ecosystem-card" data-family="incidents">
+        <div class="ecosystem-card-header">
+          <h4>OpsGenie</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">incidents</div>
+        <p>Alert management and on-call data</p>
+        <div class="detect-tags">
+          <span class="detect-tag">opsgenie-sdk</span>
+        </div>
+      </div>
+
+      <!-- Security -->
+      <div class="ecosystem-card" data-family="security_scan">
+        <div class="ecosystem-card-header">
+          <h4>Snyk</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">security_scan</div>
+        <p>Vulnerability and license compliance data</p>
+        <div class="detect-tags">
+          <span class="detect-tag">snyk</span>
+          <span class="detect-tag">.snyk</span>
+        </div>
+      </div>
+
+      <div class="ecosystem-card" data-family="security_scan">
+        <div class="ecosystem-card-header">
+          <h4>Semgrep</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">security_scan</div>
+        <p>Static analysis and security scanning</p>
+        <div class="detect-tags">
+          <span class="detect-tag">semgrep</span>
+          <span class="detect-tag">.semgrep.yml</span>
+        </div>
+      </div>
+
+      <!-- Quality Gate -->
+      <div class="ecosystem-card" data-family="quality_gate">
+        <div class="ecosystem-card-header">
+          <h4>SonarQube</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">quality_gate</div>
+        <p>Quality gate status and code metrics</p>
+        <div class="detect-tags">
+          <span class="detect-tag">sonar-project.properties</span>
+        </div>
+      </div>
+
+      <div class="ecosystem-card" data-family="quality_gate">
+        <div class="ecosystem-card-header">
+          <h4>Codecov</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">quality_gate</div>
+        <p>Code coverage tracking and reporting</p>
+        <div class="detect-tags">
+          <span class="detect-tag">codecov.yml</span>
+        </div>
+      </div>
+
+      <!-- Work Items -->
+      <div class="ecosystem-card" data-family="work_items">
+        <div class="ecosystem-card-header">
+          <h4>Jira</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">work_items</div>
+        <p>Cycle time, WIP count, sprint velocity</p>
+        <div class="detect-tags">
+          <span class="detect-tag">jira</span>
+        </div>
+      </div>
+
+      <div class="ecosystem-card" data-family="work_items">
+        <div class="ecosystem-card-header">
+          <h4>Linear</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">work_items</div>
+        <p>Issue tracking and project management</p>
+        <div class="detect-tags">
+          <span class="detect-tag">@linear/sdk</span>
+        </div>
+      </div>
+
+      <!-- Code Review -->
+      <div class="ecosystem-card" data-family="code_review">
+        <div class="ecosystem-card-header">
+          <h4>Qodo</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">code_review</div>
+        <p>AI-powered code review findings</p>
+        <div class="detect-tags">
+          <span class="detect-tag">.codiumai</span>
+          <span class="detect-tag">qodo.yml</span>
+        </div>
+      </div>
+
+      <div class="ecosystem-card" data-family="code_review">
+        <div class="ecosystem-card-header">
+          <h4>CodeRabbit</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">code_review</div>
+        <p>Automated code review insights</p>
+        <div class="detect-tags">
+          <span class="detect-tag">.coderabbit.yaml</span>
+        </div>
+      </div>
+
+      <!-- Feature Flags -->
+      <div class="ecosystem-card" data-family="feature_flags">
+        <div class="ecosystem-card-header">
+          <h4>LaunchDarkly</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">feature_flags</div>
+        <p>Feature flag state and rollout data</p>
+        <div class="detect-tags">
+          <span class="detect-tag">ldclient</span>
+        </div>
+      </div>
+
+      <div class="ecosystem-card" data-family="feature_flags">
+        <div class="ecosystem-card-header">
+          <h4>Unleash</h4>
+          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
+        </div>
+        <div class="adapter-family">feature_flags</div>
+        <p>Open-source feature flag management</p>
+        <div class="detect-tags">
+          <span class="detect-tag">unleash-client</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="open-ended" data-i18n="adapters_page.open_ended">...and any other tool with project data. The list above is non-exhaustive.</p>
+
+    <!-- ═══════════ Section 4: Request an Adapter ═══════════ -->
+    <div class="adapters-cta">
+      <h2 class="section-title" data-i18n="adapters_page.request_title">Don't See Your Tool?</h2>
+      <p data-i18n="adapters_page.request_subtitle">We prioritize adapters by community demand. Tell us what you need, or build one yourself.</p>
+      <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+        <button class="btn btn-accent" onclick="openAdapterModal()" data-i18n="adapters.request_adapter">Request an Adapter</button>
+        <a href="docs.html#build-adapter" class="btn btn-outline" data-i18n="adapters_page.build_cta">Read the Guide</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="container">
+    <ul class="footer-links">
+      <li><a href="/" data-i18n="footer.home">Home</a></li>
+      <li><a href="docs.html" data-i18n="footer.docs">Docs</a></li>
+      <li><a href="privacy.html" data-i18n="footer.privacy">Privacy</a></li>
+      <li>info@codequal.dev</li>
+    </ul>
+    <p class="footer-tagline" data-i18n="footer.tagline">Your code never leaves your machine.</p>
+    <p class="footer-brand" data-i18n="footer.brand">Evolution Engine by CodeQual</p>
+    <p style="color: var(--text-dim); font-size: 0.7rem; max-width: 600px; margin: 16px auto 0; line-height: 1.5; opacity: 0.7;">All third-party product names, logos, and brands are property of their respective owners. All company, product, and service names used on this website are for identification purposes only. Use of these names does not imply endorsement.</p>
+  </div>
+</footer>
+
+<!-- ─── Adapter Request Modal ─── -->
+<div id="adapter-modal" class="modal-overlay">
+  <div class="modal">
+    <h3 data-i18n="modal.title">Request an Adapter</h3>
+    <form onsubmit="submitAdapterRequest(event)">
+      <div class="form-group">
+        <label for="adapter_name" data-i18n="modal.adapter_name_label">Adapter Name *</label>
+        <input type="text" id="adapter_name" name="adapter_name" placeholder="e.g. CircleCI, Terraform Cloud" required maxlength="100">
+      </div>
+      <div class="form-group">
+        <label for="family" data-i18n="modal.family_label">Family *</label>
+        <select id="family" name="family" required>
+          <option value="" data-i18n="modal.family_placeholder">Select a family...</option>
+          <option value="ci" data-i18n="modal.family_ci">CI</option>
+          <option value="deployment" data-i18n="modal.family_deployment">Deployment</option>
+          <option value="dependency" data-i18n="modal.family_dependency">Dependency</option>
+          <option value="security" data-i18n="modal.family_security">Security</option>
+          <option value="monitoring" data-i18n="modal.family_monitoring">Monitoring</option>
+          <option value="incidents" data-i18n="modal.family_incidents">Incidents</option>
+          <option value="work_items" data-i18n="modal.family_work_items">Work Items</option>
+          <option value="quality_gate" data-i18n="modal.family_quality_gate">Quality Gate</option>
+          <option value="error_tracking" data-i18n="modal.family_error_tracking">Error Tracking</option>
+          <option value="feature_flags" data-i18n="modal.family_feature_flags">Feature Flags</option>
+          <option value="code_review" data-i18n="modal.family_code_review">Code Review</option>
+          <option value="other" data-i18n="modal.family_other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="use_case" data-i18n="modal.use_case_label">Use Case</label>
+        <textarea id="use_case" name="use_case" placeholder="What would this adapter help you detect or monitor?" maxlength="500"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="email" data-i18n="modal.email_label">Email (optional, for updates)</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" maxlength="200">
+      </div>
+      <div id="adapter-form-message" class="form-message"></div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeAdapterModal()" data-i18n="modal.cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-i18n="modal.submit">Submit Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ─── GDPR Consent Banner ─── -->
+<div id="consent-banner" class="consent-banner hidden">
+  <p class="consent-text" data-i18n="consent.text">This site uses cookies for payment processing (Stripe) and optional anonymous telemetry. No tracking or advertising cookies are used.</p>
+  <div class="consent-actions">
+    <button class="btn btn-primary btn-sm" onclick="acceptConsent()" data-i18n="consent.accept">Accept</button>
+    <a href="privacy.html" class="btn btn-outline btn-sm" data-i18n="consent.learn_more">Learn More</a>
+  </div>
+</div>
+
+<script src="i18n.js"></script>
+<script src="script.js"></script>
+<script>
+// ── Family filter ──
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const filter = btn.dataset.filter;
+
+    // Filter built-in cards
+    document.querySelectorAll('#builtin-grid .adapter-card').forEach(card => {
+      card.style.display = (filter === 'all' || card.dataset.family === filter) ? '' : 'none';
+    });
+
+    // Filter ecosystem cards
+    document.querySelectorAll('#ecosystem-grid .ecosystem-card').forEach(card => {
+      card.style.display = (filter === 'all' || card.dataset.family === filter) ? '' : 'none';
+    });
+  });
+});
+</script>
+</body>
+</html>

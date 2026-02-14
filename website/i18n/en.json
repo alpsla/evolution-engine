@@ -23,7 +23,9 @@
     "evidence_based_title": "Evidence-based",
     "evidence_based_desc": "Statistical deviation from your repo's own baseline. Modified z-scores, not arbitrary thresholds. Calibrated across 43 open-source repos.",
     "cross_signal_title": "Cross-signal",
-    "cross_signal_desc": "Correlates git + CI + deps + deploys. \"CI fails after big dependency updates\" is a pattern no single tool sees."
+    "cross_signal_desc": "Correlates git + CI + deps + deploys. \"CI fails after big dependency updates\" is a pattern no single tool sees.",
+    "extensible_title": "Extensible",
+    "extensible_desc": "Open adapter ecosystem. EE discovers available adapters for your tools, notifies you about updates, and auto-pulls community patterns."
   },
   "how_it_works": {
     "title": "How it works",
@@ -83,7 +85,36 @@
     "build_your_own_title": "Build Your Own",
     "build_your_own_desc": "Create a custom adapter with our scaffold tool and step-by-step guide. Ship it as a pip package.",
     "dont_see": "Don't see your tool? We prioritize by community demand.",
-    "request_adapter": "Request an Adapter"
+    "request_adapter": "Request an Adapter",
+    "explore_all": "Explore the full adapter ecosystem \u2192"
+  },
+  "adapters_page": {
+    "title": "Adapter Ecosystem",
+    "subtitle": "Built-in adapters, a plugin system for extensions, and an open ecosystem. Any tool with project data can become an adapter.",
+    "builtin_title": "Built-in Adapters",
+    "builtin_subtitle": "Ships with Evolution Engine. Zero config, auto-detected from your repo.",
+    "composer_desc": "PHP dependency tracking from composer.lock.",
+    "openapi_desc": "API schema change tracking from OpenAPI/Swagger specs.",
+    "terraform_desc": "Infrastructure-as-code change tracking from .tf files.",
+    "docker_desc": "Container config change tracking from Dockerfiles and compose files.",
+    "ci_local_desc": "Local CI workflow analysis from GitHub Actions, GitLab CI, Jenkins, and CircleCI config files.",
+    "gitlab_pipelines_desc": "GitLab CI/CD pipeline monitoring via API.",
+    "gitlab_releases_desc": "GitLab release cadence tracking via API.",
+    "plugin_title": "Plugin Ecosystem",
+    "plugin_subtitle": "Install any adapter via pip. Build your own in minutes. Plugins are auto-discovered at runtime.",
+    "install_title": "Install a Plugin",
+    "install_desc": "Third-party adapters are regular pip packages. Install one and EE discovers it automatically on the next run.",
+    "build_title": "Build Your Own",
+    "build_desc": "Scaffold a new adapter in one command. Implement iter_events(), validate, and publish.",
+    "build_cta": "Read the Guide",
+    "reference_title": "Reference Adapter: pytest-cov",
+    "reference_desc": "A working example adapter that reads test coverage data. Install it to see how plugins integrate with the pipeline.",
+    "ecosystem_title": "Ecosystem Possibilities",
+    "ecosystem_subtitle": "EE already detects these tools in your repo via prescan. Community adapters coming soon \u2014 or build one yourself.",
+    "badge_detected": "Detected",
+    "open_ended": "...and any other tool with project data. The list above is non-exhaustive.",
+    "request_title": "Don't See Your Tool?",
+    "request_subtitle": "We prioritize adapters by community demand. Tell us what you need, or build one yourself."
   },
   "pricing": {
     "title": "Simple, transparent pricing",

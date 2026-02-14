@@ -66,6 +66,25 @@ evo report . --open
 evo verify .evo/phase5/advisory.json
 ```
 
+## Adapters & Updates
+
+```bash
+# See what adapters are available for tools in your repo
+evo adapter discover .
+
+# Install a discovered adapter
+pip install evo-adapter-datadog
+
+# Check for adapter and EE updates
+evo adapter check-updates
+
+# View pending notifications (new adapters, updates)
+evo notifications list
+
+# Dismiss notifications after reading
+evo notifications dismiss
+```
+
 ## Configuration
 
 ```bash
@@ -78,8 +97,11 @@ evo config set ai.model claude-sonnet-4-5-20250929
 # Set a default GitHub token
 evo config set github.token ghp_...
 
-# Sync community patterns into your knowledge base
-evo patterns sync
+# Auto-pull community patterns on each analysis
+evo config set sync.auto_pull true
+
+# Opt into anonymous pattern sharing
+evo config set sync.privacy_level 2
 ```
 
 ## GitHub Action
@@ -123,18 +145,27 @@ Cross-family patterns are the key insight: "When dependency changes happen, git 
 ## All commands
 
 ```
-evo analyze [path]           Run the full analysis pipeline
-evo report [path]            Generate visual HTML report
-evo sources [path]           Show detected data sources + what-if estimates
-evo investigate [path]       AI root cause analysis
-evo fix [path]               AI fix-verify loop
-evo verify <advisory>        Compare current state to a previous advisory
-evo status [path]            Show adapter and run info
-evo license status           Check license tier
-evo config list              Show all settings
-evo config set <key> <val>   Update a setting
-evo patterns list [path]     Show knowledge base
-evo patterns sync            Sync universal patterns
+evo analyze [path]              Run the full analysis pipeline
+evo report [path]               Generate visual HTML report
+evo sources [path]              Show detected data sources + what-if estimates
+evo investigate [path]          AI root cause analysis
+evo fix [path]                  AI fix-verify loop
+evo verify <advisory>           Compare current state to a previous advisory
+evo status [path]               Show adapter and run info
+evo adapter list [path]         Show connected adapters and plugins
+evo adapter discover [path]     Find available adapters for your tools
+evo adapter check-updates       Check PyPI for adapter updates
+evo adapter new <name>          Scaffold a new adapter project
+evo notifications list          Show pending update notifications
+evo notifications dismiss       Dismiss notifications
+evo license status              Check license tier
+evo config list                 Show all settings
+evo config set <key> <val>      Update a setting
+evo patterns list [path]        Show knowledge base
+evo patterns pull [path]        Fetch community patterns
+evo patterns push [path]        Share anonymized patterns
+evo history list [path]         Show run history
+evo history diff [r1 r2]        Compare two runs
 ```
 
 Your code never leaves your machine. [Learn more](docs/INTEGRATIONS.md)
