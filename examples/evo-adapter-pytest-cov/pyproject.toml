@@ -9,6 +9,18 @@ description = "Evolution Engine adapter for pytest-cov coverage reports"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
+authors = [{name = "CodeQual", email = "info@codequal.dev"}]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+
+[project.urls]
+Homepage = "https://codequal.dev"
+Repository = "https://github.com/codequaldev/evolution-engine"
+Documentation = "https://codequal.dev/docs"
 
 [project.entry-points."evo.adapters"]
 evo-adapter-pytest-cov = "evo_pytest_cov:register"
