@@ -321,7 +321,17 @@ def _build_changes_section(changes):
         )
 
     n = len(changes)
-    cards = "\n".join(_build_change_card(c) for c in changes)
+    cards = "\n".join(_build_change_card(c, idx) for idx, c in enumerate(changes))
+
+    filter_buttons = (
+        '  <div class="severity-filters no-print">\n'
+        '    <button class="btn btn-filter active" onclick="filterChanges(\'all\', this)">All</button>\n'
+        '    <button class="btn btn-filter" onclick="filterChanges(\'deviation-high\', this)">Critical</button>\n'
+        '    <button class="btn btn-filter" onclick="filterChanges(\'deviation-medium\', this)">Medium</button>\n'
+        '    <button class="btn btn-filter" onclick="filterChanges(\'deviation-low\', this)">Low</button>\n'
+        '  </div>\n'
+    )
+
     return (
         '<section class="changes-detected page-break-before">\n'
         '  <h2>What Changed in Your Codebase</h2>\n'
@@ -329,12 +339,13 @@ def _build_changes_section(changes):
         f'    We\'ve detected {n} change{"s" if n != 1 else ""} that differ from your project\'s\n'
         '    normal patterns. Each change shows what typically happens versus what we observed this time.\n'
         '  </p>\n'
+        f'{filter_buttons}'
         f'  {cards}\n'
         '</section>'
     )
 
 
-def _build_change_card(c):
+def _build_change_card(c, index=0):
     family = c.get("family", "")
     metric_key = c.get("metric", "")
     metric_name = METRIC_LABELS.get(metric_key, metric_key)
@@ -347,6 +358,8 @@ def _build_change_card(c):
     dev_class = _deviation_class(dev)
     direction = "above" if dev >= 0 else "below"
     abs_dev = abs(dev)
+
+    anchor_id = f"change-{_esc(family)}-{_esc(metric_key)}"
 
     normal_w, current_w = _bar_widths(current, median)
 
@@ -378,8 +391,18 @@ def _build_change_card(c):
             '  </details>\n'
         )
 
+    # Action buttons for investigate/dismiss
+    investigate_cmd = f"evo investigate . --family {family}"
+    dismiss_cmd = f'evo accept . {index} --reason &quot;Expected behavior&quot;'
+    action_buttons = (
+        '  <div class="change-actions no-print">\n'
+        f'    <button class="btn btn-action" onclick="copyCommand(this, \'{_esc(investigate_cmd)}\')">Investigate</button>\n'
+        f'    <button class="btn btn-action btn-action-dismiss" onclick="copyCommand(this, \'{dismiss_cmd}\')">Dismiss</button>\n'
+        '  </div>\n'
+    )
+
     return (
-        f'<div class="change-card {dev_class}">\n'
+        f'<div class="change-card {dev_class}" id="{anchor_id}">\n'
         '  <div class="change-card-header">\n'
         f'    <span class="family-icon">{icon}</span>\n'
         f'    <div>\n'
@@ -401,6 +424,7 @@ def _build_change_card(c):
         '    </div>\n'
         '  </div>\n'
         f'  <div class="deviation-badge">{abs_dev:.1f}x {direction} typical range</div>\n'
+        f'{action_buttons}'
         f'{tech_html}'
         '</div>'
     )
@@ -835,8 +859,9 @@ def _build_files_table(files):
         path = f.get("path", "")
         change_type = f.get("change_type", "")
         first_seen = f.get("first_seen_in", "")[:8]
+        ide_link = f' <a class="ide-link no-print" href="vscode://file/{_esc(path)}" title="Open in VS Code">Open in IDE</a>'
         row = (
-            f'<tr><td><code>{_esc(path)}</code></td>'
+            f'<tr><td><code>{_esc(path)}</code>{ide_link}</td>'
             f'<td>{_esc(change_type.title())}</td>'
             f'<td><code>{_esc(first_seen)}</code></td></tr>'
         )
@@ -1334,6 +1359,26 @@ div.evidence-overflow.show { display: block; }
 .pattern-overflow { margin-top: 0.5em; }
 .pattern-overflow > summary { list-style: none; display: inline-block; margin-top: 0.5em; }
 .pattern-overflow > summary::-webkit-details-marker { display: none; }
+.severity-filters { display: flex; gap: 0.5em; margin-bottom: 1.5em; flex-wrap: wrap; }
+.btn-filter { background: white; border: 1px solid var(--color-border); color: var(--color-text);
+  padding: 0.5em 1em; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 10pt;
+  transition: all 250ms ease-out; }
+.btn-filter:hover { background: var(--color-bg-subtle); border-color: var(--color-secondary); }
+.btn-filter.active { background: var(--color-secondary); color: white;
+  border-color: var(--color-secondary); }
+.change-actions { display: flex; gap: 0.5em; margin-top: 0.75em; }
+.btn-action { background: var(--color-bg-subtle); border: 1px solid var(--color-border);
+  color: var(--color-primary); padding: 0.4em 1em; border-radius: 6px; cursor: pointer;
+  font-weight: 600; font-size: 9pt; transition: all 250ms ease-out; }
+.btn-action:hover { background: var(--color-secondary); color: white;
+  border-color: var(--color-secondary); }
+.btn-action-dismiss { color: var(--color-text-muted); }
+.btn-action-dismiss:hover { background: var(--color-warning); color: white;
+  border-color: var(--color-warning); }
+.change-card.filter-hidden { display: none; }
+.ide-link { font-size: 8pt; color: var(--color-secondary); text-decoration: none;
+  margin-left: 0.5em; font-weight: 600; }
+.ide-link:hover { text-decoration: underline; }
 .page-break-before { page-break-before: always; }
 .page-break-after { page-break-after: always; }
 footer { margin-top: 4em; padding-top: 2em; border-top: 1px solid var(--color-border);
@@ -1411,6 +1456,41 @@ function toggleTableRows(id, btn) {
     btn.textContent = 'Collapse';
   } else {
     btn.textContent = btn.getAttribute('data-label') || 'Show all';
+  }
+}
+function copyCommand(btn, cmd) {
+  var text = cmd.replace(/&quot;/g, '"');
+  navigator.clipboard.writeText(text).then(function() {
+    var orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.style.background = 'var(--color-success)';
+    btn.style.color = 'white';
+    btn.style.borderColor = 'var(--color-success)';
+    setTimeout(function() {
+      btn.textContent = orig;
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+function filterChanges(level, btn) {
+  var cards = document.querySelectorAll('.change-card');
+  var buttons = document.querySelectorAll('.btn-filter');
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].classList.remove('active');
+  }
+  btn.classList.add('active');
+  for (var j = 0; j < cards.length; j++) {
+    if (level === 'all') {
+      cards[j].classList.remove('filter-hidden');
+    } else {
+      if (cards[j].classList.contains(level)) {
+        cards[j].classList.remove('filter-hidden');
+      } else {
+        cards[j].classList.add('filter-hidden');
+      }
+    }
   }
 }
 document.addEventListener('DOMContentLoaded', function() {

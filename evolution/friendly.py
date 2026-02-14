@@ -469,3 +469,74 @@ def pattern_risk_assessment(pattern: dict) -> dict:
 def _severity_rank(severity: str) -> int:
     """Numeric rank for comparing severity levels."""
     return {"positive": 0, "info": 1, "watch": 2, "concern": 3, "critical": 4}.get(severity, 1)
+
+
+# ─── Advisory Status Rollup ───
+
+_ADVISORY_STATUS = {
+    "action_required": {"level": "action_required", "icon": "\u26a0\ufe0f", "label": "Action Required"},
+    "needs_attention": {"level": "needs_attention", "icon": "\U0001f50d", "label": "Needs Attention"},
+    "worth_monitoring": {"level": "worth_monitoring", "icon": "\U0001f441\ufe0f", "label": "Worth Monitoring"},
+    "all_clear": {"level": "all_clear", "icon": "\u2705", "label": "All Clear"},
+}
+
+# Numeric rank for threshold comparison: higher = more severe
+_STATUS_RANK = {
+    "all_clear": 0,
+    "worth_monitoring": 1,
+    "needs_attention": 2,
+    "action_required": 3,
+}
+
+
+def advisory_status(advisory: dict) -> dict:
+    """Compute overall advisory status from findings.
+
+    Maps the highest individual deviation to one of four levels:
+      - action_required: any Critical or High finding (deviation >= 4.0)
+      - needs_attention: any Medium finding (deviation >= 2.0)
+      - worth_monitoring: any Low finding (deviation >= 1.0)
+      - all_clear: no significant deviations
+
+    Returns dict with level, icon, label.
+    """
+    changes = advisory.get("changes", [])
+    if not changes:
+        return dict(_ADVISORY_STATUS["all_clear"])
+
+    deviations = [abs(c.get("deviation_stddev", 0)) for c in changes]
+    max_deviation = max(deviations) if deviations else 0
+
+    if max_deviation >= 4.0:
+        return dict(_ADVISORY_STATUS["action_required"])
+    elif max_deviation >= 2.0:
+        return dict(_ADVISORY_STATUS["needs_attention"])
+    elif max_deviation >= 1.0:
+        return dict(_ADVISORY_STATUS["worth_monitoring"])
+    else:
+        return dict(_ADVISORY_STATUS["all_clear"])
+
+
+def status_meets_threshold(status_level: str, min_severity: str) -> bool:
+    """Check if an advisory status level meets a notification threshold.
+
+    Args:
+        status_level: The advisory status (e.g. "action_required").
+        min_severity: The configured threshold (e.g. "concern").
+
+    Threshold mapping:
+      - "critical" → only action_required
+      - "concern"  → action_required + needs_attention (default)
+      - "watch"    → action_required + needs_attention + worth_monitoring
+      - "info"     → everything
+
+    Returns True if the status is severe enough to trigger notification.
+    """
+    threshold_map = {
+        "critical": "action_required",
+        "concern": "needs_attention",
+        "watch": "worth_monitoring",
+        "info": "all_clear",
+    }
+    min_level = threshold_map.get(min_severity, "needs_attention")
+    return _STATUS_RANK.get(status_level, 0) >= _STATUS_RANK.get(min_level, 0)

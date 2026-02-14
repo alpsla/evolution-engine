@@ -94,6 +94,9 @@ class Orchestrator:
         start = time.monotonic()
         log = self._log if not quiet else lambda *a, **k: None
 
+        # ── Snapshot previous advisory for loop closure ──
+        previous_advisory = self._load_previous_advisory()
+
         # ── Clean previous run data for a fresh analysis ──
         self._clean_pipeline_data()
 
@@ -209,11 +212,15 @@ class Orchestrator:
         # Auto-pull community patterns if enabled (before discovery)
         self._auto_pull_community_patterns(log)
 
-        # Import universal patterns BEFORE discovery so Phase 4 can
-        # find them by fingerprint and increment rather than duplicate.
-        imported = self._import_universal_patterns(log)
-        if imported > 0:
-            log(f"  Imported {imported} universal pattern(s)")
+        # Fetch patterns from registry handler (immediate availability)
+        registry_imported = self._import_registry_patterns(active_families, log)
+        if registry_imported:
+            log(f"  Imported {registry_imported} pattern(s) from community registry")
+
+        # Auto-fetch and import patterns from PyPI pattern packages (durable backup)
+        pkg_imported = self._import_pattern_packages(active_families, log)
+        if pkg_imported:
+            log(f"  Imported {pkg_imported} pattern(s) from community packages")
 
         p4_result = phase4.run()
         phase4.close()
@@ -237,6 +244,9 @@ class Orchestrator:
             except Exception:
                 pass  # History should never block the pipeline
 
+        # ── Loop closure: compare with previous advisory ──
+        resolution = self._compute_resolution(previous_advisory, p5_result)
+
         elapsed = round(time.monotonic() - start, 1)
 
         result = {
@@ -259,12 +269,16 @@ class Orchestrator:
             "elapsed_seconds": elapsed,
         }
 
+        if resolution:
+            result["resolution"] = resolution
+
         if p5_result["status"] == "complete":
             advisory = p5_result["advisory"]
             result["advisory"] = {
                 "significant_changes": advisory["summary"]["significant_changes"],
                 "families_affected": advisory["summary"]["families_affected"],
                 "patterns_matched": advisory["summary"]["known_patterns_matched"],
+                "status": advisory.get("status", {}),
             }
             result["formats"] = p5_result.get("formats", {})
 
@@ -336,28 +350,19 @@ class Orchestrator:
         except Exception as e:
             logger.debug("Auto-pull failed (non-fatal): %s", e)
 
-    # ─────────────────── Universal Pattern Import ───────────────────
+    # ─────────────────── Pattern Package Import ───────────────────
 
-    def _import_universal_patterns(self, log) -> int:
-        """Auto-import bundled universal patterns into the local KB.
+    def _import_pattern_packages(self, detected_families: list[str], log) -> int:
+        """Auto-fetch and import patterns from PyPI pattern packages.
 
-        Reads evolution/data/universal_patterns.json (shipped with the package)
-        and imports any patterns not already present. The import function
-        handles dedup by fingerprint, so this is safe to call on every run.
-
-        Returns the number of newly imported patterns.
+        Downloads pattern data directly from wheels (no pip install),
+        validates it, filters by locally-detected families, and imports.
         """
         try:
+            from evolution.pattern_registry import fetch_available_patterns
             from evolution.kb_export import import_patterns
 
-            # Locate bundled universal patterns
-            data_dir = Path(__file__).parent / "data"
-            universal_path = data_dir / "universal_patterns.json"
-            if not universal_path.exists():
-                return 0
-
-            data = json.loads(universal_path.read_text())
-            patterns = data.get("import_ready", [])
+            patterns = fetch_available_patterns(detected_families)
             if not patterns:
                 return 0
 
@@ -365,11 +370,78 @@ class Orchestrator:
             if not db_path.exists():
                 return 0
 
-            # Universal patterns are bundled with EE — trusted, skip quorum
+            # Downloaded from PyPI, validated by pattern_registry — skip quorum
             result = import_patterns(db_path, patterns, min_attestations=0)
             return result.get("imported", 0)
         except Exception as e:
-            log(f"  [warn] Could not import universal patterns: {e}")
+            logger.debug("Pattern package import failed (non-fatal): %s", e)
+            return 0
+
+    # ─────────────────── Registry Direct Pull ───────────────────
+
+    def _import_registry_patterns(self, detected_families: list[str], log) -> int:
+        """Fetch patterns directly from the registry handler (Redis-backed).
+
+        This provides immediate availability — patterns pushed by any user
+        are available to all other users on their next `evo analyze`, without
+        waiting for a PyPI snapshot.
+
+        Non-blocking: failures are logged and ignored.
+        """
+        try:
+            import urllib.request
+
+            from evolution.config import EvoConfig
+            from evolution.kb_export import import_patterns
+
+            cfg = EvoConfig()
+            registry_url = cfg.get("sync.registry_url", "https://codequal.dev/api")
+
+            # Check 24h cache to avoid hitting the registry on every run
+            cache_path = self.evo_dir / "registry_cache.json"
+            now = time.time()
+            if cache_path.exists():
+                cache = json.loads(cache_path.read_text())
+                if now - cache.get("last_fetched", 0) < 86400:
+                    return 0
+
+            url = f"{registry_url}/patterns"
+            req = urllib.request.Request(url, headers={"Accept": "application/json"})
+            resp = urllib.request.urlopen(req, timeout=10)
+            data = json.loads(resp.read().decode("utf-8"))
+            patterns = data.get("patterns", [])
+
+            if not patterns:
+                return 0
+
+            # Filter by detected families
+            families_set = set(detected_families)
+            filtered = [
+                p for p in patterns
+                if any(s in families_set for s in p.get("sources", []))
+            ]
+            if not filtered:
+                return 0
+
+            db_path = self.evo_dir / "phase4" / "knowledge.db"
+            if not db_path.exists():
+                return 0
+
+            # Registry patterns are pre-validated server-side — skip quorum
+            result = import_patterns(db_path, filtered, min_attestations=0)
+            imported = result.get("imported", 0)
+
+            # Update cache timestamp
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(json.dumps({
+                "last_fetched": now,
+                "pattern_count": len(patterns),
+                "imported": imported,
+            }))
+
+            return imported
+        except Exception as e:
+            logger.debug("Registry pattern import failed (non-fatal): %s", e)
             return 0
 
     # ─────────────────── Ingestion Helpers ───────────────────
@@ -542,6 +614,99 @@ class Orchestrator:
         except Exception:
             pass
         return None, None
+
+    def _load_previous_advisory(self) -> Optional[dict]:
+        """Load the current advisory.json before it is cleaned, if it exists.
+
+        This snapshot is used after the pipeline completes to compute
+        resolution progress (loop closure for hooks).
+        """
+        advisory_path = self.evo_dir / "phase5" / "advisory.json"
+        if not advisory_path.exists():
+            return None
+        try:
+            return json.loads(advisory_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return None
+
+    def _compute_resolution(
+        self,
+        previous_advisory: Optional[dict],
+        p5_result: dict,
+    ) -> Optional[dict]:
+        """Compare current advisory with previous to compute resolution progress.
+
+        If a previous advisory exists and the current pipeline produced a
+        complete advisory, returns a resolution dict:
+            {resolved: N, persisting: N, new: N, regressions: N, total_before: N}
+
+        Also saves the current advisory as advisory.json (already done by Phase 5)
+        and auto-generates residual_prompt.txt when findings remain.
+
+        Returns None if no previous advisory or current pipeline has no advisory.
+        """
+        if previous_advisory is None:
+            return None
+        if p5_result.get("status") != "complete" or not p5_result.get("advisory"):
+            return None
+
+        try:
+            from evolution.fixer import compare_advisories
+
+            current_advisory = p5_result["advisory"]
+            diff = compare_advisories(current_advisory, previous_advisory)
+
+            resolved_count = len(diff["resolved"])
+            persisting_count = len(diff["persisting"])
+            new_count = len(diff["new"])
+            regression_count = len(diff["regressions"])
+            total_before = len(previous_advisory.get("changes", []))
+
+            resolution = {
+                "resolved": resolved_count,
+                "persisting": persisting_count,
+                "new": new_count,
+                "regressions": regression_count,
+                "total_before": total_before,
+            }
+
+            # Auto-save residual_prompt.txt when findings remain
+            remaining = persisting_count + new_count + regression_count
+            if remaining > 0:
+                self._save_residual_prompt(current_advisory, previous_advisory)
+
+            return resolution
+        except Exception as e:
+            logger.debug("Resolution comparison failed (non-fatal): %s", e)
+            return None
+
+    def _save_residual_prompt(
+        self,
+        current_advisory: dict,
+        previous_advisory: dict,
+    ) -> None:
+        """Auto-generate residual_prompt.txt for the 'Fix with AI' button.
+
+        Uses the Fixer's _build_residual_prompt to create an iteration-aware
+        prompt comparing current vs previous advisory findings.
+        """
+        try:
+            from evolution.fixer import Fixer
+
+            fixer = Fixer(repo_path=self.repo_path, evo_dir=self.evo_dir)
+
+            # Load investigation text
+            investigation_text = fixer._load_investigation() or "(no investigation report available)"
+
+            prompt = fixer._build_residual_prompt(
+                current_advisory, previous_advisory, investigation_text,
+            )
+
+            residual_path = self.evo_dir / "phase5" / "residual_prompt.txt"
+            residual_path.parent.mkdir(parents=True, exist_ok=True)
+            residual_path.write_text(prompt, encoding="utf-8")
+        except Exception as e:
+            logger.debug("Residual prompt generation failed (non-fatal): %s", e)
 
     def _clean_pipeline_data(self):
         """Clear previous pipeline outputs for a fresh analysis.

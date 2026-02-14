@@ -7,13 +7,17 @@ Usage:
     evo analyze . --show-prompt      # Print investigation prompt after analysis
     evo sources [path]               # Show connected + detected data sources
     evo sources --what-if datadog    # Estimate impact of adding adapters
-    evo accept [path] 1 3            # Accept deviations by change number
+    evo accept [path] 1 3                         # Accept permanently (default)
+    evo accept [path] 1 --scope commits --from abc123 --to def456
+    evo accept [path] 1 --scope dates --from 2026-02-10 --to 2026-02-14
+    evo accept [path] 1 --scope this-run          # Dismiss for this run only
     evo accepted list [path]          # Show all accepted deviations
     evo accepted remove [path] <key>  # Un-accept a deviation
     evo accepted clear [path]         # Remove all acceptances
     evo investigate [path]           # AI investigation of advisory findings
     evo fix [path]                   # AI fix loop (iterate until EE confirms clear)
     evo fix . --dry-run              # Preview fix prompt without modifying files
+    evo fix . --dry-run --residual   # Iteration-aware prompt (current vs previous)
     evo status [path]                # Show detected adapters and last run info
     evo report [path]                # Generate HTML report
     evo patterns list                # Show KB contents
@@ -24,6 +28,15 @@ Usage:
     evo config list                  # Show all config settings
     evo config get <key>             # Get a config value
     evo config set <key> <value>     # Set a config value
+    evo setup                        # Interactive configuration wizard
+    evo setup --ui                   # Browser-based settings page
+    evo init [path]                  # Guided project initialization
+    evo init . --path hooks          # Set up git hook integration
+    evo watch [path]                 # Watch for commits and auto-analyze
+    evo watch . --daemon             # Run watcher in background
+    evo hooks install [path]         # Install EE git hook
+    evo hooks uninstall [path]       # Remove EE git hooks
+    evo hooks status [path]          # Show git hook status
     evo license status               # Show current license status
     evo license activate <key>       # Save license key
     evo verify <previous>            # Fix verification loop
@@ -98,15 +111,31 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, show
     elif result["status"] == "no_events":
         click.echo(result["message"])
         sys.exit(1)
+    elif result["status"] == "complete" and not quiet:
+        # Show structured advisory summary
+        advisory = result.get("advisory", {})
+        status_info = advisory.get("status", {})
+        icon = status_info.get("icon", "")
+        label = status_info.get("label", "Complete")
+        changes = advisory.get("significant_changes", 0)
+        families = advisory.get("families_affected", [])
+        patterns = advisory.get("patterns_matched", 0)
+
+        click.echo(f"\n{icon} {label}")
+        click.echo(f"  {changes} significant change(s) across {', '.join(families) or 'no families'}")
+        if patterns:
+            click.echo(f"  {patterns} known pattern(s) matched")
+        if status_info.get("level") in ("action_required", "needs_attention"):
+            click.echo(f"\n  Run `evo investigate .` for AI-powered root cause analysis")
+            click.echo(f"  Run `evo accept . <N>` to dismiss expected changes")
 
     # Track analyze completion
     if result["status"] == "complete":
-        summary = result.get("summary", {})
+        advisory = result.get("advisory", {})
         track_event("analyze_complete", {
-            "adapter_count": summary.get("adapters_detected", 0),
-            "families": summary.get("families_affected", []),
-            "signal_count": summary.get("significant_changes", 0),
-            "pattern_count": summary.get("known_patterns_matched", 0),
+            "families": advisory.get("families_affected", []),
+            "signal_count": advisory.get("significant_changes", 0),
+            "pattern_count": advisory.get("patterns_matched", 0),
         })
 
     if show_prompt and result["status"] == "complete":
@@ -170,7 +199,11 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, show
 @click.argument("indices", nargs=-1, type=int, required=True)
 @click.option("--reason", "-r", default="", help="Why this deviation is expected")
 @click.option("--evo-dir", help="Override .evo directory path")
-def accept(path, indices, reason, evo_dir):
+@click.option("--scope", type=click.Choice(["permanent", "commits", "dates", "this-run"]),
+              default="permanent", help="Scope of acceptance")
+@click.option("--from", "scope_from", default="", help="Scope start (commit SHA or date)")
+@click.option("--to", "scope_to", default="", help="Scope end (commit SHA or date)")
+def accept(path, indices, reason, evo_dir, scope, scope_from, scope_to):
     """Accept deviations from the latest advisory by change number.
 
     After running `evo analyze`, use the numbered change indices to mark
@@ -179,6 +212,8 @@ def accept(path, indices, reason, evo_dir):
     Examples:
         evo accept . 1 3              # Accept changes #1 and #3
         evo accept . 1 -r "Expected"  # Accept with a reason
+        evo accept . 1 --scope commits --from abc123 --to def456
+        evo accept . 1 --scope this-run
     """
     from evolution.accepted import AcceptedDeviations
 
@@ -205,12 +240,25 @@ def accept(path, indices, reason, evo_dir):
         sys.exit(1)
 
     ad = AcceptedDeviations(evo_path)
+
+    # Build scope
+    scope_dict = {"type": scope}
+    if scope in ("commits", "dates"):
+        if not scope_from:
+            click.echo(f"--from is required for --scope {scope}")
+            sys.exit(1)
+        scope_dict["from"] = scope_from
+        if scope_to:
+            scope_dict["to"] = scope_to
+    elif scope == "this-run":
+        scope_dict["advisory_id"] = advisory_id
+
     accepted_items = []
     for idx in indices:
         change = changes[idx - 1]
         key = f"{change['family']}:{change['metric']}"
         if ad.add(key, change["family"], change["metric"],
-                  reason=reason, advisory_id=advisory_id):
+                  reason=reason, advisory_id=advisory_id, scope=scope_dict):
             accepted_items.append(change)
 
     if accepted_items:
@@ -272,6 +320,16 @@ def accepted_list(path, evo_dir):
             line += f" — accepted {age}"
         if e.get("reason"):
             line += f' — "{e["reason"]}"'
+        scope_info = e.get("scope", {})
+        scope_type = scope_info.get("type", "permanent")
+        if scope_type != "permanent":
+            scope_str = f" [{scope_type}"
+            if scope_info.get("from"):
+                scope_str += f": {scope_info['from']}"
+                if scope_info.get("to"):
+                    scope_str += f"..{scope_info['to']}"
+            scope_str += "]"
+            line += scope_str
         click.echo(line)
 
 
@@ -279,22 +337,32 @@ def accepted_list(path, evo_dir):
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.argument("key")
 @click.option("--evo-dir", help="Override .evo directory path")
-def accepted_remove(path, key, evo_dir):
+@click.option("--scope-type", type=click.Choice(["permanent", "commits", "dates", "this-run"]),
+              help="Remove only acceptances with this scope type")
+def accepted_remove(path, key, evo_dir, scope_type):
     """Remove an accepted deviation by family:metric key.
 
     Example:
         evo accepted remove . git:dispersion
+        evo accepted remove . git:dispersion --scope-type this-run
     """
     from evolution.accepted import AcceptedDeviations
 
     evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
     ad = AcceptedDeviations(evo_path)
 
-    if ad.remove(key):
-        click.echo(f"Removed: {key}")
+    if scope_type:
+        if ad.remove_scoped(key, scope_type):
+            click.echo(f"Removed: {key} (scope: {scope_type})")
+        else:
+            click.echo(f"Not found: {key} with scope {scope_type}")
+            sys.exit(1)
     else:
-        click.echo(f"Not found: {key}")
-        sys.exit(1)
+        if ad.remove(key):
+            click.echo(f"Removed: {key}")
+        else:
+            click.echo(f"Not found: {key}")
+            sys.exit(1)
 
 
 @accepted.command("clear")
@@ -394,7 +462,9 @@ def investigate(path, evo_dir, show_prompt, agent_type, model):
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompt")
 @click.option("--interactive", "-i", is_flag=True,
               help="Review git diff after each iteration and confirm before continuing")
-def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes, interactive):
+@click.option("--residual", is_flag=True,
+              help="Generate iteration-aware prompt comparing current vs previous advisory")
+def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes, interactive, residual):
     """Apply AI fixes and verify with EE in a loop.
 
     Creates a branch, asks an AI agent to fix the flagged issues,
@@ -403,6 +473,7 @@ def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes, 
 
     Examples:
         evo fix . --dry-run              # preview what would be fixed
+        evo fix . --dry-run --residual   # iteration-aware prompt (current vs previous)
         evo fix .                        # fix with auto-detected agent
         evo fix . --max-iterations 5     # allow more attempts
         evo fix . --branch my-fix        # custom branch name
@@ -483,13 +554,15 @@ def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes, 
         agent=agent,
         max_iterations=max_iterations,
         dry_run=dry_run,
+        residual=residual,
         branch_name=branch,
         scope=scope,
         interactive_callback=interactive_callback,
     )
 
     if dry_run:
-        click.echo("DRY RUN — no files modified\n")
+        label = "DRY RUN (residual)" if residual else "DRY RUN"
+        click.echo(f"{label} — no files modified\n")
         if result.iterations:
             click.echo(result.iterations[0].agent_response)
         return
@@ -683,48 +756,6 @@ def patterns_import(file, path):
         click.echo(f"  {quarantined} pattern(s) stored as 'unverified' (need more attestations)")
     for err in result.get("errors", []):
         click.echo(f"  Error: {err}")
-
-
-@patterns.command("sync")
-@click.argument("path", default=".", type=click.Path(exists=True))
-def patterns_sync(path):
-    """Sync universal patterns into local knowledge base.
-
-    Imports bundled universal patterns (shipped with the package) into
-    your local KB. Patterns already present are skipped automatically.
-    This also runs automatically during `evo analyze`.
-    """
-    from evolution.kb_export import import_patterns
-
-    db_path = Path(path) / ".evo" / "phase4" / "knowledge.db"
-    if not db_path.exists():
-        click.echo("No knowledge base found. Run `evo analyze` first.")
-        return
-
-    # Load bundled universal patterns
-    data_dir = Path(__file__).parent / "data"
-    universal_path = data_dir / "universal_patterns.json"
-    if not universal_path.exists():
-        click.echo("No bundled universal patterns found.")
-        return
-
-    data = json.loads(universal_path.read_text())
-    patterns_to_import = data.get("import_ready", [])
-
-    if not patterns_to_import:
-        click.echo("No universal patterns available to import.")
-        return
-
-    click.echo(f"Syncing {len(patterns_to_import)} universal pattern(s)...")
-    # Universal patterns are bundled with EE — trusted, skip quorum
-    result = import_patterns(db_path, patterns_to_import, min_attestations=0)
-    click.echo(f"  New: {result['imported']}, Already present: {result['skipped']}, "
-               f"Rejected: {result['rejected']}")
-
-    if result["imported"] > 0:
-        click.echo(f"\n{result['imported']} new pattern(s) added to your knowledge base.")
-    else:
-        click.echo("\nKnowledge base is up to date.")
 
 
 # ─────────────────── evo sources ───────────────────
@@ -1922,9 +1953,50 @@ def verify(previous, path, scope):
 
     if result["status"] == "verified":
         click.echo(result["verification_text"])
+
+        verification = result.get("verification", {})
+        summary = verification.get("summary", {})
+        total_before = summary.get("total_before", 0)
+        resolved_count = summary.get("resolved", 0)
+        persisting_count = summary.get("persisting", 0)
+        new_count = summary.get("new", 0)
+        remaining = persisting_count + new_count
+
+        if remaining > 0 and total_before > 0:
+            # Calculate and display resolution progress
+            pct = int(resolved_count / total_before * 100)
+            click.echo(f"\nResolved: {resolved_count} of {total_before} ({pct}%)")
+
+            # Build and save residual prompt
+            from evolution.fixer import Fixer
+            fixer = Fixer(repo_path=path, evo_dir=evo_dir)
+            current_advisory = result.get("advisory", {})
+            previous_advisory = phase5._load_previous_advisory(
+                Path(previous)
+            )
+            investigation_text = _load_investigation_text(evo_dir)
+            prompt = fixer._build_residual_prompt(
+                current_advisory, previous_advisory, investigation_text,
+            )
+            residual_path = Path(evo_dir) / "phase5" / "residual_prompt.txt"
+            residual_path.parent.mkdir(parents=True, exist_ok=True)
+            residual_path.write_text(prompt, encoding="utf-8")
+
+            click.echo(f"Residual prompt saved to {residual_path}")
+            click.echo("Copy to your AI tool to continue fixing.")
+        elif total_before > 0:
+            click.echo("\nAll findings resolved — no residual prompt needed.")
     else:
         click.echo(f"Status: {result['status']}")
         click.echo(result.get("message", ""))
+
+
+def _load_investigation_text(evo_dir: Path) -> str:
+    """Load investigation text from .evo/investigation/ if available."""
+    inv_path = evo_dir / "investigation" / "investigation.txt"
+    if inv_path.exists():
+        return inv_path.read_text(encoding="utf-8")
+    return "(no investigation report available)"
 
 
 # ─────────────────── evo config ───────────────────
@@ -1937,20 +2009,46 @@ def config():
 
 
 @config.command("list")
-def config_list():
-    """Show all configuration settings with defaults."""
-    from evolution.config import EvoConfig
+@click.option("--flat", is_flag=True, help="Show flat key=value format (legacy)")
+def config_list(flat):
+    """Show all configuration settings grouped by category."""
+    from evolution.config import EvoConfig, config_groups, config_keys_for_group, config_metadata
 
     cfg = EvoConfig()
     overrides = cfg.user_overrides()
 
     click.echo(f"Config file: {cfg.path}")
+
+    if flat:
+        click.echo()
+        for key, value in sorted(cfg.all().items()):
+            marker = " *" if key in overrides else ""
+            click.echo(f"  {key} = {value}{marker}")
+        click.echo()
+        click.echo("  (* = user override, all others are defaults)")
+        return
+
+    # Grouped display
+    groups = config_groups()
+    for group_key, group_info in groups.items():
+        keys = config_keys_for_group(group_key)
+        if not keys:
+            continue
+        click.echo()
+        click.echo(f"  {group_info['label']}")
+        for key in keys:
+            meta = config_metadata(key)
+            value = cfg.get(key)
+            marker = " *" if key in overrides else ""
+            desc = meta.get("description", "")
+            labels = meta.get("allowed_labels", {})
+            display_val = labels.get(value, value) if labels else value
+            click.echo(f"    {key} = {display_val}{marker}")
+            if desc:
+                click.echo(f"      {desc}")
     click.echo()
-    for key, value in sorted(cfg.all().items()):
-        marker = " *" if key in overrides else ""
-        click.echo(f"  {key} = {value}{marker}")
-    click.echo()
-    click.echo("  (* = user override, all others are defaults)")
+    click.echo("  (* = user override)")
+    click.echo("  Run `evo config set <key> <value>` to change a setting.")
 
 
 @config.command("get")
@@ -1991,6 +2089,402 @@ def config_reset(key):
         click.echo(f"Reset {key} to default")
     else:
         click.echo(f"{key} was already at default")
+
+
+# ─────────────────── evo setup ───────────────────
+
+
+@main.command()
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--reset", is_flag=True, help="Reset all settings to defaults first")
+@click.option("--ui", is_flag=True, help="Open browser-based settings page")
+@click.option("--port", default=8484, type=int, help="Port for --ui server (default: 8484)")
+def setup(path, reset, ui, port):
+    """Interactive configuration wizard.
+
+    Walks through settings by category. Press Enter to keep current values.
+    Skip a group by typing 's'. Type 'q' to save and quit at any time.
+
+    Use --ui to open a browser-based settings page instead.
+
+    Examples:
+        evo setup .
+        evo setup . --reset
+        evo setup --ui
+        evo setup --ui --port 9090
+    """
+    from evolution.config import EvoConfig, config_groups, config_keys_for_group, config_metadata, _parse_value
+
+    cfg = EvoConfig()
+
+    if ui:
+        from evolution.setup_ui import SetupUI
+        click.echo(f"Opening settings in browser on http://localhost:{port} ...")
+        setup_ui = SetupUI(port=port, config=cfg)
+        setup_ui.serve()
+        click.echo("Settings saved.")
+        return
+
+    if reset:
+        if click.confirm("Reset all settings to defaults?"):
+            for key in list(cfg.user_overrides()):
+                cfg.delete(key)
+            click.echo("Settings reset to defaults.\n")
+
+    click.echo("Evolution Engine Setup")
+    click.echo("=" * 40)
+    click.echo("Press Enter to keep current value, 's' to skip group, 'q' to save & quit.\n")
+
+    groups = config_groups()
+    changed = 0
+
+    for group_key, group_info in groups.items():
+        keys = config_keys_for_group(group_key)
+        if not keys:
+            continue
+
+        click.echo(f"\n--- {group_info['label']} ---")
+        if group_info.get("description"):
+            click.echo(f"  {group_info['description']}\n")
+
+        skip_group = False
+        for key in keys:
+            if skip_group:
+                break
+
+            meta = config_metadata(key)
+            current = cfg.get(key)
+            display = meta.get("display", key)
+            key_type = meta.get("type", "str")
+
+            # Show current value
+            labels = meta.get("allowed_labels", {})
+            current_display = labels.get(current, current) if labels else current
+
+            if key_type == "bool":
+                prompt_text = f"  {display} [{current_display}]"
+                try:
+                    raw = click.prompt(prompt_text, default="", show_default=False).strip()
+                except (EOFError, click.Abort):
+                    break
+                if raw.lower() == 'q':
+                    click.echo(f"\nSaved {changed} change(s).")
+                    return
+                if raw.lower() == 's':
+                    skip_group = True
+                    continue
+                if raw == "":
+                    continue
+                value = raw.lower() in ("true", "yes", "y", "1")
+                if value != current:
+                    cfg.set(key, value)
+                    changed += 1
+
+            elif key_type == "choice":
+                allowed = meta.get("allowed", [])
+                options = []
+                for i, opt in enumerate(allowed, 1):
+                    label = labels.get(opt, opt)
+                    marker = " <-" if opt == current else ""
+                    options.append(f"    {i}. {label}{marker}")
+
+                click.echo(f"  {display}")
+                click.echo("\n".join(options))
+                try:
+                    raw = click.prompt(f"  Choice [current: {current_display}]", default="", show_default=False).strip()
+                except (EOFError, click.Abort):
+                    break
+                if raw.lower() == 'q':
+                    click.echo(f"\nSaved {changed} change(s).")
+                    return
+                if raw.lower() == 's':
+                    skip_group = True
+                    continue
+                if raw == "":
+                    continue
+                try:
+                    idx = int(raw) - 1
+                    if 0 <= idx < len(allowed):
+                        value = allowed[idx]
+                        if value != current:
+                            cfg.set(key, value)
+                            changed += 1
+                except (ValueError, IndexError):
+                    click.echo(f"    Invalid choice: {raw}")
+
+            else:  # str, int
+                placeholder = meta.get("placeholder", "")
+                hint = f" (e.g. {placeholder})" if placeholder else ""
+                try:
+                    raw = click.prompt(f"  {display}{hint} [{current_display}]", default="", show_default=False).strip()
+                except (EOFError, click.Abort):
+                    break
+                if raw.lower() == 'q':
+                    click.echo(f"\nSaved {changed} change(s).")
+                    return
+                if raw.lower() == 's':
+                    skip_group = True
+                    continue
+                if raw == "":
+                    continue
+                value = _parse_value(raw)
+                if value != current:
+                    cfg.set(key, value)
+                    changed += 1
+
+    click.echo(f"\nSetup complete. {changed} setting(s) changed.")
+    click.echo(f"Config file: {cfg.path}")
+    click.echo("Run `evo config list` to see all settings.")
+
+
+# ─────────────────── evo hooks ───────────────────
+
+
+@main.group()
+def hooks():
+    """Manage git hook integration."""
+    pass
+
+
+@hooks.command("install")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--trigger", type=click.Choice(["post-commit", "pre-push"]),
+              help="Hook trigger (default: from config)")
+def hooks_install(path, trigger):
+    """Install EE git hook for automatic analysis.
+
+    The hook runs `evo analyze` after each commit (or before push)
+    and notifies you when findings exceed your configured threshold.
+
+    Examples:
+        evo hooks install .
+        evo hooks install . --trigger pre-push
+    """
+    from evolution.hooks import HookManager
+
+    hm = HookManager(path)
+    result = hm.install(trigger=trigger)
+
+    if result["ok"]:
+        click.echo(f"Hook installed: {result['hook_path']}")
+        click.echo(f"Trigger: {result['trigger']}")
+        status = hm.status()
+        click.echo(f"Threshold: {status['config']['min_severity']}")
+        click.echo()
+        click.echo("EE will now analyze your code automatically.")
+        click.echo("Configure with: evo config set hooks.<key> <value>")
+    else:
+        click.echo(f"Error: {result.get('error', 'unknown')}")
+        sys.exit(1)
+
+
+@hooks.command("uninstall")
+@click.argument("path", default=".", type=click.Path(exists=True))
+def hooks_uninstall(path):
+    """Remove EE git hooks."""
+    from evolution.hooks import HookManager
+
+    hm = HookManager(path)
+    result = hm.uninstall()
+
+    if result["ok"]:
+        removed = result.get("removed", [])
+        if removed:
+            for r in removed:
+                click.echo(f"Removed: {r}")
+        else:
+            click.echo("No EE hooks found.")
+    else:
+        click.echo(f"Error: {result.get('error', 'unknown')}")
+        sys.exit(1)
+
+
+@hooks.command("status")
+@click.argument("path", default=".", type=click.Path(exists=True))
+def hooks_status(path):
+    """Show git hook status."""
+    from evolution.hooks import HookManager
+
+    hm = HookManager(path)
+    s = hm.status()
+
+    if s["installed"]:
+        click.echo(f"Hook: installed")
+        click.echo(f"Trigger: {s['trigger']}")
+        click.echo(f"Path: {s['hook_path']}")
+    else:
+        click.echo("Hook: not installed")
+        click.echo("Run `evo hooks install .` to enable automatic analysis.")
+
+    cfg = s["config"]
+    click.echo()
+    click.echo("Configuration:")
+    click.echo(f"  Trigger: {cfg['trigger']}")
+    click.echo(f"  Threshold: {cfg['min_severity']}")
+    click.echo(f"  Background: {cfg['background']}")
+    click.echo(f"  Notify: {cfg['notify']}")
+    click.echo(f"  Auto-open: {cfg['auto_open']}")
+
+
+# ─────────────────── evo init ───────────────────
+
+
+@main.command("init")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--evo-dir", help="Override .evo directory path")
+@click.option("--path", "integration_path",
+              type=click.Choice(["cli", "hooks", "action", "all"]),
+              help="Integration path to set up")
+@click.option("--families", "-f", default="", help="Comma-separated family filter")
+@click.option("--license-key", help="License key for GitHub Action workflow")
+def init(path, evo_dir, integration_path, families, license_key):
+    """Initialize Evolution Engine for this project.
+
+    Detects your environment and sets up the right integration:
+      cli    — manual analysis with evo analyze / evo report
+      hooks  — auto-analyze on commit or push
+      action — GitHub Action with PR comments
+      all    — everything above
+
+    Without --path, shows environment info and suggests a path.
+
+    Examples:
+        evo init .                       # detect and suggest
+        evo init . --path hooks          # install git hooks
+        evo init . --path action         # generate GitHub Action workflow
+        evo init . --path all            # set up everything
+    """
+    from evolution.init import ProjectInit
+
+    evo_path = Path(evo_dir) if evo_dir else None
+    pi = ProjectInit(repo_path=path, evo_dir=evo_path)
+    env = pi.detect_environment()
+
+    if not integration_path:
+        # Show environment info and suggestion
+        click.echo("Evolution Engine — Project Init\n")
+        click.echo(f"  Git repo:       {'yes' if env['is_git_repo'] else 'no'}")
+        click.echo(f"  GitHub:         {'yes' if env['has_github'] else 'no'}")
+        click.echo(f"  Workflows:      {'yes' if env['has_workflows'] else 'no'}")
+        click.echo(f"  EE configured:  {'yes' if env['has_evo'] else 'no'}")
+        click.echo(f"  EE Action:      {'yes' if env['has_evo_action'] else 'no'}")
+        if env.get("repo_name"):
+            click.echo(f"  Repository:     {env['repo_name']}")
+        click.echo()
+        suggested = env.get("suggested_path", "cli")
+        click.echo(f"Suggested: evo init . --path {suggested}")
+        click.echo("\nAvailable paths:")
+        click.echo("  cli    — Manual analysis with evo analyze / evo report")
+        click.echo("  hooks  — Auto-analyze on every commit")
+        click.echo("  action — GitHub Action with PR comments")
+        click.echo("  all    — All of the above")
+        return
+
+    result = pi.setup(integration_path, families=families)
+
+    if not result["ok"]:
+        click.echo(f"Error: {result['error']}")
+        sys.exit(1)
+
+    click.echo(f"Integration path: {integration_path}")
+    for action in result.get("actions", []):
+        click.echo(f"  {action}")
+
+    # If action path, remind user to commit the workflow
+    if integration_path in ("action", "all"):
+        click.echo("\nCommit and push the workflow file to activate.")
+
+    # Show first-run hint
+    hint = pi.first_run_hint()
+    if hint:
+        click.echo(f"\n{hint}")
+
+    from evolution.telemetry import track_event
+    track_event("cli_command", {
+        "command": "init",
+        "path": integration_path,
+    })
+
+
+# ─────────────────── evo watch ───────────────────
+
+
+@main.command("watch")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--evo-dir", help="Override .evo directory path")
+@click.option("--interval", default=10, type=int, help="Polling interval in seconds (default: 10)")
+@click.option("--min-severity",
+              type=click.Choice(["critical", "concern", "watch", "info"]),
+              default="concern", help="Minimum severity for alerts (default: concern)")
+@click.option("--daemon", "-d", is_flag=True, help="Run in background as a daemon")
+@click.option("--stop", is_flag=True, help="Stop the background daemon")
+@click.option("--status", "show_status", is_flag=True, help="Show daemon status")
+def watch(path, evo_dir, interval, min_severity, daemon, stop, show_status):
+    """Watch for new commits and auto-analyze.
+
+    In foreground mode, polls for new commits and runs analysis when
+    changes are detected. Use --daemon to run in the background.
+
+    Examples:
+        evo watch .                      # foreground — Ctrl+C to stop
+        evo watch . --interval 30        # check every 30 seconds
+        evo watch . --daemon             # background daemon
+        evo watch . --stop               # stop the daemon
+        evo watch . --status             # check if daemon is running
+    """
+    from evolution.watcher import CommitWatcher
+
+    evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
+
+    if show_status:
+        info = CommitWatcher.daemon_status(path, evo_dir=str(evo_path))
+        if info["running"]:
+            click.echo(f"Watcher running (PID {info['pid']})")
+        else:
+            click.echo("Watcher not running.")
+        return
+
+    if stop:
+        result = CommitWatcher.stop_daemon(path, evo_dir=str(evo_path))
+        if result["ok"]:
+            click.echo(f"Watcher stopped (PID {result.get('pid', '?')}).")
+        else:
+            click.echo(result.get("error", "Could not stop watcher."))
+        return
+
+    watcher = CommitWatcher(
+        repo_path=path,
+        evo_dir=str(evo_path),
+        interval=interval,
+        min_severity=min_severity,
+    )
+
+    if daemon:
+        result = watcher.start_daemon()
+        if result.get("ok"):
+            click.echo(f"Watcher started in background (PID {result['pid']}).")
+            click.echo(f"Log: {result.get('log_path', evo_path / 'watch.log')}")
+            click.echo("Stop with: evo watch . --stop")
+        else:
+            click.echo(f"Error: {result.get('error', 'unknown')}")
+            sys.exit(1)
+        return
+
+    click.echo(f"Watching {Path(path).resolve()} for new commits...")
+    click.echo(f"Interval: {interval}s | Threshold: {min_severity}")
+    click.echo("Press Ctrl+C to stop.\n")
+
+    try:
+        stats = watcher.run()
+        click.echo(f"\nWatcher stopped. Commits analyzed: {stats.get('commits_analyzed', 0)}")
+    except KeyboardInterrupt:
+        click.echo("\nWatcher stopped.")
+
+    from evolution.telemetry import track_event
+    track_event("cli_command", {
+        "command": "watch",
+        "mode": "daemon" if daemon else "foreground",
+    })
 
 
 # ─────────────────── evo patterns pull/push ───────────────────
@@ -2056,6 +2550,339 @@ def patterns_push(path):
         sys.exit(1)
 
     click.echo(f"  Patterns shared: {result.pushed}")
+
+
+@patterns.command("new")
+@click.argument("name")
+@click.option("--description", "-d", default="", help="Package description")
+@click.option("--output", "-o", default=".", help="Output directory")
+def patterns_new(name, description, output):
+    """Scaffold a new pattern package.
+
+    Creates a pip-installable package skeleton at evo-patterns-<NAME>/.
+
+    Example:
+        evo patterns new web-security
+        evo patterns new ci-metrics -d "CI metric patterns"
+    """
+    from evolution.pattern_scaffold import scaffold_pattern_pack
+
+    result = scaffold_pattern_pack(name, description=description, output_dir=output)
+    click.echo(f"Created pattern package: {result['package_name']}")
+    click.echo(f"  Path: {result['path']}")
+    click.echo(f"  Module: {result['module_name']}")
+    click.echo(f"  Files: {len(result['files_created'])}")
+    click.echo()
+    click.echo("Next steps:")
+    click.echo(f"  1. Edit {result['module_name']}/patterns.json with your patterns")
+    click.echo(f"  2. Validate: evo patterns validate {result['path']}")
+    click.echo(f"  3. Publish: evo patterns publish {result['path']}")
+
+
+@patterns.command("validate")
+@click.argument("path", type=click.Path(exists=True))
+def patterns_validate(path):
+    """Validate a pattern package.
+
+    PATH is the pattern package directory (must contain a module with patterns.json).
+
+    Example:
+        evo patterns validate examples/evo-patterns-example
+        evo patterns validate .
+    """
+    from evolution.pattern_validator import validate_pattern_package
+
+    project_dir = Path(path).resolve()
+
+    # Find patterns.json: check for evo_patterns_*/patterns.json
+    patterns_file = None
+    for subdir in project_dir.iterdir():
+        if subdir.is_dir() and subdir.name.startswith("evo_patterns_"):
+            candidate = subdir / "patterns.json"
+            if candidate.exists():
+                patterns_file = candidate
+                break
+
+    # Also check root patterns.json
+    if not patterns_file:
+        root_pj = project_dir / "patterns.json"
+        if root_pj.exists():
+            patterns_file = root_pj
+
+    if not patterns_file:
+        click.echo(f"Error: No patterns.json found in {project_dir}")
+        click.echo("  Expected: evo_patterns_<name>/patterns.json")
+        sys.exit(1)
+
+    try:
+        patterns_data = json.loads(patterns_file.read_text())
+    except json.JSONDecodeError as e:
+        click.echo(f"Error: Invalid JSON in {patterns_file}: {e}")
+        sys.exit(1)
+
+    # Determine package name from pyproject.toml or directory name
+    pkg_name = project_dir.name
+    pyproject = project_dir / "pyproject.toml"
+    if pyproject.exists():
+        try:
+            import tomllib
+        except ImportError:
+            try:
+                import tomli as tomllib
+            except ImportError:
+                tomllib = None
+        if tomllib:
+            with open(pyproject, "rb") as f:
+                data = tomllib.load(f)
+            pkg_name = data.get("project", {}).get("name", pkg_name)
+
+    report = validate_pattern_package(patterns_data, package_name=pkg_name)
+    click.echo(report.summary())
+
+    if not report.passed:
+        sys.exit(1)
+
+
+@patterns.command("packages")
+def patterns_packages():
+    """List known pattern packages and their cache status.
+
+    Shows bundled and user-added pattern packages with version info.
+    """
+    from evolution.pattern_registry import list_pattern_packages
+
+    packages = list_pattern_packages()
+    if not packages:
+        click.echo("No pattern packages configured.")
+        click.echo("  Add one with: evo patterns add <package-name>")
+        return
+
+    click.echo("Pattern Packages:")
+    for pkg in packages:
+        status_parts = []
+        if pkg["blocked"]:
+            status_parts.append("BLOCKED")
+        elif pkg["cached_version"]:
+            status_parts.append(f"v{pkg['cached_version']}")
+            status_parts.append(f"{pkg['pattern_count']} patterns")
+            if pkg["families"]:
+                status_parts.append(f"families: {', '.join(pkg['families'])}")
+        else:
+            status_parts.append("not cached")
+
+        source_tag = f"[{pkg['source']}]"
+        click.echo(f"  {pkg['name']} {source_tag} — {', '.join(status_parts)}")
+
+
+@patterns.command("publish")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--dry-run", is_flag=True, help="Run checks and build, but skip upload")
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompt")
+def patterns_publish(path, dry_run, yes):
+    """Validate, build, and publish a pattern package to PyPI.
+
+    PATH is the pattern package directory (must contain pyproject.toml).
+
+    Example:
+        evo patterns publish examples/evo-patterns-example
+        evo patterns publish . --dry-run
+    """
+    import subprocess
+
+    project_dir = Path(path).resolve()
+    pyproject = project_dir / "pyproject.toml"
+
+    if not pyproject.exists():
+        click.echo(f"Error: No pyproject.toml found in {project_dir}")
+        sys.exit(1)
+
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib
+        except ImportError:
+            click.echo("Error: Python 3.11+ or 'tomli' package required")
+            sys.exit(1)
+
+    with open(pyproject, "rb") as f:
+        pyproject_data = tomllib.load(f)
+
+    project_meta = pyproject_data.get("project", {})
+    pkg_name = project_meta.get("name")
+    pkg_version = project_meta.get("version")
+    if not pkg_name or not pkg_version:
+        click.echo("Error: pyproject.toml must have project.name and project.version")
+        sys.exit(1)
+
+    click.echo(f"Publishing {pkg_name} v{pkg_version}")
+
+    # Step 1: Validate patterns
+    click.echo("\n[1/4] Validating patterns...")
+    from evolution.pattern_validator import validate_pattern_package
+
+    patterns_file = None
+    for subdir in project_dir.iterdir():
+        if subdir.is_dir() and subdir.name.startswith("evo_patterns_"):
+            candidate = subdir / "patterns.json"
+            if candidate.exists():
+                patterns_file = candidate
+                break
+
+    if not patterns_file:
+        click.echo("  Error: No patterns.json found")
+        sys.exit(1)
+
+    patterns_data = json.loads(patterns_file.read_text())
+    report = validate_pattern_package(patterns_data, package_name=pkg_name)
+    if report.passed:
+        passed = sum(1 for c in report.checks if c.passed)
+        click.echo(f"  PASSED ({passed}/{len(report.checks)} checks)")
+    else:
+        click.echo(report.summary())
+        sys.exit(1)
+
+    # Step 2: Check PyPI for version conflict
+    click.echo("[2/4] Checking PyPI for version conflicts...")
+    from evolution.adapter_versions import check_pypi_version
+    existing_version = check_pypi_version(pkg_name, use_cache=False)
+    if existing_version:
+        from packaging.version import Version
+        try:
+            if Version(pkg_version) <= Version(existing_version):
+                click.echo(f"  CONFLICT — v{existing_version} already on PyPI, "
+                           f"bump version above {existing_version}")
+                sys.exit(1)
+        except Exception:
+            pass
+        click.echo(f"  OK — upgrading from v{existing_version} to v{pkg_version}")
+    else:
+        click.echo(f"  OK — new package, first publish")
+
+    # Step 3: Build
+    click.echo("[3/4] Building wheel + sdist...")
+    import shutil
+
+    dist_dir = project_dir / "dist"
+    if dist_dir.exists():
+        shutil.rmtree(dist_dir)
+
+    result = subprocess.run(
+        [sys.executable, "-m", "build"],
+        cwd=str(project_dir),
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        click.echo("  Build FAILED:")
+        click.echo(result.stderr[-500:] if len(result.stderr) > 500 else result.stderr)
+        sys.exit(1)
+
+    artifacts = list(dist_dir.glob("*"))
+    click.echo(f"  Built {len(artifacts)} artifact(s)")
+
+    # Step 4: Upload
+    if dry_run:
+        click.echo("[4/4] Upload SKIPPED (--dry-run)")
+        click.echo(f"\nDry run complete. To publish: evo patterns publish {path}")
+        return
+
+    click.echo("[4/4] Uploading to PyPI...")
+    if not yes:
+        click.confirm(f"  Upload {pkg_name} v{pkg_version} to PyPI?", abort=True)
+
+    twine_password = os.environ.get("TWINE_PASSWORD") or os.environ.get("PYPI_API_TOKEN")
+    twine_env = os.environ.copy()
+    if twine_password:
+        twine_env["TWINE_USERNAME"] = "__token__"
+        twine_env["TWINE_PASSWORD"] = twine_password
+
+    dist_files = [str(f) for f in (project_dir / "dist").glob("*")]
+    result = subprocess.run(
+        [sys.executable, "-m", "twine", "upload"] + dist_files,
+        cwd=str(project_dir),
+        capture_output=True,
+        text=True,
+        env=twine_env,
+    )
+    if result.returncode != 0:
+        click.echo("  Upload FAILED:")
+        click.echo(result.stderr[-500:] if len(result.stderr) > 500 else result.stderr)
+        sys.exit(1)
+
+    click.echo(f"  Published {pkg_name} v{pkg_version} to PyPI")
+
+
+@patterns.command("add")
+@click.argument("package")
+def patterns_add(package):
+    """Add a pattern package to your sources.
+
+    The package will be auto-fetched on the next `evo analyze`.
+
+    Example:
+        evo patterns add evo-patterns-web-security
+    """
+    from evolution.pattern_registry import add_pattern_source
+
+    if add_pattern_source(package):
+        click.echo(f"Added {package} to pattern sources")
+        click.echo("  Patterns will be auto-fetched on next `evo analyze`")
+    else:
+        click.echo(f"{package} is already in pattern sources")
+
+
+@patterns.command("remove")
+@click.argument("package")
+def patterns_remove(package):
+    """Remove a pattern package from your sources.
+
+    Example:
+        evo patterns remove evo-patterns-web-security
+    """
+    from evolution.pattern_registry import remove_pattern_source
+
+    if remove_pattern_source(package):
+        click.echo(f"Removed {package} from pattern sources")
+    else:
+        click.echo(f"{package} not found in pattern sources")
+
+
+@patterns.command("block")
+@click.argument("name")
+@click.option("--reason", "-r", default="", help="Reason for blocking")
+def patterns_block(name, reason):
+    """Block a pattern package.
+
+    Blocked packages are skipped during auto-fetch.
+
+    Example:
+        evo patterns block bad-patterns --reason "malicious"
+    """
+    from evolution.pattern_registry import block_pattern_package
+
+    if block_pattern_package(name, reason=reason):
+        click.echo(f"Blocked pattern package: {name}")
+        if reason:
+            click.echo(f"  Reason: {reason}")
+    else:
+        click.echo(f"{name} is already blocked")
+
+
+@patterns.command("unblock")
+@click.argument("name")
+def patterns_unblock(name):
+    """Unblock a pattern package.
+
+    Example:
+        evo patterns unblock previously-blocked-pkg
+    """
+    from evolution.pattern_registry import unblock_pattern_package
+
+    if unblock_pattern_package(name):
+        click.echo(f"Unblocked pattern package: {name}")
+    else:
+        click.echo(f"{name} is not blocked")
 
 
 # ─────────────────── evo telemetry ───────────────────

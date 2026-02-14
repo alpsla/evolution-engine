@@ -37,21 +37,38 @@ Sources → Phase 1 (Record) → Phase 2 (Measure) → Phase 3 (Explain)
 ## Quick Start
 
 ```bash
-# Install
 pip install evolution-engine
-
-# Analyze any git repository
 evo analyze .
-
-# With a GitHub token (unlocks CI, deployment, security data)
-evo analyze . --token ghp_xxx
-
-# Generate an HTML report
-evo report .
-
-# See what adapters were detected
-evo status
 ```
+
+### Three Integration Paths
+
+| Path | Command | When to use |
+|------|---------|-------------|
+| **CLI Explorer** | `evo analyze .` | Start here -- manual analysis, reports, investigation |
+| **Git Hooks** | `evo init . --path hooks` | Automate locally -- analyze on every commit or push |
+| **GitHub Action** | `evo init . --path action` | Automate in CI -- PR comments with risk badges |
+
+Start with the CLI. Graduate to hooks when you trust the output. Add the GitHub Action for team-wide coverage. See [QUICKSTART.md](QUICKSTART.md) for the full walkthrough.
+
+```bash
+# Path 1: CLI Explorer (start here)
+evo analyze .                    # Run the full pipeline
+evo report . --open              # Visual HTML report
+evo status                       # Detected adapters and run info
+
+# Path 2: Git Hooks (automate locally)
+evo init . --path hooks          # Install post-commit hook
+evo watch .                      # Or poll for commits continuously
+
+# Path 3: GitHub Action (CI)
+evo init . --path action         # Generate workflow file, then push
+
+# All paths at once
+evo init . --path all
+```
+
+Free tier gets all three paths. Pro adds AI investigation, fix suggestions, and inline PR review comments.
 
 ### From Source
 
@@ -62,7 +79,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 
-# Run the test suite (246 tests)
+# Run the test suite (840+ tests)
 python -m pytest tests/ -v
 ```
 
@@ -121,20 +138,45 @@ The **Git History Walker** extracts dependency, schema, and config files from gi
 ## CLI Commands
 
 ```bash
-# Core
+# Core Analysis
 evo analyze [path]               # Detect adapters, run full pipeline
 evo analyze . --families git,ci  # Override auto-detection
 evo report [path]                # Generate HTML report from last run
 evo status                       # Show detected adapters and event counts
+evo investigate [path]           # AI root cause analysis (Pro)
+evo fix [path]                   # AI fix-verify loop (Pro)
+evo fix [path] --residual        # Iteration-aware prompt (current vs previous)
+evo verify <advisory>            # Compare current state to a previous advisory
+
+# Setup & Integration
+evo init [path]                  # Detect environment and suggest integration path
+evo init . --path hooks          # Install git hooks for auto-analysis
+evo init . --path action         # Generate GitHub Action workflow
+evo init . --path all            # Set up all integration paths
+evo setup [path]                 # Interactive configuration wizard
+evo setup --ui                   # Browser-based settings page
+evo watch [path]                 # Watch for commits and auto-analyze
+evo watch . --daemon             # Run watcher in background
+evo hooks install [path]         # Install git hooks
+evo hooks uninstall [path]       # Remove git hooks
+evo hooks status [path]          # Show hook status
 
 # Patterns & Knowledge Base
 evo patterns list                # Show discovered patterns
 evo patterns export              # Export anonymized pattern digests
 evo patterns import <file>       # Import community patterns
-evo patterns sync                # Sync universal patterns
+evo patterns packages            # List pattern packages + cache status
+evo patterns new <name>          # Scaffold a pattern package
+evo patterns validate <path>     # Validate a pattern package
+evo patterns publish <path>      # Publish pattern package to PyPI
+evo patterns add <package>       # Subscribe to a pattern package
+evo patterns remove <package>    # Unsubscribe from a pattern package
+evo patterns block <name>        # Block a pattern package
+evo patterns unblock <name>      # Unblock a pattern package
 
 # Adapter Ecosystem
 evo adapter list                 # Show detected adapters with trust badges
+evo adapter discover [path]      # Find available adapters for your tools
 evo adapter validate <class>     # Run 13-check certification
 evo adapter validate <class> --security  # + security scan
 evo adapter security-check <mod> # Standalone security scan
@@ -146,6 +188,13 @@ evo adapter block <name> -r "reason"  # Block an adapter locally
 evo adapter unblock <name>       # Unblock a blocked adapter
 evo adapter check-updates        # Check PyPI for plugin updates
 evo adapter report <name>        # Report a broken/malicious adapter
+
+# Configuration & History
+evo config list                  # Show all settings
+evo config set <key> <val>       # Update a setting
+evo license status               # Check license tier
+evo history list [path]          # Show run history
+evo history diff [r1 r2]         # Compare two runs
 ```
 
 ---
@@ -196,6 +245,25 @@ Patterns progress through scopes: **local** (this repo) -> **community** (shared
 
 Universal patterns ship with the pip package and are recognized instantly on new repositories.
 
+### Pattern Packages (PyPI)
+
+Patterns can also be distributed as pip packages on PyPI. Unlike adapters (which contain executable code and require `pip install`), pattern packages are pure data — EE downloads the wheel directly, extracts `patterns.json`, validates it, and imports relevant patterns automatically.
+
+```bash
+# Auto-fetch happens on every `evo analyze` — no manual install needed
+evo analyze .
+#   Imported 3 pattern(s) from community packages
+
+# Add a third-party pattern package to your sources
+evo patterns add evo-patterns-web-security
+
+# Build and publish your own pattern package
+evo patterns new my-patterns
+# ... edit patterns.json ...
+evo patterns validate evo-patterns-my-patterns
+evo patterns publish evo-patterns-my-patterns
+```
+
 ---
 
 ## Project Structure
@@ -215,6 +283,9 @@ evolution-engine/
 │   ├── knowledge_store.py         # SQLite knowledge base
 │   ├── kb_export.py               # Anonymized pattern export/import
 │   ├── kb_security.py             # Import validation (XSS, injection, traversal)
+│   ├── pattern_registry.py        # Auto-fetch pattern packages from PyPI
+│   ├── pattern_validator.py       # Pattern package validation
+│   ├── pattern_scaffold.py        # Pattern package scaffolding
 │   ├── report_generator.py        # Standalone HTML report generator
 │   ├── adapter_validator.py       # 13-check adapter certification
 │   ├── adapter_scaffold.py        # Package scaffolding + AI prompt gen
@@ -223,7 +294,9 @@ evolution-engine/
 │   ├── llm_anthropic.py           # Anthropic LLM client
 │   ├── validation_gate.py         # LLM output validation
 │   ├── data/
-│   │   └── universal_patterns.json  # Bundled universal patterns
+│   │   ├── universal_patterns.json  # Bundled universal patterns
+│   │   ├── pattern_index.json       # Known pattern packages
+│   │   └── pattern_blocklist.json   # Blocked pattern packages
 │   └── adapters/
 │       ├── git/                   # Version Control (+ Git History Walker)
 │       ├── ci/                    # CI / Build Pipeline (GitHub Actions)

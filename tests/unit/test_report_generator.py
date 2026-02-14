@@ -244,6 +244,57 @@ class TestGenerateReport:
         html = generate_report(tmp_path)
         assert "No unusual changes detected" in html
 
+    def test_change_cards_have_anchor_ids(self, advisory_dir):
+        """Each change card should have a unique id for deep-linking."""
+        html = generate_report(advisory_dir)
+        assert 'id="change-git-files_touched"' in html
+        assert 'id="change-git-dispersion"' in html
+        assert 'id="change-dependency-dependency_count"' in html
+
+    def test_change_cards_contain_action_buttons(self, advisory_dir):
+        """Each change card should have Investigate and Dismiss action buttons."""
+        html = generate_report(advisory_dir)
+        assert 'class="change-actions' in html
+        assert ">Investigate</button>" in html
+        assert ">Dismiss</button>" in html
+        # Verify the investigate command references the correct family
+        assert "evo investigate . --family git" in html
+        assert "evo investigate . --family dependency" in html
+        # Verify the dismiss command uses the correct index
+        assert "evo accept . 0" in html
+        assert "evo accept . 1" in html
+        assert "evo accept . 2" in html
+
+    def test_filter_buttons_present(self, advisory_dir):
+        """Severity filter buttons should appear in the changes section."""
+        html = generate_report(advisory_dir)
+        assert 'class="severity-filters' in html
+        assert "filterChanges(" in html
+        assert 'btn-filter active" onclick="filterChanges(\'all\'' in html
+        assert ">All</button>" in html
+        assert ">Critical</button>" in html
+        assert ">Medium</button>" in html
+        assert ">Low</button>" in html
+
+    def test_file_paths_have_ide_links(self, advisory_dir):
+        """File paths in the evidence table should have VS Code IDE links."""
+        html = generate_report(advisory_dir)
+        assert 'vscode://file/src/parser.py' in html
+        assert 'vscode://file/tests/test_parser.py' in html
+        assert 'class="ide-link' in html
+        assert "Open in IDE</a>" in html
+
+    def test_filter_js_function_present(self, advisory_dir):
+        """The filterChanges JS function should be in the report."""
+        html = generate_report(advisory_dir)
+        assert "function filterChanges(" in html
+        assert "filter-hidden" in html
+
+    def test_copy_command_js_function_present(self, advisory_dir):
+        """The copyCommand JS function should be in the report."""
+        html = generate_report(advisory_dir)
+        assert "function copyCommand(" in html
+
 
 class TestHelpers:
     def test_esc_html(self):

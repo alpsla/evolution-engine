@@ -151,6 +151,14 @@ evo analyze .</code></pre>
   <h3>Patterns &amp; Knowledge Base</h3>
   <ul>
     <li><code>evo patterns list</code> — Show patterns in the knowledge base</li>
+    <li><code>evo patterns packages</code> — List pattern packages and cache status</li>
+    <li><code>evo patterns new &lt;name&gt;</code> — Scaffold a new pattern package</li>
+    <li><code>evo patterns validate &lt;path&gt;</code> — Validate a pattern package</li>
+    <li><code>evo patterns publish &lt;path&gt;</code> — Publish pattern package to PyPI</li>
+    <li><code>evo patterns add &lt;package&gt;</code> — Subscribe to a pattern package</li>
+    <li><code>evo patterns remove &lt;package&gt;</code> — Unsubscribe from a pattern package</li>
+    <li><code>evo patterns block &lt;name&gt;</code> — Block a pattern package</li>
+    <li><code>evo patterns unblock &lt;name&gt;</code> — Unblock a pattern package</li>
     <li><code>evo patterns pull [path]</code> — Fetch community patterns from the registry</li>
     <li><code>evo patterns push [path]</code> — Share anonymized patterns (requires privacy_level &ge; 1)</li>
     <li><code>evo patterns export</code> — Export anonymized pattern digests</li>
@@ -213,9 +221,27 @@ evo notifications dismiss            # Clear all
 evo notifications check .            # Force check now</code></pre>
 
   <h3>Community Patterns</h3>
-  <p>EE ships with 27 universal patterns calibrated across 43 open-source repos. Opt into automatic community pattern updates:</p>
+  <p>Patterns accumulate organically as users analyze repos and share discoveries. EE also supports curated pattern packages distributed via PyPI.</p>
+
+  <h4>Pattern Packages (auto-fetch from PyPI)</h4>
+  <p>Pattern packages are pip packages on PyPI containing pure data (no executable code). EE downloads the wheel directly, extracts <code>patterns.json</code>, validates it, and imports relevant patterns automatically — no <code>pip install</code> required.</p>
+  <pre><code># Auto-fetch happens on every evo analyze
+evo analyze .
+#   Imported 3 pattern(s) from community packages
+
+# Add a third-party pattern package
+evo patterns add evo-patterns-web-security
+
+# Build your own
+evo patterns new my-patterns
+evo patterns validate evo-patterns-my-patterns
+evo patterns publish evo-patterns-my-patterns</code></pre>
+  <p>Pattern packages are cached at <code>~/.evo/pattern_cache.json</code> with a 24-hour TTL. Only patterns matching your locally-detected families are imported.</p>
+
+  <h4>Registry sync</h4>
+  <p>Opt into community pattern sharing via the registry:</p>
   <pre><code>evo config set sync.auto_pull true</code></pre>
-  <p>When enabled, <code>evo analyze</code> fetches new patterns from the community registry before running Phase 4 discovery. Throttled to once per 24 hours.</p>
+  <p>When enabled, <code>evo analyze</code> also fetches patterns from the community registry before running Phase 4 discovery.</p>
 
   <h3>Configuration</h3>
   <p>All update and notification behavior is configurable:</p>
