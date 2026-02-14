@@ -86,7 +86,7 @@ class KBSync:
 
         self._privacy_level = config.get("sync.privacy_level", 0)
         self._registry_url = registry_url or config.get(
-            "sync.registry_url", "https://registry.codequal.dev/v1"
+            "sync.registry_url", "https://codequal.dev/api"
         )
 
     @property
@@ -269,7 +269,7 @@ class KBSync:
         from evolution.kb_security import get_instance_id
 
         digests = export_patterns(
-            self._db_path, min_occurrences=3, evo_dir=self._evo_dir
+            self._db_path, min_occurrences=1, evo_dir=self._evo_dir
         )
         instance_id = get_instance_id(self._evo_dir)
 
