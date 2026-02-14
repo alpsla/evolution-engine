@@ -467,3 +467,119 @@ class TestAdapterListUpdateIndicators:
         result = runner.invoke(main, ["adapter", "list", str(tmp_path)])
         assert result.exit_code == 0
         assert "update available" not in result.output
+
+
+# ─── evo adapter publish ───
+
+
+class TestAdapterPublish:
+    def _make_adapter_project(self, tmp_path):
+        """Create a minimal valid adapter project for testing."""
+        pkg_dir = tmp_path / "evo-adapter-test"
+        pkg_dir.mkdir()
+        mod_dir = pkg_dir / "evo_test"
+        mod_dir.mkdir()
+        (mod_dir / "__init__.py").write_text(
+            'class TestAdapter:\n'
+            '    source_family = "testing"\n'
+            '    source_type = "test"\n'
+            '    ordering_mode = "temporal"\n'
+            '    attestation_tier = "weak"\n'
+            '    def __init__(self, path="."):\n'
+            '        self.source_id = "test:1"\n'
+            '    def iter_events(self):\n'
+            '        yield {\n'
+            '            "source_family": "testing",\n'
+            '            "source_type": "test",\n'
+            '            "source_id": "test:1",\n'
+            '            "ordering_mode": "temporal",\n'
+            '            "attestation": {"trust_tier": "weak"},\n'
+            '            "payload": {"x": 1},\n'
+            '        }\n'
+            '\n'
+            'def register():\n'
+            '    return [{"adapter_class": "evo_test.TestAdapter",\n'
+            '             "adapter_name": "test", "family": "testing"}]\n'
+        )
+        (pkg_dir / "pyproject.toml").write_text(
+            '[build-system]\n'
+            'requires = ["setuptools>=68"]\n'
+            'build-backend = "setuptools.build_meta"\n'
+            '\n'
+            '[project]\n'
+            'name = "evo-adapter-test"\n'
+            'version = "0.1.0"\n'
+            'description = "Test adapter"\n'
+            'requires-python = ">=3.10"\n'
+            '\n'
+            '[project.entry-points."evo.adapters"]\n'
+            'test = "evo_test:register"\n'
+        )
+        (pkg_dir / "README.md").write_text("# Test\n")
+        return pkg_dir
+
+    def test_missing_pyproject_fails(self, runner, tmp_path):
+        """publish on directory without pyproject.toml fails."""
+        empty = tmp_path / "empty"
+        empty.mkdir()
+        result = runner.invoke(main, ["adapter", "publish", str(empty)])
+        assert result.exit_code != 0
+        assert "pyproject.toml" in result.output
+
+    def test_missing_entry_points_fails(self, runner, tmp_path):
+        """publish without evo.adapters entry points fails."""
+        pkg_dir = tmp_path / "no-ep"
+        pkg_dir.mkdir()
+        (pkg_dir / "pyproject.toml").write_text(
+            '[project]\nname = "bad"\nversion = "0.1.0"\n'
+            '[build-system]\nrequires = ["setuptools"]\n'
+            'build-backend = "setuptools.build_meta"\n'
+        )
+        result = runner.invoke(main, ["adapter", "publish", str(pkg_dir)])
+        assert result.exit_code != 0
+        assert "entry-points" in result.output.lower() or "entry" in result.output.lower()
+
+    def test_dry_run_validates_and_builds(self, runner, tmp_path, monkeypatch):
+        """publish --dry-run runs validation, security, version check, and build."""
+        pkg_dir = self._make_adapter_project(tmp_path)
+
+        # Mock PyPI to say package doesn't exist yet
+        monkeypatch.setattr(
+            "evolution.adapter_versions.check_pypi_version",
+            lambda name, **kw: None
+        )
+
+        result = runner.invoke(main, ["adapter", "publish", str(pkg_dir), "--dry-run"])
+        assert "[1/5] Validating" in result.output
+        assert "[2/5] Scanning" in result.output
+        assert "[3/5] Checking PyPI" in result.output
+        assert "[4/5] Building" in result.output
+        assert "[5/5] Upload SKIPPED" in result.output
+        assert result.exit_code == 0
+
+    def test_version_conflict_blocks_publish(self, runner, tmp_path, monkeypatch):
+        """publish with same version already on PyPI exits with error."""
+        pkg_dir = self._make_adapter_project(tmp_path)
+
+        # Mock PyPI to say 0.1.0 already exists
+        monkeypatch.setattr(
+            "evolution.adapter_versions.check_pypi_version",
+            lambda name, **kw: "0.1.0"
+        )
+
+        result = runner.invoke(main, ["adapter", "publish", str(pkg_dir), "--dry-run"])
+        assert result.exit_code != 0
+        assert "CONFLICT" in result.output
+
+    def test_security_failure_blocks_publish(self, runner, tmp_path, monkeypatch):
+        """publish with security issues exits with error."""
+        pkg_dir = self._make_adapter_project(tmp_path)
+
+        # Add dangerous code
+        init_file = pkg_dir / "evo_test" / "__init__.py"
+        content = init_file.read_text()
+        init_file.write_text(content + "\neval('1+1')\n")
+
+        result = runner.invoke(main, ["adapter", "publish", str(pkg_dir), "--dry-run"])
+        assert result.exit_code != 0
+        assert "security" in result.output.lower() or "critical" in result.output.lower()

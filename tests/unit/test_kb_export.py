@@ -125,7 +125,7 @@ class TestImport:
             "confidence_tier": "statistical",
         }]
 
-        result = import_patterns(db_path, patterns)
+        result = import_patterns(db_path, patterns, min_attestations=0)
         assert result["imported"] == 1
         assert result["skipped"] == 0
         assert result["rejected"] == 0
@@ -175,11 +175,11 @@ class TestImport:
         }
 
         # Import once
-        result1 = import_patterns(db_path, [pattern])
+        result1 = import_patterns(db_path, [pattern], min_attestations=0)
         assert result1["imported"] == 1
 
         # Import again — should skip
-        result2 = import_patterns(db_path, [pattern])
+        result2 = import_patterns(db_path, [pattern], min_attestations=0)
         assert result2["imported"] == 0
         assert result2["skipped"] == 1
 
@@ -218,7 +218,7 @@ class TestImport:
             "signal_refs": ["../../etc/passwd"],  # Malicious ref
         }]
 
-        result = import_patterns(db_path, patterns)
+        result = import_patterns(db_path, patterns, min_attestations=0)
         assert result["imported"] == 1
 
         # Verify no signal refs stored
@@ -251,7 +251,7 @@ class TestUniversalPatternSync:
         if not patterns:
             pytest.skip("No import_ready patterns")
 
-        result = import_patterns(db_path, patterns)
+        result = import_patterns(db_path, patterns, min_attestations=0)
         assert result["rejected"] == 0, f"Rejected patterns: {result['errors']}"
         assert result["imported"] == len(patterns)
 
@@ -274,11 +274,11 @@ class TestUniversalPatternSync:
             pytest.skip("No import_ready patterns")
 
         # First import
-        result1 = import_patterns(db_path, patterns)
+        result1 = import_patterns(db_path, patterns, min_attestations=0)
         assert result1["imported"] >= 1
 
         # Second import — all should be skipped
-        result2 = import_patterns(db_path, patterns)
+        result2 = import_patterns(db_path, patterns, min_attestations=0)
         assert result2["imported"] == 0
         assert result2["skipped"] == len(patterns)
 
@@ -329,7 +329,7 @@ class TestExportImportRoundTrip:
         kb = SQLiteKnowledgeStore(new_db)
         kb.close()
 
-        result = import_patterns(new_db, digests)
+        result = import_patterns(new_db, digests, min_attestations=0)
         assert result["imported"] >= 1
         assert result["rejected"] == 0
 

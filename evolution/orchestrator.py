@@ -365,7 +365,8 @@ class Orchestrator:
             if not db_path.exists():
                 return 0
 
-            result = import_patterns(db_path, patterns)
+            # Universal patterns are bundled with EE — trusted, skip quorum
+            result = import_patterns(db_path, patterns, min_attestations=0)
             return result.get("imported", 0)
         except Exception as e:
             log(f"  [warn] Could not import universal patterns: {e}")

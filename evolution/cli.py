@@ -676,8 +676,11 @@ def patterns_import(file, path):
         sys.exit(1)
 
     result = import_patterns(db_path, data)
+    quarantined = result.get("quarantined", 0)
     click.echo(f"Imported: {result['imported']}, Skipped: {result['skipped']}, "
-               f"Rejected: {result['rejected']}")
+               f"Rejected: {result['rejected']}, Quarantined: {quarantined}")
+    if quarantined:
+        click.echo(f"  {quarantined} pattern(s) stored as 'unverified' (need more attestations)")
     for err in result.get("errors", []):
         click.echo(f"  Error: {err}")
 
@@ -713,7 +716,8 @@ def patterns_sync(path):
         return
 
     click.echo(f"Syncing {len(patterns_to_import)} universal pattern(s)...")
-    result = import_patterns(db_path, patterns_to_import)
+    # Universal patterns are bundled with EE — trusted, skip quorum
+    result = import_patterns(db_path, patterns_to_import, min_attestations=0)
     click.echo(f"  New: {result['imported']}, Already present: {result['skipped']}, "
                f"Rejected: {result['rejected']}")
 
@@ -1562,6 +1566,224 @@ def adapter_discover(path, json_output):
 
     if not available and not not_published:
         click.echo("All detected tools already have adapters installed.")
+
+
+@adapter.command("publish")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--dry-run", is_flag=True, help="Run checks and build, but skip upload")
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompt")
+def adapter_publish(path, dry_run, yes):
+    """Validate, build, and publish an adapter to PyPI.
+
+    PATH is the adapter project directory (must contain pyproject.toml).
+
+    Runs the full publish pipeline:
+      1. Discover adapter class from entry points
+      2. Validate against the Adapter Contract (16 checks)
+      3. Security scan source code
+      4. Check for version conflicts on PyPI
+      5. Build wheel + sdist
+      6. Upload to PyPI
+
+    Example:
+        evo adapter publish examples/evo-adapter-pytest-cov
+        evo adapter publish . --dry-run
+    """
+    import subprocess
+    from pathlib import Path as _Path
+
+    project_dir = _Path(path).resolve()
+    pyproject = project_dir / "pyproject.toml"
+
+    # ── Step 0: Verify project structure ──
+    if not pyproject.exists():
+        click.echo(f"Error: No pyproject.toml found in {project_dir}")
+        sys.exit(1)
+
+    # Parse package name and version from pyproject.toml
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib
+        except ImportError:
+            click.echo("Error: Python 3.11+ or 'tomli' package required")
+            sys.exit(1)
+
+    with open(pyproject, "rb") as f:
+        pyproject_data = tomllib.load(f)
+
+    project_meta = pyproject_data.get("project", {})
+    pkg_name = project_meta.get("name")
+    pkg_version = project_meta.get("version")
+    if not pkg_name or not pkg_version:
+        click.echo("Error: pyproject.toml must have project.name and project.version")
+        sys.exit(1)
+
+    # Find the adapter entry point
+    entry_points = pyproject_data.get("project", {}).get("entry-points", {})
+    evo_adapters = entry_points.get("evo.adapters", {})
+    if not evo_adapters:
+        click.echo("Error: No [project.entry-points.\"evo.adapters\"] found")
+        click.echo("  Adapters must register via entry points. See: evo adapter guide")
+        sys.exit(1)
+
+    # Resolve the adapter class from the register() function
+    ep_name, ep_value = next(iter(evo_adapters.items()))
+    # ep_value is "module:function" or "module.function"
+    if ":" in ep_value:
+        module_name, func_name = ep_value.split(":", 1)
+    else:
+        module_name = ep_value.rsplit(".", 1)[0]
+        func_name = ep_value.rsplit(".", 1)[-1]
+
+    click.echo(f"Publishing {pkg_name} v{pkg_version}")
+    click.echo(f"  Module: {module_name}")
+    click.echo()
+
+    # ── Step 1: Validate adapter contract ──
+    click.echo("[1/5] Validating adapter contract...")
+
+    # Find the adapter class by loading the register() function
+    old_sys_path = sys.path[:]
+    sys.path.insert(0, str(project_dir))
+    try:
+        import importlib
+        mod = importlib.import_module(module_name)
+        register_fn = getattr(mod, func_name, None)
+        if register_fn is None:
+            click.echo(f"  Error: Could not find {func_name}() in {module_name}")
+            sys.exit(1)
+        reg_result = register_fn()
+        # register() returns a list of dicts or a single dict
+        if isinstance(reg_result, list):
+            adapter_class_path = reg_result[0].get("adapter_class", "") if reg_result else ""
+        elif isinstance(reg_result, dict):
+            adapter_class_path = reg_result.get("adapter_class", "")
+        else:
+            adapter_class_path = ""
+    finally:
+        sys.path[:] = old_sys_path
+
+    if not adapter_class_path:
+        click.echo("  Error: register() did not return adapter_class")
+        sys.exit(1)
+
+    from evolution.adapter_validator import load_adapter_class, validate_adapter
+    try:
+        adapter_cls = load_adapter_class(adapter_class_path)
+    except (ImportError, AttributeError) as e:
+        click.echo(f"  Error loading adapter class: {e}")
+        sys.exit(1)
+
+    report = validate_adapter(adapter_cls)
+    passed = sum(1 for c in report.checks if c.passed)
+    total = len(report.checks)
+    if report.passed:
+        click.echo(f"  PASSED ({passed}/{total} checks)")
+    else:
+        click.echo(report.summary())
+        click.echo(f"  FAILED — {len(report.errors)} error(s) must be fixed")
+        sys.exit(1)
+
+    # ── Step 2: Security scan ──
+    click.echo("[2/5] Scanning for security issues...")
+    from evolution.adapter_security import scan_adapter_source
+    sec_report = scan_adapter_source(str(project_dir))
+    if sec_report.passed:
+        click.echo(f"  PASSED ({sec_report.files_scanned} files scanned, "
+                    f"0 critical)")
+    else:
+        click.echo(sec_report.summary())
+        click.echo("  FAILED — critical security issues found")
+        sys.exit(1)
+
+    # ── Step 3: Check PyPI for version conflict ──
+    click.echo("[3/5] Checking PyPI for version conflicts...")
+    from evolution.adapter_versions import check_pypi_version
+    existing_version = check_pypi_version(pkg_name, use_cache=False)
+    if existing_version:
+        from packaging.version import Version
+        try:
+            if Version(pkg_version) <= Version(existing_version):
+                click.echo(f"  CONFLICT — v{existing_version} already on PyPI, "
+                           f"bump version above {existing_version}")
+                sys.exit(1)
+        except Exception:
+            pass
+        click.echo(f"  OK — upgrading from v{existing_version} to v{pkg_version}")
+    else:
+        click.echo(f"  OK — new package, first publish")
+
+    # ── Step 4: Build ──
+    click.echo("[4/5] Building wheel + sdist...")
+
+    # Clean old dist/
+    dist_dir = project_dir / "dist"
+    if dist_dir.exists():
+        import shutil
+        shutil.rmtree(dist_dir)
+
+    result = subprocess.run(
+        [sys.executable, "-m", "build"],
+        cwd=str(project_dir),
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        click.echo("  Build FAILED:")
+        click.echo(result.stderr[-500:] if len(result.stderr) > 500 else result.stderr)
+        sys.exit(1)
+
+    artifacts = list(dist_dir.glob("*"))
+    click.echo(f"  Built {len(artifacts)} artifact(s):")
+    for a in artifacts:
+        click.echo(f"    {a.name}")
+
+    # ── Step 5: Upload ──
+    if dry_run:
+        click.echo("[5/5] Upload SKIPPED (--dry-run)")
+        click.echo()
+        click.echo(f"Dry run complete. To publish for real:")
+        click.echo(f"  evo adapter publish {path}")
+        return
+
+    click.echo("[5/5] Uploading to PyPI...")
+
+    if not yes:
+        click.confirm(f"  Upload {pkg_name} v{pkg_version} to PyPI?", abort=True)
+
+    # Token from env
+    twine_password = os.environ.get("TWINE_PASSWORD") or os.environ.get("PYPI_API_TOKEN")
+    twine_env = os.environ.copy()
+    if twine_password:
+        twine_env["TWINE_USERNAME"] = "__token__"
+        twine_env["TWINE_PASSWORD"] = twine_password
+
+    # Find all dist files explicitly (avoid shell glob)
+    dist_files = [str(f) for f in (project_dir / "dist").glob("*")]
+    result = subprocess.run(
+        [sys.executable, "-m", "twine", "upload"] + dist_files,
+        cwd=str(project_dir),
+        capture_output=True,
+        text=True,
+        env=twine_env,
+    )
+    if result.returncode != 0:
+        stderr = result.stderr
+        if "403" in stderr:
+            click.echo("  FAILED — authentication error. Set PYPI_API_TOKEN env var")
+            click.echo("  or configure ~/.pypirc")
+        else:
+            click.echo("  Upload FAILED:")
+            click.echo(stderr[-500:] if len(stderr) > 500 else stderr)
+        sys.exit(1)
+
+    click.echo(f"  Published!")
+    click.echo()
+    click.echo(f"  https://pypi.org/project/{pkg_name}/{pkg_version}/")
+    click.echo()
+    click.echo(f"Install: pip install {pkg_name}")
 
 
 # ─────────────────── evo license ───────────────────

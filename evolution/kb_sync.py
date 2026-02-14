@@ -260,15 +260,18 @@ class KBSync:
         }
 
     def _build_pattern_payload(self) -> dict:
-        """Build level-2 pattern payload (anonymized digests)."""
+        """Build level-2 pattern payload (anonymized digests).
+
+        Each pattern includes an HMAC attestation from this instance,
+        proving it was computed by a real EE installation.
+        """
         from evolution.kb_export import export_patterns
+        from evolution.kb_security import get_instance_id
 
-        digests = export_patterns(self._db_path, min_occurrences=3)
-
-        # Generate anonymous instance ID (stable per machine, no PII)
-        instance_id = hashlib.sha256(
-            str(self._evo_dir.resolve()).encode()
-        ).hexdigest()[:16]
+        digests = export_patterns(
+            self._db_path, min_occurrences=3, evo_dir=self._evo_dir
+        )
+        instance_id = get_instance_id(self._evo_dir)
 
         return {
             "level": 2,
