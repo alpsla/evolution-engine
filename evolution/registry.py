@@ -224,22 +224,24 @@ class AdapterRegistry:
 
             # Plugin with file pattern → check if file exists
             if "pattern" in plugin:
+                source_file = None
                 if self._match_pattern(plugin["pattern"]):
                     source_file = self._first_match(plugin["pattern"]) or plugin["pattern"]
-                    config = AdapterConfig(
-                        family=pfamily,
-                        adapter_name=pname,
-                        tier=3,
-                        source_file=str(source_file),
-                        adapter_class=plugin.get("adapter_class"),
-                        plugin_name=ppackage,
-                        trust_level=trust,
-                    )
-                    if pname in blocked_names or ppackage in blocked_names:
-                        self._blocked_configs.append(config)
-                    else:
-                        configs.append(config)
-                    seen.add(key)
+
+                config = AdapterConfig(
+                    family=pfamily,
+                    adapter_name=pname,
+                    tier=3,
+                    source_file=str(source_file) if source_file else None,
+                    adapter_class=plugin.get("adapter_class"),
+                    plugin_name=ppackage,
+                    trust_level=trust,
+                )
+                if pname in blocked_names or ppackage in blocked_names:
+                    self._blocked_configs.append(config)
+                else:
+                    configs.append(config)
+                seen.add(key)
 
             # Plugin with token → check if token available
             elif "token_key" in plugin:
@@ -260,6 +262,22 @@ class AdapterRegistry:
                     else:
                         configs.append(config)
                     seen.add(key)
+
+            # Plugin with no detection requirement → always include
+            else:
+                config = AdapterConfig(
+                    family=pfamily,
+                    adapter_name=pname,
+                    tier=3,
+                    adapter_class=plugin.get("adapter_class"),
+                    plugin_name=ppackage,
+                    trust_level=trust,
+                )
+                if pname in blocked_names or ppackage in blocked_names:
+                    self._blocked_configs.append(config)
+                else:
+                    configs.append(config)
+                seen.add(key)
 
         configs.sort(key=lambda c: (c.tier, c.family, c.adapter_name))
         return configs

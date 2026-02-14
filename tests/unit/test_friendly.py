@@ -123,7 +123,7 @@ class TestFriendlyPattern:
     def test_with_description_and_count(self):
         result = friendly_pattern({
             "description": "dependency-changing commits tend to touch more spread-out files.",
-            "support_count": 5,
+            "repo_count": 5,
         })
         assert "Observed across 5 projects" in result
         assert "dependency-changing commits" in result
@@ -131,7 +131,7 @@ class TestFriendlyPattern:
     def test_with_description_no_count(self):
         result = friendly_pattern({
             "description": "some pattern description",
-            "support_count": 0,
+            "repo_count": 0,
         })
         assert result == "some pattern description"
 
@@ -139,7 +139,7 @@ class TestFriendlyPattern:
         result = friendly_pattern({
             "families": ["git", "dependency"],
             "metrics": ["dispersion"],
-            "support_count": 3,
+            "repo_count": 3,
             "correlation": 0.5,
         })
         assert "Observed across 3 projects" in result
@@ -153,7 +153,7 @@ class TestFriendlyPattern:
     def test_single_project(self):
         result = friendly_pattern({
             "description": "test pattern",
-            "support_count": 1,
+            "repo_count": 1,
         })
         assert "Observed in 1 project:" in result
         assert "projects" not in result
@@ -179,7 +179,7 @@ class TestFriendlyPattern:
             "families": ["deployment"],
             "metrics": ["dispersion"],
             "correlation": 0.75,
-            "support_count": 9,
+            "repo_count": 9,
             "description": "When deployment events occur, git.dispersion is systematically increased (effect size d=0.75, treated=9, control=3342).",
         })
         assert "effect size" not in result
@@ -191,8 +191,17 @@ class TestFriendlyPattern:
         """Ensure temporal alignment internals aren't leaked."""
         result = friendly_pattern({
             "description": "Signals ci.run_duration and dependency.dependency_count co-occur with correlation -0.41 across 19 commit-aligned observations (of 98 shared commits).",
-            "support_count": 3,
+            "repo_count": 3,
         })
         assert "correlation" not in result
         assert "commit-aligned" not in result
         assert "24h windows" not in result
+
+    def test_support_count_not_used_as_projects(self):
+        """support_count (observation windows) should NOT be shown as projects."""
+        result = friendly_pattern({
+            "description": "test pattern",
+            "support_count": 27631,
+        })
+        assert "27631" not in result
+        assert "projects" not in result

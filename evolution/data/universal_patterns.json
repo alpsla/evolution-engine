@@ -718,7 +718,8 @@
       "correlation_strength": 0.3833,
       "occurrence_count": 465,
       "confidence_tier": "confirmed",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 9
     },
     {
       "fingerprint": "f0980c46c1243135",
@@ -737,7 +738,8 @@
       "correlation_strength": 1.0007,
       "occurrence_count": 384,
       "confidence_tier": "confirmed",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 7
     },
     {
       "fingerprint": "7b112861822577bb",
@@ -756,7 +758,8 @@
       "correlation_strength": 0.4122,
       "occurrence_count": 27631,
       "confidence_tier": "confirmed",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 6
     },
     {
       "fingerprint": "277fbee0ca5a226a",
@@ -775,7 +778,8 @@
       "correlation_strength": 0.3807,
       "occurrence_count": 279,
       "confidence_tier": "confirmed",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 6
     },
     {
       "fingerprint": "4dc9fbd4c95b47bd",
@@ -794,7 +798,8 @@
       "correlation_strength": -0.3868,
       "occurrence_count": 116,
       "confidence_tier": "confirmed",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 5
     },
     {
       "fingerprint": "6c549e872a393610",
@@ -813,7 +818,8 @@
       "correlation_strength": 0.2695,
       "occurrence_count": 72,
       "confidence_tier": "confirmed",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 5
     },
     {
       "fingerprint": "8067119729fe304d",
@@ -832,7 +838,8 @@
       "correlation_strength": 0.3215,
       "occurrence_count": 42,
       "confidence_tier": "confirmed",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 5
     },
     {
       "fingerprint": "5379e2d2e0c8b12d",
@@ -851,7 +858,8 @@
       "correlation_strength": -0.3411,
       "occurrence_count": 6117,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 4
     },
     {
       "fingerprint": "061ae7b6422cc376",
@@ -870,7 +878,8 @@
       "correlation_strength": -0.545,
       "occurrence_count": 288,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 4
     },
     {
       "fingerprint": "f2fcf3609ab04433",
@@ -889,7 +898,8 @@
       "correlation_strength": -0.1813,
       "occurrence_count": 47,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 4
     },
     {
       "fingerprint": "6b55004bc1842b21",
@@ -908,7 +918,8 @@
       "correlation_strength": 0.1297,
       "occurrence_count": 29,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 4
     },
     {
       "fingerprint": "fff7fdc968c86d3c",
@@ -927,7 +938,8 @@
       "correlation_strength": 0.3464,
       "occurrence_count": 27,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 4
     },
     {
       "fingerprint": "399107a26f217b3d",
@@ -946,7 +958,8 @@
       "correlation_strength": 0.2501,
       "occurrence_count": 23,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 4
     },
     {
       "fingerprint": "6f7ba485fbcb07d9",
@@ -965,7 +978,8 @@
       "correlation_strength": 0.4003,
       "occurrence_count": 14740,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 3
     },
     {
       "fingerprint": "a476292e6d99aecd",
@@ -984,7 +998,8 @@
       "correlation_strength": -0.2177,
       "occurrence_count": 5802,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 3
     },
     {
       "fingerprint": "8dff28efd83862af",
@@ -1003,7 +1018,8 @@
       "correlation_strength": 0.9191,
       "occurrence_count": 291,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 3
     },
     {
       "fingerprint": "90c834197c323135",
@@ -1022,7 +1038,8 @@
       "correlation_strength": 0.185,
       "occurrence_count": 26,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 3
     },
     {
       "fingerprint": "f9a0704435cf17b1",
@@ -1041,7 +1058,8 @@
       "correlation_strength": -0.2937,
       "occurrence_count": 20,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 3
     },
     {
       "fingerprint": "1e698dbde5d4c782",
@@ -1060,7 +1078,8 @@
       "correlation_strength": -0.236,
       "occurrence_count": 1457,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 2
     },
     {
       "fingerprint": "367f4fe4feb6f0bc",
@@ -1079,7 +1098,8 @@
       "correlation_strength": 0.3511,
       "occurrence_count": 336,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 2
     },
     {
       "fingerprint": "650913353fceaa93",
@@ -1098,7 +1118,8 @@
       "correlation_strength": 0.2967,
       "occurrence_count": 20,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 2
     },
     {
       "fingerprint": "ed9e1dcd8a9c6564",
@@ -1117,7 +1138,8 @@
       "correlation_strength": 0.3543,
       "occurrence_count": 14,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 2
     },
     {
       "fingerprint": "6b116d989f6ae064",
@@ -1136,7 +1158,8 @@
       "correlation_strength": -0.8271,
       "occurrence_count": 14,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 2
     },
     {
       "fingerprint": "8824c373a8f1738c",
@@ -1155,7 +1178,8 @@
       "correlation_strength": 0.348,
       "occurrence_count": 12,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 2
     },
     {
       "fingerprint": "d6f26d573e07c805",
@@ -1174,7 +1198,8 @@
       "correlation_strength": 0.0949,
       "occurrence_count": 10,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 2
     },
     {
       "fingerprint": "cb575942e97b5d6b",
@@ -1193,7 +1218,8 @@
       "correlation_strength": 0.183,
       "occurrence_count": 9,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 2
     },
     {
       "fingerprint": "c51cbcf0a2d93bbb",
@@ -1212,7 +1238,8 @@
       "correlation_strength": 0.2462,
       "occurrence_count": 8,
       "confidence_tier": "statistical",
-      "scope": "universal"
+      "scope": "universal",
+      "repo_count": 2
     }
   ]
 }

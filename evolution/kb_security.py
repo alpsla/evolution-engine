@@ -210,6 +210,12 @@ def validate_pattern(pattern: dict, *, require_external_scope: bool = True) -> d
             raise PatternValidationError("occurrence_count", "must be non-negative integer")
         validated["occurrence_count"] = occ
 
+    repo_count = pattern.get("repo_count")
+    if repo_count is not None:
+        if not isinstance(repo_count, int) or repo_count < 0:
+            raise PatternValidationError("repo_count", "must be non-negative integer")
+        validated["repo_count"] = repo_count
+
     # ── Timestamp fields ──
 
     for ts_field in ("first_seen", "last_seen"):

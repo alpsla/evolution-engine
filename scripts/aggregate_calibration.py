@@ -340,9 +340,9 @@ def main():
         "total_unique_fingerprints": len(by_fingerprint),
         "min_repos_filter": args.min_repos,
         "patterns": universal,
-        # Stripped version for import (no repo_count/repos_observed)
+        # Stripped version for import (keep repo_count, drop repos_observed)
         "import_ready": [
-            {k: v for k, v in p.items() if k not in ("repo_count", "repos_observed")}
+            {k: v for k, v in p.items() if k != "repos_observed"}
             for p in universal
             if p["repo_count"] >= args.min_repos
         ],

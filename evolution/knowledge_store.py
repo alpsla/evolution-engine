@@ -128,6 +128,7 @@ class SQLiteKnowledgeStore(KnowledgeStoreBase):
                 description_semantic    TEXT,
                 correlation_strength    REAL,
                 occurrence_count        INTEGER DEFAULT 1,
+                repo_count              INTEGER DEFAULT 0,
                 first_seen      TEXT NOT NULL,
                 last_seen       TEXT NOT NULL,
                 confidence_tier TEXT NOT NULL,
@@ -181,6 +182,11 @@ class SQLiteKnowledgeStore(KnowledgeStoreBase):
             CREATE INDEX IF NOT EXISTS idx_knowledge_scope ON knowledge(scope);
             CREATE INDEX IF NOT EXISTS idx_pattern_history_pattern ON pattern_history(pattern_id);
         """)
+        # Migration: add repo_count column to existing DBs
+        try:
+            self._conn.execute("ALTER TABLE patterns ADD COLUMN repo_count INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         self._conn.commit()
 
     @staticmethod
@@ -222,9 +228,9 @@ class SQLiteKnowledgeStore(KnowledgeStoreBase):
             INSERT INTO patterns (
                 pattern_id, fingerprint, scope, discovery_method, pattern_type,
                 sources, metrics, description_statistical, description_semantic,
-                correlation_strength, occurrence_count, first_seen, last_seen,
+                correlation_strength, occurrence_count, repo_count, first_seen, last_seen,
                 confidence_tier, confidence_status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             pattern_id,
             pattern["fingerprint"],
@@ -237,6 +243,7 @@ class SQLiteKnowledgeStore(KnowledgeStoreBase):
             pattern.get("description_semantic"),
             pattern.get("correlation_strength"),
             pattern.get("occurrence_count", 1),
+            pattern.get("repo_count", 0),
             pattern.get("first_seen", now),
             pattern.get("last_seen", now),
             pattern.get("confidence_tier", "statistical"),
@@ -263,11 +270,17 @@ class SQLiteKnowledgeStore(KnowledgeStoreBase):
         row = self._conn.execute("SELECT * FROM patterns WHERE pattern_id = ?", (pattern_id,)).fetchone()
         return self._row_to_dict(row) if row else None
 
-    def get_pattern_by_fingerprint(self, fingerprint: str, scope: str = "local") -> Optional[dict]:
-        row = self._conn.execute(
-            "SELECT * FROM patterns WHERE fingerprint = ? AND scope = ? AND expired = 0",
-            (fingerprint, scope),
-        ).fetchone()
+    def get_pattern_by_fingerprint(self, fingerprint: str, scope: str = None) -> Optional[dict]:
+        if scope:
+            row = self._conn.execute(
+                "SELECT * FROM patterns WHERE fingerprint = ? AND scope = ? AND expired = 0",
+                (fingerprint, scope),
+            ).fetchone()
+        else:
+            row = self._conn.execute(
+                "SELECT * FROM patterns WHERE fingerprint = ? AND expired = 0",
+                (fingerprint,),
+            ).fetchone()
         return self._row_to_dict(row) if row else None
 
     def update_pattern(self, pattern_id: str, updates: dict) -> None:

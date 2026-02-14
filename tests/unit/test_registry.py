@@ -66,8 +66,9 @@ class TestTier1Detection:
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
         registry = AdapterRegistry(minimal_repo)
         configs = registry.detect()
-        assert len(configs) == 1
-        assert configs[0].family == "version_control"
+        tier1 = [c for c in configs if c.tier == 1]
+        assert len(tier1) == 1
+        assert tier1[0].family == "version_control"
 
     def test_npm_detection(self, tmp_path):
         (tmp_path / ".git").mkdir()
@@ -188,8 +189,12 @@ class TestPluginDetection:
             assert plugin_configs[0].adapter_class == "evo_bitbucket.BitbucketAdapter"
             assert plugin_configs[0].plugin_name == "evo-adapter-bitbucket"
 
-    def test_plugin_file_pattern_not_detected(self, tmp_path, monkeypatch):
-        """Plugin with file pattern NOT detected when file doesn't exist."""
+    def test_plugin_file_pattern_detected_without_file(self, tmp_path, monkeypatch):
+        """Plugin with file pattern is included even if file doesn't exist.
+
+        Installed plugins are always detected — the adapter handles the
+        missing-file case gracefully (returns 0 events).
+        """
         (tmp_path / ".git").mkdir()
 
         plugin_descriptors = [{
@@ -204,7 +209,8 @@ class TestPluginDetection:
             registry = AdapterRegistry(tmp_path)
             configs = registry.detect()
             plugin_configs = [c for c in configs if c.tier == 3]
-            assert len(plugin_configs) == 0
+            assert len(plugin_configs) == 1
+            assert plugin_configs[0].source_file is None
 
     def test_plugin_token_detected(self, tmp_path, monkeypatch):
         """Plugin with token requirement detected when token provided."""

@@ -63,7 +63,9 @@ def main():
 @click.option("--scope", "-s", help="Scope identifier for the advisory")
 @click.option("--quiet", "-q", is_flag=True, help="Suppress progress output")
 @click.option("--show-prompt", is_flag=True, help="Print investigation prompt after analysis")
-def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, show_prompt):
+@click.option("--no-report", is_flag=True, help="Skip HTML report generation")
+@click.option("--open", "open_browser", is_flag=True, help="Open HTML report in browser after analysis")
+def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, show_prompt, no_report, open_browser):
     """Analyze a repository. Detects adapters automatically."""
     from evolution.orchestrator import Orchestrator
 
@@ -116,6 +118,26 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, show
             click.echo("=" * 60)
             click.echo(prompt_path.read_text())
 
+    # Auto-generate HTML report (unless --no-report or --json)
+    if result["status"] == "complete" and not json_output and not no_report:
+        try:
+            from evolution.report_generator import generate_report
+
+            evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
+            html = generate_report(evo_path)
+            report_path = evo_path / "report.html"
+            report_path.write_text(html)
+
+            file_url = f"file://{report_path.resolve()}"
+            click.echo(f"\nReport: \033]8;;{file_url}\033\\{report_path}\033]8;;\033\\")
+
+            if open_browser:
+                import webbrowser
+                webbrowser.open(file_url)
+        except Exception as e:
+            if not quiet:
+                click.echo(f"\n[warn] Could not generate report: {e}")
+
     # Version update nudge (non-blocking, uses cache)
     if result["status"] == "complete":
         try:
@@ -126,6 +148,18 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, show
                 click.echo(nudge)
         except Exception:
             pass  # Never let version check break analyze
+
+    # Notification check (adapter updates, available adapters, etc.)
+    if result["status"] == "complete" and not json_output:
+        try:
+            from evolution.notifications import check_and_notify, format_notifications
+            evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
+            pending = check_and_notify(repo_path=path, evo_dir=evo_path)
+            display = format_notifications(pending)
+            if display:
+                click.echo(display)
+        except Exception:
+            pass  # Never let notifications break analyze
 
 
 # ─────────────────── evo accept ───────────────────
@@ -923,9 +957,27 @@ def adapter_list(path, token, as_json):
     if plugins:
         click.echo()
         click.echo("Installed plugins:")
+        # Check for updates (uses 24h cache, no extra latency)
+        try:
+            import importlib.metadata
+            from evolution.adapter_versions import check_pypi_version
+            _update_cache = {}
+            for p in plugins:
+                try:
+                    cur = importlib.metadata.version(p["plugin_name"])
+                    latest = check_pypi_version(p["plugin_name"])
+                    if latest and latest != cur:
+                        _update_cache[p["plugin_name"]] = latest
+                except Exception:
+                    pass
+        except Exception:
+            _update_cache = {}
         for p in plugins:
             status = "detected" if p["detected"] else "not detected"
-            click.echo(f"  {p['plugin_name']}: {p['family']}/{p['adapter_name']} ({status})")
+            update_note = ""
+            if p["plugin_name"] in _update_cache:
+                update_note = f" — update available: {_update_cache[p['plugin_name']]}"
+            click.echo(f"  {p['plugin_name']}: {p['family']}/{p['adapter_name']} ({status}){update_note}")
 
     # Show prescan-detected tools not yet connected
     unconnected = [s for s in detected_services if s.family not in connected_families]
@@ -937,6 +989,16 @@ def adapter_list(path, token, as_json):
             click.echo(f"  \U0001f50d {s.display_name:20s} [{layers}] → {s.adapter}")
             for ev in s.evidence[:2]:
                 click.echo(f"     {ev}")
+
+    # Version update nudge (non-blocking, uses cache)
+    try:
+        from evolution.adapter_versions import check_self_update_nudge
+        nudge = check_self_update_nudge()
+        if nudge:
+            click.echo()
+            click.echo(nudge)
+    except Exception:
+        pass
 
 
 @adapter.command("validate")
@@ -1397,6 +1459,109 @@ def adapter_report(adapter_name, category, description):
         click.echo("To submit this report to the community:")
         click.echo("  https://github.com/evolution-engine/evolution-engine/issues/new")
         click.echo("  Use the 'adapter-report' label")
+
+
+@adapter.command("discover")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--json", "json_output", is_flag=True, help="Output JSON")
+def adapter_discover(path, json_output):
+    """Discover adapters available for tools detected in your repo.
+
+    Scans the repo for known tools (via prescan), then checks PyPI
+    for matching adapter packages that aren't installed yet.
+
+    Example:
+        evo adapter discover .
+    """
+    import importlib.metadata
+    from evolution.prescan import SourcePrescan
+    from evolution.adapter_versions import check_pypi_version
+
+    prescan = SourcePrescan(path)
+    detected = prescan.scan()
+
+    if not detected:
+        click.echo("No external tools detected in this repo.")
+        click.echo("Run `evo sources` for detailed prescan output.")
+        return
+
+    # Get installed adapter packages
+    installed = set()
+    eps = importlib.metadata.entry_points()
+    if hasattr(eps, "select"):
+        adapter_eps = eps.select(group="evo.adapters")
+    else:
+        adapter_eps = eps.get("evo.adapters", [])
+    for ep in adapter_eps:
+        if hasattr(ep, "dist") and ep.dist:
+            installed.add(ep.dist.name)
+
+    # Check each detected tool
+    available = []
+    already_installed = []
+    not_published = []
+
+    for svc in detected:
+        pkg = svc.adapter
+        if not pkg:
+            continue
+
+        if pkg in installed:
+            already_installed.append(svc)
+            continue
+
+        latest = check_pypi_version(pkg, use_cache=True)
+        if latest:
+            available.append({"service": svc, "version": latest})
+        else:
+            not_published.append(svc)
+
+    if json_output:
+        click.echo(json.dumps({
+            "available": [
+                {"package": a["service"].adapter, "version": a["version"],
+                 "tool": a["service"].display_name, "family": a["service"].family}
+                for a in available
+            ],
+            "installed": [
+                {"package": s.adapter, "tool": s.display_name, "family": s.family}
+                for s in already_installed
+            ],
+            "not_published": [
+                {"package": s.adapter, "tool": s.display_name, "family": s.family}
+                for s in not_published
+            ],
+        }, indent=2))
+        return
+
+    if available:
+        click.echo("Available adapters (install via pip):\n")
+        for a in available:
+            svc = a["service"]
+            click.echo(f"  {svc.adapter:30s} v{a['version']:8s} "
+                        f"← {svc.display_name} ({svc.family})")
+        click.echo()
+        if len(available) == 1:
+            click.echo(f"  Install: pip install {available[0]['service'].adapter}")
+        else:
+            names = " ".join(a["service"].adapter for a in available)
+            click.echo(f"  Install all: pip install {names}")
+
+    if already_installed:
+        click.echo()
+        click.echo("Already installed:")
+        for svc in already_installed:
+            click.echo(f"  {svc.adapter:30s} ← {svc.display_name}")
+
+    if not_published:
+        click.echo()
+        click.echo("Not yet on PyPI (build your own?):")
+        for svc in not_published:
+            click.echo(f"  {svc.adapter:30s} ← {svc.display_name} ({svc.family})")
+            click.echo(f"    Scaffold: evo adapter new {svc.service} --family {svc.family}")
+
+    if not available and not not_published:
+        click.echo("All detected tools already have adapters installed.")
 
 
 # ─────────────────── evo license ───────────────────
@@ -1872,6 +2037,80 @@ def history_clean(path, keep, before, yes, json_output):
         click.echo(json.dumps({"deleted": deleted}))
     else:
         click.echo(f"Deleted {deleted} snapshot(s).")
+
+
+# ─────────────────── evo notifications ───────────────────
+
+
+@main.group(invoke_without_command=True)
+@click.pass_context
+def notifications(ctx):
+    """View and manage update notifications."""
+    if ctx.invoked_subcommand is None:
+        ctx.invoke(notifications_list)
+
+
+@notifications.command("list")
+def notifications_list():
+    """Show pending notifications."""
+    from evolution.notifications import get_pending
+
+    pending = get_pending()
+    if not pending:
+        click.echo("No pending notifications.")
+        return
+
+    click.echo(f"{len(pending)} notification(s):\n")
+    for n in pending:
+        click.echo(f"  [{n['type']}] {n['message']}")
+
+
+@notifications.command("dismiss")
+@click.argument("key", default="all")
+def notifications_dismiss(key):
+    """Dismiss notifications (default: all).
+
+    Examples:
+        evo notifications dismiss          # Dismiss all
+        evo notifications dismiss update:evo-adapter-jest-cov:0.2.0
+    """
+    from evolution.notifications import dismiss, dismiss_all
+
+    if key == "all":
+        dismiss_all()
+        click.echo("All notifications dismissed.")
+    else:
+        dismiss(key)
+        click.echo(f"Dismissed: {key}")
+
+
+@notifications.command("check")
+@click.argument("path", default=".", type=click.Path(exists=True))
+def notifications_check(path):
+    """Force a notification check (ignores 24h cache).
+
+    Checks for adapter updates, available adapters, and pattern updates.
+    """
+    from evolution.notifications import (
+        _load_notifications, _prune_expired, _save_notifications,
+        check_adapter_updates, check_adapter_discovery,
+        format_notifications,
+    )
+
+    state = _load_notifications()
+    state = _prune_expired(state)
+
+    click.echo("Checking for updates...")
+    check_adapter_updates(state)
+    check_adapter_discovery(state, repo_path=path)
+    state["last_check"] = __import__("time").time()
+    _save_notifications(state)
+
+    pending = [n for n in state["items"] if not n.get("dismissed")]
+    if pending:
+        click.echo(format_notifications(pending))
+    else:
+        click.echo("Everything is up to date.")
 
 
 if __name__ == "__main__":

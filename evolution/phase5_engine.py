@@ -344,7 +344,7 @@ class Phase5Engine:
                     "knowledge_id": ka.get("knowledge_id", ""),
                     "pattern_type": ka.get("pattern_type", ""),
                     "confidence": "approved",
-                    "seen_count": ka.get("support_count", 0),
+                    "support_count": ka.get("support_count", 0),
                     "sources": ka.get("sources", []),
                     "metrics": ka.get("metrics", []),
                     "description": (
@@ -388,7 +388,7 @@ class Phase5Engine:
                         p.get("description_semantic")
                         or p.get("description_statistical", "")
                     ),
-                    "support_count": p.get("repo_count") or p.get("occurrence_count", 0),
+                    "repo_count": p.get("repo_count", 0),
                 })
 
         return matches

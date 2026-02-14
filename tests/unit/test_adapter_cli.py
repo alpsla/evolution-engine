@@ -412,3 +412,58 @@ class TestAdapterValidateSecurity:
         )
         assert result.exit_code == 0
         assert "security scan" in result.output.lower() or "Security scan" in result.output
+
+
+# ─── evo adapter list — inline update indicators ───
+
+
+class TestAdapterListUpdateIndicators:
+    def test_shows_update_available_for_plugin(self, runner, tmp_path, monkeypatch):
+        """adapter list shows 'update available' when plugin has newer PyPI version."""
+        (tmp_path / ".git").mkdir()
+
+        # Mock a plugin entry point
+        fake_ep = type("EP", (), {
+            "name": "evo-adapter-fake",
+            "load": lambda self: lambda: [
+                {"adapter_name": "fake", "family": "ci",
+                 "adapter_class": type("A", (), {
+                     "FAMILY": "ci", "ADAPTER_NAME": "fake",
+                     "iter_events": lambda s: iter([]),
+                 }),
+                 "detect_config": None}
+            ]
+        })()
+
+        # Patch entry_points to return our fake plugin
+        monkeypatch.setattr(
+            "evolution.registry.entry_points",
+            lambda **kw: [fake_ep] if kw.get("group") == "evo.adapters" else []
+        )
+
+        # Patch importlib.metadata.version to return old version
+        monkeypatch.setattr("importlib.metadata.version", lambda name: "0.1.0")
+        # Patch check_pypi_version to return newer version
+        monkeypatch.setattr(
+            "evolution.adapter_versions.check_pypi_version",
+            lambda name, **kw: "0.2.0"
+        )
+
+        result = runner.invoke(main, ["adapter", "list", str(tmp_path)])
+        assert result.exit_code == 0
+        assert "update available: 0.2.0" in result.output
+
+    def test_no_update_note_when_up_to_date(self, runner, tmp_path, monkeypatch):
+        """adapter list does not show update note when version is current."""
+        (tmp_path / ".git").mkdir()
+
+        # Patch check_pypi_version to return same version
+        monkeypatch.setattr(
+            "evolution.adapter_versions.check_pypi_version",
+            lambda name, **kw: "0.1.0"
+        )
+        monkeypatch.setattr("importlib.metadata.version", lambda name: "0.1.0")
+
+        result = runner.invoke(main, ["adapter", "list", str(tmp_path)])
+        assert result.exit_code == 0
+        assert "update available" not in result.output

@@ -1062,8 +1062,8 @@ class Phase4Engine:
             candidates += self._discover_presence_patterns(signals)
 
             for candidate in candidates:
-                # Check if this specific co-occurrence fingerprint already exists
-                existing = self.kb.get_pattern_by_fingerprint(candidate["fingerprint"], "local")
+                # Check if this fingerprint already exists (any scope — local or community)
+                existing = self.kb.get_pattern_by_fingerprint(candidate["fingerprint"])
 
                 if existing:
                     # Increment existing

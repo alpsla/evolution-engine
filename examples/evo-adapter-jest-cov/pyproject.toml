@@ -1,0 +1,13 @@
+[project]
+name = "evo-adapter-jest-cov"
+version = "0.1.0"
+description = "Evolution Engine adapter for jest-cov"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.entry-points."evo.adapters"]
+jest_cov = "evo_jest_cov:register"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

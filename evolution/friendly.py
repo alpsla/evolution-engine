@@ -211,12 +211,7 @@ def friendly_pattern(pattern: dict) -> str:
     families = pattern.get("families") or pattern.get("sources") or []
     metrics = pattern.get("metrics") or []
     corr = pattern.get("correlation") or pattern.get("correlation_strength") or 0
-    seen_count = (
-        pattern.get("support_count")
-        or pattern.get("repo_count")
-        or pattern.get("seen_count")
-        or 0
-    )
+    seen_count = pattern.get("repo_count", 0)
 
     prefix = ""
     if seen_count > 1:
