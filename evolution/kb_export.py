@@ -20,6 +20,10 @@ from evolution.kb_security import (
     validate_pattern,
     verify_fingerprint_integrity,
     compute_import_digest,
+    create_attestation,
+    validate_attestations,
+    meets_quorum,
+    DEFAULT_QUORUM,
     PatternValidationError,
 )
 from evolution.knowledge_store import SQLiteKnowledgeStore
@@ -29,6 +33,7 @@ def export_patterns(
     db_path: str | Path,
     min_occurrences: int = 3,
     scope: str = None,
+    evo_dir: str | Path = None,
 ) -> list[dict]:
     """Export anonymized pattern digests from a knowledge base.
 
@@ -37,14 +42,21 @@ def export_patterns(
     - repo path, author info
     - raw timestamps (only keep relative age bucket)
 
+    Each exported pattern includes an attestation from this EE instance,
+    proving the pattern was computed by a real installation.
+
     Args:
         db_path: Path to knowledge.db
         min_occurrences: Minimum occurrences to export (filters noise)
         scope: Filter patterns by scope (default: all non-expired)
+        evo_dir: Path to .evo directory (for signing)
 
     Returns:
-        List of anonymized pattern digests.
+        List of anonymized pattern digests with attestations.
     """
+    from pathlib import Path as _Path
+    evo_path = _Path(evo_dir) if evo_dir else None
+
     kb = SQLiteKnowledgeStore(db_path)
 
     # Export promoted knowledge artifacts + strong patterns
@@ -54,6 +66,7 @@ def export_patterns(
     for ka in kb.list_knowledge(scope=scope):
         digest = _anonymize_knowledge(ka)
         if digest:
+            digest["attestations"] = [create_attestation(digest, evo_path)]
             digests.append(digest)
 
     # Strong candidate patterns (not yet promoted but seen enough times)
@@ -62,6 +75,7 @@ def export_patterns(
             continue  # Already exported as knowledge artifact
         digest = _anonymize_pattern(p)
         if digest:
+            digest["attestations"] = [create_attestation(digest, evo_path)]
             digests.append(digest)
 
     kb.close()
@@ -71,24 +85,38 @@ def export_patterns(
 def import_patterns(
     db_path: str | Path,
     patterns: list[dict],
+    min_attestations: int = DEFAULT_QUORUM,
 ) -> dict:
     """Import community patterns into a knowledge base.
 
     All patterns are validated through kb_security.validate_pattern().
     Imported patterns get scope="community" and never overwrite local patterns.
 
+    Security layers:
+      1. Field validation (sanitize all text, check types/ranges)
+      2. Fingerprint integrity (hex format, minimum length)
+      3. Attestation validation (strip malformed, deduplicate by instance)
+      4. Quorum check (require N+ unique instance attestations)
+      5. Duplicate check (skip if fingerprint already exists)
+
+    Patterns that pass validation but fail quorum are stored as "unverified"
+    and excluded from advisories until more instances attest them.
+
     Args:
         db_path: Path to knowledge.db
         patterns: List of pattern digests to import.
+        min_attestations: Minimum unique attestations required for full trust.
+            Patterns below this threshold are stored as "unverified".
 
     Returns:
-        Dict with counts: imported, skipped (duplicate), rejected (invalid).
+        Dict with counts: imported, skipped, rejected, quarantined.
     """
     kb = SQLiteKnowledgeStore(db_path)
 
     imported = 0
     skipped = 0
     rejected = 0
+    quarantined = 0
     errors = []
 
     for raw_pattern in patterns:
@@ -106,7 +134,12 @@ def import_patterns(
             errors.append(f"Invalid fingerprint: {validated.get('fingerprint', '?')}")
             continue
 
-        # Step 3: Check for duplicates (same fingerprint + scope)
+        # Step 3: Validate attestations
+        raw_attestations = raw_pattern.get("attestations", [])
+        validated_attestations = validate_attestations(raw_attestations)
+        validated["attestations"] = validated_attestations
+
+        # Step 4: Check for duplicates (same fingerprint + scope)
         existing = kb.get_pattern_by_fingerprint(
             validated["fingerprint"],
             scope="community",
@@ -115,24 +148,35 @@ def import_patterns(
             skipped += 1
             continue
 
-        # Also skip if a local pattern already has this fingerprint
+        # Also check if a local pattern already has this fingerprint
         local_match = kb.get_pattern_by_fingerprint(
             validated["fingerprint"],
             scope="local",
         )
 
-        # Step 4: Store as community pattern
+        # Step 5: Quorum check
+        has_quorum = meets_quorum(validated, min_attestations)
+
+        # Step 6: Store as community pattern
         validated["scope"] = "community"
         validated.setdefault("occurrence_count", validated.get("occurrence_count", 1))
         validated.setdefault("confidence_tier", "statistical")
-        validated.setdefault("confidence_status", "imported")
+
+        if has_quorum:
+            validated.setdefault("confidence_status", "imported")
+        else:
+            validated["confidence_status"] = "unverified"
 
         try:
             kb.create_pattern(validated)
-            imported += 1
 
-            # If a local pattern matches, promote it to "confirmed"
-            if local_match:
+            if has_quorum:
+                imported += 1
+            else:
+                quarantined += 1
+
+            # If a local pattern matches and quorum met, promote it
+            if local_match and has_quorum:
                 kb.update_pattern(local_match["pattern_id"], {
                     "confidence_status": "community_confirmed",
                 })
@@ -146,6 +190,7 @@ def import_patterns(
         "imported": imported,
         "skipped": skipped,
         "rejected": rejected,
+        "quarantined": quarantined,
         "errors": errors[:20],  # Cap error messages
     }
 

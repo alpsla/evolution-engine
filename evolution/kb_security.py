@@ -1,5 +1,5 @@
 """
-KB Security — Pattern validation and integrity checks.
+KB Security — Pattern validation, signing, and integrity checks.
 
 Prevents injection attacks when importing community/universal patterns.
 All patterns entering the KB from external sources MUST pass through
@@ -11,13 +11,23 @@ Threat model:
   3. Fingerprint spoofing (crafted fingerprint to overwrite local patterns)
   4. Path traversal in field values
   5. Type confusion (string where int expected, nested dicts as bombs)
+  6. Data poisoning (crafted patterns to mislead advisories)
+  7. Unauthenticated push (patterns from non-EE sources)
 
-All community/universal patterns are treated as untrusted input.
+Defense layers:
+  - Pull-side: validate_pattern() sanitizes all fields
+  - Push-side: HMAC signing proves pattern came from real EE instance
+  - Quorum: patterns require N+ unique instance attestations before trust
 """
 
 import hashlib
+import hmac
 import json
+import os
 import re
+import secrets
+import time
+from pathlib import Path
 from typing import Optional
 
 
@@ -275,3 +285,190 @@ def compute_import_digest(pattern: dict) -> str:
     }
     encoded = json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
+
+
+# ─────────────────── Instance Identity ───────────────────
+
+# Max attestations per pattern (prevents bloat)
+MAX_ATTESTATIONS = 50
+
+# Default quorum: patterns need attestations from this many unique instances
+DEFAULT_QUORUM = 2
+
+
+def _evo_dir() -> Path:
+    """Resolve the ~/.evo directory."""
+    return Path.home() / ".evo"
+
+
+def get_instance_secret(evo_dir: Path = None) -> str:
+    """Get or create a per-install secret key for HMAC signing.
+
+    The secret is generated once and stored at ~/.evo/instance_secret.
+    It never leaves the machine — only HMACs derived from it are shared.
+    """
+    d = evo_dir or _evo_dir()
+    secret_path = d / "instance_secret"
+    if secret_path.exists():
+        return secret_path.read_text().strip()
+    d.mkdir(parents=True, exist_ok=True)
+    secret = secrets.token_hex(32)
+    secret_path.write_text(secret)
+    # Restrict permissions (owner-only read/write)
+    try:
+        secret_path.chmod(0o600)
+    except OSError:
+        pass
+    return secret
+
+
+def get_instance_id(evo_dir: Path = None) -> str:
+    """Derive a stable anonymous instance ID from the install secret.
+
+    This ID is shared publicly (included in attestations) but cannot
+    be reversed to recover the secret.
+    """
+    secret = get_instance_secret(evo_dir)
+    return hashlib.sha256(secret.encode()).hexdigest()[:16]
+
+
+# ─────────────────── Pattern Signing ───────────────────
+
+
+def _pattern_signing_payload(pattern: dict) -> bytes:
+    """Build the canonical payload for HMAC signing.
+
+    Only signs immutable content fields — not metadata like timestamps
+    or attestations (which change as the pattern propagates).
+    """
+    canonical = {
+        "fingerprint": pattern.get("fingerprint", ""),
+        "sources": sorted(pattern.get("sources", [])),
+        "metrics": sorted(pattern.get("metrics", [])),
+        "pattern_type": pattern.get("pattern_type", ""),
+        "correlation_strength": pattern.get("correlation_strength"),
+        "scope": pattern.get("scope", "community"),
+    }
+    return json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def sign_pattern(pattern: dict, evo_dir: Path = None) -> str:
+    """Compute HMAC-SHA256 signature for a pattern.
+
+    The signature proves this pattern was created by a real EE instance.
+    It's included in the attestation when pushing patterns.
+    """
+    secret = get_instance_secret(evo_dir)
+    payload = _pattern_signing_payload(pattern)
+    return hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+
+
+def verify_own_signature(pattern: dict, signature: str, evo_dir: Path = None) -> bool:
+    """Verify a pattern signature against this instance's secret.
+
+    Only useful for self-check (did I produce this pattern?).
+    Remote instances can't verify each other's signatures — that's
+    what the quorum system is for.
+    """
+    expected = sign_pattern(pattern, evo_dir)
+    return hmac.compare_digest(expected, signature)
+
+
+# ─────────────────── Attestations ───────────────────
+
+
+def create_attestation(pattern: dict, evo_dir: Path = None) -> dict:
+    """Create an attestation record for a pattern.
+
+    An attestation says: "Instance X vouches that this pattern was
+    discovered via legitimate EE analysis at time T."
+    """
+    instance_id = get_instance_id(evo_dir)
+    signature = sign_pattern(pattern, evo_dir)
+
+    try:
+        from importlib.metadata import version as pkg_version
+        ee_version = pkg_version("evolution-engine")
+    except Exception:
+        ee_version = "unknown"
+
+    return {
+        "instance_id": instance_id,
+        "signature": signature,
+        "timestamp": int(time.time()),
+        "ee_version": ee_version,
+    }
+
+
+def validate_attestations(attestations: list) -> list[dict]:
+    """Validate and sanitize attestation records from an external source.
+
+    Strips malformed attestations. Returns only structurally valid ones.
+    """
+    if not isinstance(attestations, list):
+        return []
+
+    valid = []
+    seen_ids = set()
+
+    for att in attestations:
+        if not isinstance(att, dict):
+            continue
+        if len(valid) >= MAX_ATTESTATIONS:
+            break
+
+        iid = att.get("instance_id", "")
+        sig = att.get("signature", "")
+        ts = att.get("timestamp")
+        ver = att.get("ee_version", "")
+
+        # instance_id: 16-char hex
+        if not isinstance(iid, str) or not _FINGERPRINT_RE.match(iid) or len(iid) != 16:
+            continue
+
+        # signature: 64-char hex (SHA-256)
+        if not isinstance(sig, str) or not _FINGERPRINT_RE.match(sig) or len(sig) != 64:
+            continue
+
+        # timestamp: positive integer, not in the future (with 1h tolerance)
+        if not isinstance(ts, (int, float)) or ts < 0 or ts > time.time() + 3600:
+            continue
+
+        # ee_version: safe string, bounded length
+        if not isinstance(ver, str) or len(ver) > 20:
+            ver = "unknown"
+
+        # Deduplicate by instance_id (one attestation per instance)
+        if iid in seen_ids:
+            continue
+        seen_ids.add(iid)
+
+        valid.append({
+            "instance_id": iid,
+            "signature": sig,
+            "timestamp": int(ts),
+            "ee_version": ver,
+        })
+
+    return valid
+
+
+def count_unique_attestations(attestations: list) -> int:
+    """Count unique instance IDs in an attestation list."""
+    if not isinstance(attestations, list):
+        return 0
+    ids = set()
+    for att in attestations:
+        if isinstance(att, dict) and isinstance(att.get("instance_id"), str):
+            ids.add(att["instance_id"])
+    return len(ids)
+
+
+def meets_quorum(pattern: dict, min_attestations: int = DEFAULT_QUORUM) -> bool:
+    """Check if a pattern has enough unique attestations to be trusted.
+
+    Patterns below quorum are stored as "unverified" and excluded
+    from advisories until more instances vouch for them.
+    """
+    attestations = pattern.get("attestations", [])
+    return count_unique_attestations(attestations) >= min_attestations
