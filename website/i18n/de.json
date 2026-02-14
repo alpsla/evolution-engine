@@ -23,7 +23,9 @@
     "evidence_based_title": "Evidenzbasiert",
     "evidence_based_desc": "Statistische Abweichung von der eigenen Baseline Ihres Repos. Modifizierte Z-Scores statt willk\u00fcrlicher Schwellenwerte. Kalibriert \u00fcber 43 Open-Source-Repos.",
     "cross_signal_title": "Signal\u00fcbergreifend",
-    "cross_signal_desc": "Korreliert Git + CI + Abh\u00e4ngigkeiten + Deployments. \u201eCI schl\u00e4gt nach gro\u00dfen Dependency-Updates fehl\u201c ist ein Muster, das kein einzelnes Tool erkennt."
+    "cross_signal_desc": "Korreliert Git + CI + Abh\u00e4ngigkeiten + Deployments. \u201eCI schl\u00e4gt nach gro\u00dfen Dependency-Updates fehl\u201c ist ein Muster, das kein einzelnes Tool erkennt.",
+    "extensible_title": "Erweiterbar",
+    "extensible_desc": "Offenes Adapter-\u00d6kosystem. EE erkennt verf\u00fcgbare Adapter f\u00fcr Ihre Tools, benachrichtigt \u00fcber Updates und l\u00e4dt Community-Patterns automatisch."
   },
   "how_it_works": {
     "title": "So funktioniert es",
@@ -83,7 +85,36 @@
     "build_your_own_title": "Eigenen Adapter bauen",
     "build_your_own_desc": "Erstellen Sie einen eigenen Adapter mit unserem Scaffold-Tool und der Schritt-f\u00fcr-Schritt-Anleitung. Als pip-Paket ver\u00f6ffentlichen.",
     "dont_see": "Ihr Tool ist nicht dabei? Wir priorisieren nach Community-Nachfrage.",
-    "request_adapter": "Adapter anfragen"
+    "request_adapter": "Adapter anfragen",
+    "explore_all": "Das gesamte Adapter-\u00d6kosystem entdecken \u2192"
+  },
+  "adapters_page": {
+    "title": "Adapter-\u00d6kosystem",
+    "subtitle": "Mitgelieferte Adapter, ein Plugin-System f\u00fcr Erweiterungen und ein offenes \u00d6kosystem. Jedes Tool mit Projektdaten kann ein Adapter werden.",
+    "builtin_title": "Mitgelieferte Adapter",
+    "builtin_subtitle": "Wird mit Evolution Engine ausgeliefert. Keine Konfiguration, automatisch aus Ihrem Repo erkannt.",
+    "composer_desc": "PHP-Abh\u00e4ngigkeitsverfolgung aus composer.lock.",
+    "openapi_desc": "API-Schema-\u00c4nderungsverfolgung aus OpenAPI/Swagger-Spezifikationen.",
+    "terraform_desc": "Infrastructure-as-Code-\u00c4nderungsverfolgung aus .tf-Dateien.",
+    "docker_desc": "Container-Konfigurations\u00e4nderungen aus Dockerfiles und Compose-Dateien.",
+    "ci_local_desc": "Lokale CI-Workflow-Analyse aus GitHub Actions, GitLab CI, Jenkins und CircleCI Konfigurationsdateien.",
+    "gitlab_pipelines_desc": "GitLab CI/CD Pipeline-\u00dcberwachung via API.",
+    "gitlab_releases_desc": "GitLab Release-Kadenz-Tracking via API.",
+    "plugin_title": "Plugin-\u00d6kosystem",
+    "plugin_subtitle": "Installieren Sie jeden Adapter via pip. Erstellen Sie Ihren eigenen in Minuten. Plugins werden zur Laufzeit automatisch erkannt.",
+    "install_title": "Ein Plugin installieren",
+    "install_desc": "Drittanbieter-Adapter sind normale pip-Pakete. Installieren Sie eines und EE erkennt es automatisch beim n\u00e4chsten Lauf.",
+    "build_title": "Eigenen Adapter bauen",
+    "build_desc": "Erstellen Sie einen neuen Adapter mit einem Befehl. Implementieren Sie iter_events(), validieren und ver\u00f6ffentlichen.",
+    "build_cta": "Anleitung lesen",
+    "reference_title": "Referenz-Adapter: pytest-cov",
+    "reference_desc": "Ein funktionierendes Beispiel-Adapter das Test-Coverage-Daten liest. Installieren Sie es, um zu sehen wie Plugins in die Pipeline integriert werden.",
+    "ecosystem_title": "\u00d6kosystem-M\u00f6glichkeiten",
+    "ecosystem_subtitle": "EE erkennt diese Tools bereits in Ihrem Repo via Prescan. Community-Adapter kommen bald \u2014 oder bauen Sie selbst einen.",
+    "badge_detected": "Erkannt",
+    "open_ended": "...und jedes andere Tool mit Projektdaten. Die obige Liste ist nicht abschlie\u00dfend.",
+    "request_title": "Ihr Tool ist nicht dabei?",
+    "request_subtitle": "Wir priorisieren Adapter nach Community-Nachfrage. Sagen Sie uns was Sie brauchen, oder bauen Sie selbst einen."
   },
   "pricing": {
     "title": "Einfache, transparente Preise",

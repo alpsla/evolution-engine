@@ -64,38 +64,86 @@ See [SECURITY.md](SECURITY.md) for what's scanned and how to fix findings.
 
 ## 5. Publish
 
+Publishing makes your adapter available to all EE users worldwide via PyPI:
+
 ```bash
 pip install build twine
 python -m build
 twine upload dist/*
 ```
 
-Once published, the adapter is automatically discoverable by anyone who
-`pip install`s it. Trust badge changes from `[local]` to `[community]`.
+**What happens after publish:**
+1. Trust badge changes from `[local]` to `[community]` (verified by PyPI metadata)
+2. Users running `evo adapter discover` in repos with your tool will see your adapter
+3. The notification system will alert users who have the tool detected in their repo
+4. `evo adapter check-updates` will track future versions
+
+**PyPI integration is read-only on the user side** — EE queries the public PyPI
+JSON API (`https://pypi.org/pypi/{package}/json`) using stdlib `urllib.request`.
+No API keys or authentication needed for discovery. Only the publisher needs
+PyPI credentials.
 
 ## 6. Discover
 
-EE discovers adapters automatically via Python entry points:
+EE discovers adapters through three mechanisms:
 
+**a) Direct install (manual):**
 ```bash
 pip install evo-adapter-jenkins
 evo adapter list .  # Shows: [community] ci/jenkins
 ```
 
-No configuration needed. Entry points declared in `pyproject.toml` register
-the adapter with EE's plugin system.
+Entry points declared in `pyproject.toml` register the adapter with EE's plugin system.
+
+**b) Prescan-based discovery (`evo adapter discover`):**
+```bash
+evo adapter discover .
+# Available adapters (install via pip):
+#   evo-adapter-datadog       v1.0.0   ← Datadog (monitoring)
+#   evo-adapter-sentry        v0.2.0   ← Sentry (error_tracking)
+```
+
+This scans the repo for known tools (config files, packages, imports), checks
+PyPI for matching adapter packages, and shows what's available to install.
+
+**c) Automatic notifications:**
+After `evo analyze`, the notification system checks for adapters matching
+detected tools that aren't installed yet. Users see:
+```
+Notifications:
+  Adapter available: evo-adapter-datadog v1.0.0 (detected Datadog in repo).
+  Install: pip install evo-adapter-datadog
+```
+
+Notifications are cached (24h), respect `DO_NOT_TRACK=1`, and can be
+managed with `evo notifications list/dismiss`.
 
 ## 7. Update
 
 EE never auto-updates adapters. Users are notified of available updates:
 
 ```bash
-evo adapter check-updates   # Explicit check
-evo adapter list .           # Shows update indicator if cached
-evo analyze .                # Prints nudge at end if EE update available
+evo adapter check-updates       # Explicit check against PyPI
+evo adapter list .               # Shows update indicator
+evo analyze .                    # Prints notifications at end
+evo notifications list           # View all pending notifications
+evo notifications dismiss        # Clear after reading
 ```
 
-Updates are pulled from PyPI with a 24-hour cache TTL.
+**How update checking works:**
+- Queries the public PyPI JSON API (no authentication needed)
+- Results cached in `~/.evo/version_cache.json` with 24-hour TTL
+- EE self-update nudge has a separate 7-day check interval
+- Respects `DO_NOT_TRACK=1` and `evo config set adapter.check_updates false`
+- Runs in the background after analysis — never blocks the pipeline
+
+**Community pattern auto-pull (opt-in):**
+```bash
+evo config set sync.auto_pull true
+```
+
+When enabled, `evo analyze` fetches new community patterns from the registry
+before Phase 4 discovery. Throttled to once per 24 hours.
 
 ## 8. Report
 

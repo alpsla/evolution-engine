@@ -56,6 +56,8 @@
     { "src": "/success", "dest": "/success.html" },
     { "src": "/docs", "dest": "/docs.html" },
     { "src": "/docs.html", "dest": "/docs.html" },
+    { "src": "/adapters", "dest": "/adapters.html" },
+    { "src": "/adapters.html", "dest": "/adapters.html" },
     { "src": "/privacy", "dest": "/privacy.html" },
     { "src": "/privacy.html", "dest": "/privacy.html" },
     { "src": "/assets/(.*)", "dest": "/assets/$1" },
