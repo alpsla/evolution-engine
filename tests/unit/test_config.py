@@ -3,7 +3,10 @@
 import pytest
 from pathlib import Path
 
-from evolution.config import EvoConfig, _parse_value, _format_value, _DEFAULTS
+from evolution.config import (
+    EvoConfig, _parse_value, _format_value, _DEFAULTS,
+    _GROUPS, _METADATA, config_groups, config_metadata, config_keys_for_group,
+)
 
 
 class TestParseValue:
@@ -60,7 +63,7 @@ class TestEvoConfig:
         cfg = EvoConfig(path=tmp_path / "config.toml")
         assert cfg.get("sync.privacy_level") == 0
         assert cfg.get("llm.enabled") is False
-        assert cfg.get("sync.registry_url") == "https://registry.codequal.dev/v1"
+        assert cfg.get("sync.registry_url") == "https://codequal.dev/api"
 
     def test_get_unknown_key(self, tmp_path):
         cfg = EvoConfig(path=tmp_path / "config.toml")
@@ -135,3 +138,74 @@ class TestEvoConfig:
         path = tmp_path / "config.toml"
         cfg = EvoConfig(path=path)
         assert cfg.path == path
+
+
+class TestConfigMetadata:
+    def test_all_defaults_have_metadata(self):
+        """Every key in _DEFAULTS should have metadata (except internal-only)."""
+        for key in _DEFAULTS:
+            assert key in _METADATA, f"Missing metadata for default key: {key}"
+
+    def test_all_metadata_have_defaults(self):
+        """Every key in _METADATA should have a default."""
+        for key in _METADATA:
+            assert key in _DEFAULTS, f"Missing default for metadata key: {key}"
+
+    def test_metadata_required_fields(self):
+        """Each metadata entry must have description, type, and group."""
+        for key, meta in _METADATA.items():
+            assert "description" in meta, f"{key} missing description"
+            assert "type" in meta, f"{key} missing type"
+            assert "group" in meta, f"{key} missing group"
+
+    def test_all_groups_exist(self):
+        """Every group referenced in metadata must exist in _GROUPS."""
+        for key, meta in _METADATA.items():
+            group = meta["group"]
+            assert group in _GROUPS, f"{key} references unknown group: {group}"
+
+    def test_config_groups_sorted(self):
+        """config_groups() returns groups sorted by order."""
+        groups = config_groups()
+        orders = [v["order"] for v in groups.values()]
+        assert orders == sorted(orders)
+
+    def test_config_metadata_known_key(self):
+        meta = config_metadata("sync.privacy_level")
+        assert meta["type"] == "choice"
+        assert meta["group"] == "sync"
+
+    def test_config_metadata_unknown_key(self):
+        assert config_metadata("nonexistent.key") == {}
+
+    def test_config_keys_for_group(self):
+        keys = config_keys_for_group("sync")
+        assert "sync.privacy_level" in keys
+        assert "sync.registry_url" in keys
+        assert "sync.auto_pull" in keys
+
+    def test_config_keys_excludes_internal(self):
+        keys = config_keys_for_group("telemetry", include_internal=False)
+        assert "telemetry.enabled" in keys
+        assert "telemetry.prompted" not in keys
+
+    def test_config_keys_includes_internal(self):
+        keys = config_keys_for_group("telemetry", include_internal=True)
+        assert "telemetry.enabled" in keys
+        assert "telemetry.prompted" in keys
+
+    def test_config_keys_empty_group(self):
+        assert config_keys_for_group("nonexistent") == []
+
+    def test_non_internal_keys_have_display(self):
+        """Non-internal keys should have a display prompt for evo setup."""
+        for key, meta in _METADATA.items():
+            if not meta.get("internal"):
+                assert "display" in meta, f"{key} missing display prompt"
+
+    def test_choice_types_have_allowed(self):
+        """Choice-type keys must have allowed values."""
+        for key, meta in _METADATA.items():
+            if meta["type"] == "choice":
+                assert "allowed" in meta, f"{key} is choice type but missing allowed values"
+                assert len(meta["allowed"]) >= 2, f"{key} needs at least 2 choices"

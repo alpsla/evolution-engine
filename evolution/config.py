@@ -22,7 +22,7 @@ from typing import Any, Optional
 
 _DEFAULTS = {
     "sync.privacy_level": 0,          # 0=nothing, 1=metadata, 2=anonymized digests
-    "sync.registry_url": "https://registry.codequal.dev/v1",
+    "sync.registry_url": "https://codequal.dev/api",
     "sync.auto_pull": False,           # auto-pull community patterns on analyze
     "llm.enabled": False,
     "llm.provider": "anthropic",
@@ -35,7 +35,218 @@ _DEFAULTS = {
     "adapter.check_blocklist": True,   # check blocklist during adapter detection
     "adapter.check_updates": True,     # show update reminders for adapters
     "adapter.last_version_check": "",  # ISO timestamp of last PyPI version check
+    "hooks.trigger": "post-commit",
+    "hooks.auto_open": True,
+    "hooks.notify": True,
+    "hooks.min_severity": "concern",
+    "hooks.families": "",
+    "hooks.background": True,
+    "init.integration": "",
+    "init.first_run_count": 0,
 }
+
+
+# ─── Config Metadata ───
+# Describes each key for evo setup (interactive), evo config list (grouped),
+# and evo setup --ui (form generation). Groups define display sections.
+
+_GROUPS = {
+    "analyze": {"label": "Analysis", "order": 1, "description": "What to analyze and output format"},
+    "hooks": {"label": "Hooks", "order": 2, "description": "Automatic background analysis on commit/push"},
+    "report": {"label": "Report", "order": 3, "description": "HTML report settings"},
+    "llm": {"label": "AI / LLM", "order": 4, "description": "AI investigation and fix settings (Pro)"},
+    "sync": {"label": "Patterns & Sync", "order": 5, "description": "Community pattern sharing"},
+    "adapter": {"label": "Adapters", "order": 6, "description": "Plugin and adapter management"},
+    "telemetry": {"label": "Telemetry", "order": 7, "description": "Anonymous usage statistics"},
+    "init": {"label": "Setup", "order": 8, "description": "Initial setup state (managed by evo init)"},
+}
+
+_METADATA = {
+    # ── Analysis ──
+    "analyze.families": {
+        "description": "Restrict to specific families (empty = auto-detect)",
+        "type": "str",
+        "group": "analyze",
+        "display": "Which signal families should EE analyze?",
+        "placeholder": "git,ci,dependency",
+    },
+    "analyze.json_output": {
+        "description": "Machine-readable JSON output",
+        "type": "bool",
+        "group": "analyze",
+        "display": "Default to JSON output?",
+    },
+    # ── Hooks ──
+    "hooks.trigger": {
+        "description": "When to run: post-commit or pre-push",
+        "type": "choice",
+        "allowed": ["post-commit", "pre-push"],
+        "group": "hooks",
+        "display": "When should EE run automatically?",
+    },
+    "hooks.min_severity": {
+        "description": "Notification threshold",
+        "type": "choice",
+        "allowed": ["critical", "concern", "watch", "info"],
+        "allowed_labels": {
+            "critical": "Only critical issues (Action Required)",
+            "concern": "Important findings (Action Required + Needs Attention)",
+            "watch": "Everything worth noting",
+            "info": "Everything",
+        },
+        "group": "hooks",
+        "display": "When should EE notify you?",
+    },
+    "hooks.auto_open": {
+        "description": "Open report in browser when findings detected",
+        "type": "bool",
+        "group": "hooks",
+        "display": "Open report in browser automatically?",
+    },
+    "hooks.notify": {
+        "description": "Desktop notification when findings detected",
+        "type": "bool",
+        "group": "hooks",
+        "display": "Desktop notifications enabled?",
+    },
+    "hooks.families": {
+        "description": "Override families for hook runs (empty = auto-detect)",
+        "type": "str",
+        "group": "hooks",
+        "display": "Restrict hook analysis to specific families?",
+        "placeholder": "git,ci,dependency",
+    },
+    "hooks.background": {
+        "description": "Non-blocking hook execution",
+        "type": "bool",
+        "group": "hooks",
+        "display": "Run analysis in background (non-blocking)?",
+    },
+    # ── Report ──
+    "report.theme": {
+        "description": "HTML report color theme",
+        "type": "choice",
+        "allowed": ["dark", "light"],
+        "group": "report",
+        "display": "Report theme?",
+    },
+    # ── AI / LLM ──
+    "llm.enabled": {
+        "description": "LLM-enhanced explanations (Pro)",
+        "type": "bool",
+        "group": "llm",
+        "display": "Enable LLM-enhanced explanations?",
+        "pro": True,
+    },
+    "llm.provider": {
+        "description": "AI backend provider",
+        "type": "choice",
+        "allowed": ["anthropic", "openrouter"],
+        "group": "llm",
+        "display": "AI provider?",
+    },
+    "llm.model": {
+        "description": "AI model name",
+        "type": "str",
+        "group": "llm",
+        "display": "Model name?",
+    },
+    # ── Patterns & Sync ──
+    "sync.privacy_level": {
+        "description": "Community sharing level",
+        "type": "choice",
+        "allowed": [0, 1, 2],
+        "allowed_labels": {
+            0: "Nothing shared",
+            1: "Advisory metadata only",
+            2: "Anonymized pattern digests",
+        },
+        "group": "sync",
+        "display": "Community sharing level?",
+        "pro": True,
+    },
+    "sync.registry_url": {
+        "description": "Pattern registry endpoint",
+        "type": "str",
+        "group": "sync",
+        "display": "Registry URL?",
+        "advanced": True,
+    },
+    "sync.auto_pull": {
+        "description": "Auto-pull community patterns on analyze",
+        "type": "bool",
+        "group": "sync",
+        "display": "Auto-pull community patterns?",
+        "pro": True,
+    },
+    # ── Adapters ──
+    "adapter.check_blocklist": {
+        "description": "Check blocklist during adapter detection",
+        "type": "bool",
+        "group": "adapter",
+        "display": "Check adapter blocklist?",
+    },
+    "adapter.check_updates": {
+        "description": "Show update reminders for installed adapters",
+        "type": "bool",
+        "group": "adapter",
+        "display": "Check for adapter updates?",
+    },
+    "adapter.last_version_check": {
+        "description": "Timestamp of last PyPI version check",
+        "type": "str",
+        "group": "adapter",
+        "internal": True,
+    },
+    # ── Telemetry ──
+    "telemetry.enabled": {
+        "description": "Anonymous usage statistics",
+        "type": "bool",
+        "group": "telemetry",
+        "display": "Send anonymous usage statistics?",
+    },
+    "telemetry.prompted": {
+        "description": "Whether telemetry prompt has been shown",
+        "type": "bool",
+        "group": "telemetry",
+        "internal": True,
+    },
+    # ── Init (internal) ──
+    "init.integration": {
+        "description": "Integration path chosen during setup",
+        "type": "str",
+        "group": "init",
+        "internal": True,
+    },
+    "init.first_run_count": {
+        "description": "Tracks runs for first-run hints",
+        "type": "int",
+        "group": "init",
+        "internal": True,
+    },
+}
+
+
+def config_groups() -> dict:
+    """Return group definitions ordered by display order."""
+    return dict(sorted(_GROUPS.items(), key=lambda g: g[1]["order"]))
+
+
+def config_metadata(key: str) -> dict:
+    """Return metadata for a config key, or empty dict if not found."""
+    return _METADATA.get(key, {})
+
+
+def config_keys_for_group(group: str, include_internal: bool = False) -> list[str]:
+    """Return config keys belonging to a group, in definition order."""
+    keys = []
+    for key, meta in _METADATA.items():
+        if meta.get("group") != group:
+            continue
+        if meta.get("internal") and not include_internal:
+            continue
+        keys.append(key)
+    return keys
 
 
 def _config_dir() -> Path:
