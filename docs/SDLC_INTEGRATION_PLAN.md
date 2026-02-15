@@ -1135,4 +1135,54 @@ WEEK 2+ — "Just tell me when it matters"
 
 *This plan prioritizes the Pro onboarding experience (Milestone 1) because that's where retention is won or lost. A user who sees the value on Day 1 will stick around long enough to automate.*
 
+---
+
+## Implementation Status
+
+### Completed (30/30 tasks)
+All SDLC integration features are implemented and have 1333 automated tests passing.
+
+| Feature | Module | Tests |
+|---------|--------|-------|
+| Advisory status rollup | `phase5_engine.py` | test_friendly.py |
+| Interactive HTML report (filters, buttons, IDE links) | `report_generator.py` | test_report_generator.py |
+| Git hook management | `hooks.py` | test_hooks.py (77) |
+| Project initialization wizard | `init.py` | test_init.py (35) |
+| Commit watcher (foreground + daemon) | `watcher.py` | test_watcher.py (37) |
+| Setup CLI wizard | `cli.py` (setup command) | test_setup_cli.py (39) |
+| Setup browser UI | `setup_ui.py` | test_setup_ui.py (42) |
+| Scoped acceptance (permanent/commits/dates/this-run) | `accepted.py` | test_accepted.py |
+| Residual fix prompts | `fixer.py` | test_fixer.py |
+| Hook-based loop closure (resolution tracking) | `orchestrator.py`, `hooks.py` | test_hook_loop.py (24) |
+| Verify with auto-residual | `cli.py` (verify command) | test_verify_residual.py (12) |
+| E2E integration journeys | — | test_sdlc_e2e.py (70) |
+
+### Manual Testing (2026-02-14)
+
+| Area | Status | Bugs Found |
+|------|--------|------------|
+| `evo init` | PASS | Was non-interactive — fixed (now numbered menu) |
+| `evo setup` (CLI wizard) | PASS | — |
+| `evo setup --ui` (browser) | Starts OK | Needs manual browser verification |
+| `evo hooks install/uninstall/status` | PASS | — |
+| `evo watch --daemon/--stop/--status` | PASS | `--stop` showed `PID ?` — fixed |
+| `evo analyze + report` | PASS | `--json` without `--quiet` mixes output (pre-existing) |
+| `evo accept --scope` | PASS | — |
+| `evo fix --dry-run --residual` | PASS | — |
+| `evo verify` | PASS | — |
+| `evo config` | Not yet tested | — |
+| `evo patterns` | Not yet tested | — |
+| `evo sources/status/history` | Not yet tested | — |
+
+### Open Items
+
+| # | Issue | Priority | Status |
+|---|-------|----------|--------|
+| 1 | **Installation guidance incomplete** — docs say `pip install evolution-engine` but don't mention venv setup, Python version requirement (>=3.10), or PATH activation. Users who run `pip install` in a venv won't have `evo` on PATH without `source .venv/bin/activate`. Need to document: venv creation, activation, `pipx` alternative, from-source install. | HIGH | TODO |
+| 2 | **`evo setup` wizard not documented** — neither the CLI wizard nor the `--ui` browser mode are explained in QUICKSTART.md, README.md, or website/docs.html. Need: walkthrough of wizard flow (Enter/s/q navigation), example output, config groups, how CLI and UI share config. | MEDIUM | TODO |
+| 3 | **`--json` mixes progress output** — `evo analyze . --json` prints human-readable progress before the JSON. Works with `--json --quiet` but `--json` alone should probably suppress progress. | LOW | Pre-existing |
+| 4 | **"No events" error unclear** — when run outside a git repo, message says "No events ingested. Check that the repo has git history." Should detect missing `.git` and say "No .git directory found." | LOW | TODO |
+| 5 | **`evo setup --ui` needs browser testing** — server starts and binds, but couldn't verify from sandbox. Needs manual test on real machine. | MEDIUM | TODO |
+| 6 | **Guided user walkthrough** — need to complete manual walkthrough of all 21 steps on a real repo (codequal). Transition doc at `memory/session-2026-02-14-manual-testing.md`. | HIGH | In progress |
+
 *Last updated: 2026-02-14*
