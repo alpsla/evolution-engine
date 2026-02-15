@@ -414,8 +414,12 @@ class Orchestrator:
             if not patterns:
                 return 0
 
-            # Filter by detected families
+            # Filter by detected families (map legacy source names)
+            _SOURCE_ALIASES = {"git": "version_control", "version_control": "git"}
             families_set = set(detected_families)
+            for f in list(families_set):
+                if f in _SOURCE_ALIASES:
+                    families_set.add(_SOURCE_ALIASES[f])
             filtered = [
                 p for p in patterns
                 if any(s in families_set for s in p.get("sources", []))

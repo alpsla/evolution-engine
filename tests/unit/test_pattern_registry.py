@@ -305,7 +305,7 @@ class TestFetchAvailablePatterns:
         result = fetch_available_patterns(["ci", "git"])
         assert result == []
 
-    def test_returns_cached_patterns(self):
+    def test_returns_cached_patterns(self, monkeypatch):
         cache = {
             "evo-patterns-example": {
                 "version": "1.0.0",
@@ -315,11 +315,15 @@ class TestFetchAvailablePatterns:
             }
         }
         _save_cache(cache)
+        monkeypatch.setattr(
+            "evolution.pattern_registry._load_pattern_index",
+            lambda: ["evo-patterns-example"],
+        )
 
         result = fetch_available_patterns(["ci", "git"])
         assert len(result) == 1
 
-    def test_filters_by_family(self):
+    def test_filters_by_family(self, monkeypatch):
         cache = {
             "evo-patterns-example": {
                 "version": "1.0.0",
@@ -329,6 +333,10 @@ class TestFetchAvailablePatterns:
             }
         }
         _save_cache(cache)
+        monkeypatch.setattr(
+            "evolution.pattern_registry._load_pattern_index",
+            lambda: ["evo-patterns-example"],
+        )
 
         result = fetch_available_patterns(["deployment"])
         assert len(result) == 0
