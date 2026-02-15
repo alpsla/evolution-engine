@@ -359,7 +359,7 @@ class CommitWatcher:
         # Clean up PID file
         pid_file.unlink(missing_ok=True)
 
-        return {"ok": True}
+        return {"ok": True, "pid": pid}
 
     @classmethod
     def daemon_status(cls, repo_path: str, evo_dir: str = None) -> dict:
