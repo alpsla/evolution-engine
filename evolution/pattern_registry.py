@@ -310,9 +310,15 @@ def _filter_by_families(patterns: list[dict], families: set[str]) -> list[dict]:
     """Keep patterns where at least one source is in detected families."""
     if not families:
         return []
+    # Expand aliases so "version_control" also matches "git" and vice versa
+    _SOURCE_ALIASES = {"git": "version_control", "version_control": "git"}
+    expanded = set(families)
+    for f in list(expanded):
+        if f in _SOURCE_ALIASES:
+            expanded.add(_SOURCE_ALIASES[f])
     return [
         p for p in patterns
-        if any(s in families for s in p.get("sources", []))
+        if any(s in expanded for s in p.get("sources", []))
     ]
 
 
