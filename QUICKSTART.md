@@ -199,16 +199,30 @@ evo adapter discover .
 pip install evo-adapter-datadog
 ```
 
-## Pattern Packages
+## Community Patterns
 
-Pattern packages are auto-fetched from PyPI on every `evo analyze` -- no `pip install` needed.
+EE distributes community patterns through two redundant channels: a real-time registry and durable PyPI packages. Both are checked automatically on `evo analyze`.
+
+The default package [`evo-patterns-community`](https://pypi.org/project/evo-patterns-community/) is auto-fetched from PyPI -- no `pip install` needed.
 
 ```bash
+# Patterns import automatically during analysis
+evo analyze .
+#   Imported 25 pattern(s) from community registry
+#   Imported 25 pattern(s) from community packages
+
+# Pull/push patterns from the community registry
+evo patterns pull .
+evo patterns push .   # requires: evo config set sync.privacy_level 2
+
 # Add a third-party pattern package
 evo patterns add evo-patterns-web-security
 
 # See what's indexed
 evo patterns packages
+
+# Block an unwanted package
+evo patterns block evo-patterns-untrusted
 
 # Create your own pattern package
 evo patterns new my-patterns

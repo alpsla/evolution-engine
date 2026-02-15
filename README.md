@@ -163,6 +163,8 @@ evo hooks status [path]          # Show hook status
 
 # Patterns & Knowledge Base
 evo patterns list                # Show discovered patterns
+evo patterns pull [path]         # Fetch community patterns from registry
+evo patterns push [path]         # Share anonymized patterns (requires privacy_level >= 1)
 evo patterns export              # Export anonymized pattern digests
 evo patterns import <file>       # Import community patterns
 evo patterns packages            # List pattern packages + cache status
@@ -241,21 +243,31 @@ The Evolution Engine discovers cross-family patterns automatically:
 - **Lift-based co-occurrence**: deviations co-occur more than chance (lift >= 1.5)
 - **Presence-based**: metric distributions differ when events co-occur (Cohen's d >= 0.2)
 
-Patterns progress through scopes: **local** (this repo) -> **community** (shared anonymously) -> **confirmed** (local + community match) -> **universal** (bundled in package).
+Patterns progress through scopes: **local** (this repo) -> **community** (shared anonymously) -> **confirmed** (local + community match).
 
-Universal patterns ship with the pip package and are recognized instantly on new repositories.
+Community patterns are distributed through two redundant channels:
+- **Registry** (real-time) — patterns pushed by users are immediately available via `codequal.dev/api`
+- **PyPI packages** (durable) — periodic snapshots published as [`evo-patterns-community`](https://pypi.org/project/evo-patterns-community/), auto-fetched without `pip install`
 
-### Pattern Packages (PyPI)
+If the registry is unavailable, PyPI packages still work. Both are checked automatically on `evo analyze`.
 
-Patterns can also be distributed as pip packages on PyPI. Unlike adapters (which contain executable code and require `pip install`), pattern packages are pure data — EE downloads the wheel directly, extracts `patterns.json`, validates it, and imports relevant patterns automatically.
+### Pattern Distribution
 
 ```bash
 # Auto-fetch happens on every `evo analyze` — no manual install needed
 evo analyze .
-#   Imported 3 pattern(s) from community packages
+#   Imported 25 pattern(s) from community registry
+#   Imported 25 pattern(s) from community packages
+
+# Pull/push patterns from the community registry
+evo patterns pull .
+evo patterns push .   # requires: evo config set sync.privacy_level 2
 
 # Add a third-party pattern package to your sources
 evo patterns add evo-patterns-web-security
+
+# Block an unwanted package
+evo patterns block evo-patterns-untrusted
 
 # Build and publish your own pattern package
 evo patterns new my-patterns

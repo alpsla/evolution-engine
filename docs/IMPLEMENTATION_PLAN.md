@@ -7,7 +7,7 @@
 >
 > The plan is intentionally conservative: each step validates an architectural assumption before expanding scope.
 >
-> **Last updated:** February 12, 2026 (Stripe E2E tested, accept deviations, legal PDFs; 586 tests)
+> **Last updated:** February 14, 2026 (Pattern pipeline E2E tested, Upstash Redis live, PyPI patterns published; 1333 tests)
 
 ---
 
@@ -1284,15 +1284,31 @@ Docs page ✅                    Privacy page ✅
 34. ~~Accept deviations~~ ✅ — `evo accept` + `evo accepted` (list/remove/clear), Phase 5 filtering (12 tests)
 35. ~~Legal docs~~ ✅ — 5 legal docs converted to PDF for lawyer review (privacy, ToS, 3rd-party API, AI safety, data flow)
 
-**Next — Testing & Beta Launch:**
+**Completed (36–42b):**
 36. **Lawyer review** — ToS + Privacy Policy under review; upload corrected docs after sign-off, send for translator verification
 37. **GitLab manual testing** — full 7-scenario test matrix (see LAUNCH_PLAN.md §12.2)
 38. ~~Stripe E2E testing~~ ✅ — 10/10 sandbox tests passing (purchase, cancel, FOUNDING50 discount, payment failure)
 38b. **Stripe live-mode testing** — repeat all flows with real Stripe dashboard after going live
 39. **User review flow testing** — end-to-end: `evo analyze` → `evo accept` → `evo investigate` → `evo fix` → `evo verify`
-40. **PyPI publication** — `python -m build && twine upload dist/*`
-41. **Custom domain** — configure codequal.dev for Vercel
+40. ~~PyPI publication~~ ✅ — `evolution-engine` wheel (existing), `evo-patterns-community` 2026.2.15 published
+41. ~~Custom domain~~ ✅ — codequal.dev configured for Vercel
 42. **Community beta** — announce, gather feedback
+42b. ~~Pattern pipeline E2E~~ ✅ — full push/pull/import pipeline tested (see details below)
+
+**Pattern Pipeline E2E (February 14, 2026):**
+- ✅ Upstash Redis provisioned (free tier, US East 1)
+- ✅ `website/api/patterns.py` deployed — POST push, GET pull, validation, rate limiting
+- ✅ 28 patterns seeded (27 calibration + 1 test), quorum met (2 independent submissions)
+- ✅ `evo patterns push` — 21 patterns shared to registry
+- ✅ `evo patterns pull` — 27 patterns imported from registry
+- ✅ Orchestrator direct-pull — "Imported 25 pattern(s) from community registry" during `evo analyze`
+- ✅ `evo-patterns-community` 2026.2.15 published on PyPI (28 patterns, 4 families)
+- ✅ PyPI auto-fetch — "Imported 25 pattern(s) from community packages" during `evo analyze`
+- ✅ Resilience — Redis down → PyPI fallback works silently
+- ✅ Adapter ecosystem — list, discover, validate, security-check, block/unblock, scaffold, request all tested
+- **Bugs fixed:** `config.py` stale registry URL, `git`↔`version_control` family name mismatch
+
+**Next — Testing & Beta Launch:**
 
 **See `docs/LAUNCH_PLAN.md`** for detailed beta program, launch timeline, and go-to-market strategy.
 
@@ -1314,9 +1330,10 @@ The remaining items before public beta:
 | 38 | ~~Stripe E2E testing~~ ✅ — 10/10 sandbox tests passing (purchase, cancel, FOUNDING50 discount, payment failure) | Done | — |
 | 38b | **Stripe live-mode testing** — repeat all 3 flows with real Stripe dashboard after going live (see §12.4) | Low | Yes — before accepting real payments |
 | 39 | **User review flow** — analyze → accept → investigate → fix → verify | Low | Yes — validate core UX |
-| 40 | **PyPI publication** — `python -m build && twine upload dist/*` | Low | Yes — users can't `pip install` without it |
-| 41 | **Custom domain** — configure codequal.dev for Vercel | Low | No — vanity URL, `.vercel.app` works |
-| 42 | **Community beta** — announce, gather feedback | Low | No — begins once 36-40 are verified |
+| 40 | ~~PyPI publication~~ ✅ — `evolution-engine` + `evo-patterns-community` 2026.2.15 | Done | — |
+| 41 | ~~Custom domain~~ ✅ — codequal.dev configured for Vercel | Done | — |
+| 42 | **Community beta** — announce, gather feedback | Low | No — begins once 36-39 are verified |
+| 42b | ~~Pattern pipeline E2E~~ ✅ — Upstash Redis, registry handler, push/pull, PyPI auto-fetch | Done | — |
 
 ### Manual Testing (Before Beta)
 
@@ -1350,13 +1367,14 @@ Pre-requisites:
 
 ---
 
-> **Summary (February 12, 2026):**
+> **Summary (February 14, 2026):**
 >
-> **All priorities complete. Product launch infrastructure deployed.** All 5 engine phases,
+> **All priorities complete. Product launch infrastructure deployed and E2E tested.** All 5 engine phases,
 > open-core infrastructure, AI agent integration, GitHub Action, source prescan, cloud sync,
 > Cython build, FP validation, inline suggestions, CI wheel builds, website, Stripe integration,
-> opt-in telemetry, run history, GitLab compatibility, and accept deviations are implemented.
-> **586 tests passing (1.88s).** The full pipeline runs end-to-end in 6.6 seconds on fastapi
+> opt-in telemetry, run history, GitLab compatibility, accept deviations, pattern pipeline,
+> and adapter ecosystem are implemented and tested.
+> **1333 tests passing (6.10s).** The full pipeline runs end-to-end in 6.6 seconds on fastapi
 > (27,390 signals, 6 significant changes).
 >
 > **What's built:**
@@ -1381,9 +1399,10 @@ Pre-requisites:
 > 3. ~~Stripe E2E testing~~ ✅ — 10/10 sandbox tests passing
 > 3b. **Stripe live-mode testing** — repeat all flows after going live
 > 4. **User review flow** — end-to-end: analyze → accept → investigate → fix → verify
-> 5. **PyPI publication** — `python -m build && twine upload dist/*`
-> 6. **Custom domain** — codequal.dev for Vercel
-> 7. **Community beta launch** (see `docs/LAUNCH_PLAN.md` for full timeline)
+> 5. ~~PyPI publication~~ ✅ — `evolution-engine` + `evo-patterns-community` published
+> 6. ~~Custom domain~~ ✅ — codequal.dev configured
+> 7. ~~Pattern pipeline E2E~~ ✅ — Upstash Redis live, push/pull/import tested, PyPI auto-fetch working
+> 8. **Community beta launch** (see `docs/LAUNCH_PLAN.md` for full timeline)
 >
 > **New (February 12, 2026):**
 > - **Accept deviations** (`evolution/accepted.py`) — `evo accept` + `evo accepted` (list/remove/clear)
@@ -1417,3 +1436,13 @@ Pre-requisites:
 > - E2E lifecycle test covering scaffold → validate → security-check → block/unblock
 > - 625 → ~662+ tests
 > - Updated: ADAPTER_CONTRACT.md (security requirements), INTEGRATIONS.md (link to new docs)
+>
+> **New (February 14, 2026):**
+> - **Pattern pipeline fully deployed and E2E tested** — Upstash Redis backend, Vercel handler, CLI push/pull, orchestrator direct-pull
+> - `evo-patterns-community` 2026.2.15 published on PyPI (28 patterns across 4 families)
+> - Dual redundancy: Redis registry (immediate) + PyPI packages (durable) — tested Redis-down fallback
+> - Config metadata system (`_GROUPS`, `_METADATA`) for `evo setup` interactive configuration
+> - Hooks defaults (`hooks.trigger`, `hooks.min_severity`, `hooks.background`, etc.)
+> - Fixed: `config.py` stale registry URL (`registry.codequal.dev/v1` → `codequal.dev/api`)
+> - Fixed: `git` ↔ `version_control` family name mismatch in pattern import filters
+> - 1333 tests passing (6.10s)

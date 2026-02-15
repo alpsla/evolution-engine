@@ -674,7 +674,7 @@ This architecture significantly reduces third-party ToS risk because EE acts as 
 
 ### 5.3 KB Sync and Community Registry
 
-The `evolution/kb_sync.py` module communicates with `https://registry.codequal.dev/v1` (our own API). This is first-party infrastructure, not third-party, but warrants mention:
+The `evolution/kb_sync.py` module communicates with `https://codequal.dev/api` (our own API, backed by Upstash Redis). This is first-party infrastructure, not third-party, but warrants mention:
 - Privacy level 0 (default): Nothing shared
 - Privacy level 1: Anonymous metadata only (family counts, risk levels)
 - Privacy level 2: Anonymized pattern digests (no code, no file paths)

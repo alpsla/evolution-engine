@@ -369,7 +369,7 @@ base64( json({"tier": "pro", "email": "user@example.com", "issued": "2026-02-11T
 
 **PII assessment:** No PII. The `instance_id` is derived from the local `.evo` directory path via SHA-256 hash -- it cannot be reversed to identify a user. Pattern digests contain only family/metric names and statistical measures. The export process (`kb_export.py`) explicitly strips pattern_id, signal_refs, event_refs, repo path, and author info.
 
-**Destination:** `https://registry.codequal.dev/v1/patterns` (POST).
+**Destination:** `https://codequal.dev/api/patterns` (POST, Upstash Redis backend on Vercel).
 
 **Consent mechanism:** Requires explicit opt-in by setting `sync.privacy_level >= 1`. Default is 0 (nothing shared).
 
@@ -379,7 +379,7 @@ base64( json({"tier": "pro", "email": "user@example.com", "issued": "2026-02-11T
 
 **Source file:** `/evolution/kb_sync.py`
 
-**Data flow:** GET request to `https://registry.codequal.dev/v1/patterns` with optional `since` timestamp. Returns community patterns. No local data is sent in the request.
+**Data flow:** GET request to `https://codequal.dev/api/patterns` with optional `since` timestamp. Returns community patterns. No local data is sent in the request.
 
 **Imported patterns are validated** through `kb_security.validate_pattern()` which checks for injection attacks, oversized payloads, fingerprint spoofing, and type confusion before storage.
 
