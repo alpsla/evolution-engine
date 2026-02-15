@@ -92,12 +92,12 @@ def _redis_get() -> dict:
         return {"patterns": {}, "submitters": {}}
 
 
-def _redis_set(data: dict) -> bool:
+def _redis_set(data: dict) -> tuple[bool, str]:
     """Write the patterns blob to Upstash Redis."""
     url = os.environ.get("UPSTASH_REDIS_REST_URL")
     token = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
     if not url or not token:
-        return False
+        return False, f"missing env: url={'set' if url else 'unset'} token={'set' if token else 'unset'}"
 
     try:
         payload = json.dumps(["SET", _REDIS_KEY, json.dumps(data)]).encode("utf-8")
@@ -108,9 +108,9 @@ def _redis_set(data: dict) -> bool:
             method="POST",
         )
         urllib.request.urlopen(req, timeout=5)
-        return True
-    except Exception:
-        return False
+        return True, ""
+    except Exception as e:
+        return False, str(e)
 
 
 # ─── Validation ───
@@ -441,8 +441,9 @@ class handler(BaseHTTPRequestHandler):
         for p in validated:
             _merge_pattern(store, p, instance_id)
 
-        if not _redis_set(store):
-            return self._json({"error": "Storage write failed"}, 500)
+        ok, err_detail = _redis_set(store)
+        if not ok:
+            return self._json({"error": "Storage write failed", "detail": err_detail}, 500)
 
         _axiom_send({
             "type": "pattern_push",
