@@ -46,3 +46,4 @@ tests/test_walker/
 
 # Secrets / recovery codes
 PyPI-Recovery-Codes-*
+.env.vercel

@@ -2372,13 +2372,33 @@ def init(path, evo_dir, integration_path, families, license_key):
             click.echo(f"  Repository:     {env['repo_name']}")
         click.echo()
         suggested = env.get("suggested_path", "cli")
-        click.echo(f"Suggested: evo init . --path {suggested}")
-        click.echo("\nAvailable paths:")
-        click.echo("  cli    — Manual analysis with evo analyze / evo report")
-        click.echo("  hooks  — Auto-analyze on every commit")
-        click.echo("  action — GitHub Action with PR comments")
-        click.echo("  all    — All of the above")
-        return
+        paths = [
+            ("cli", "Manual analysis with evo analyze / evo report"),
+            ("hooks", "Auto-analyze on every commit"),
+            ("action", "GitHub Action with PR comments"),
+            ("all", "All of the above"),
+        ]
+        click.echo("Available paths:")
+        for i, (name, desc) in enumerate(paths, 1):
+            marker = " <-- suggested" if name == suggested else ""
+            click.echo(f"  {i}. {name:8s} — {desc}{marker}")
+
+        click.echo()
+        choice = click.prompt(
+            "Choose a path (1-4, or Enter for suggested)",
+            default=str([n for n, _ in paths].index(suggested) + 1),
+            show_default=False,
+        )
+        try:
+            idx = int(choice) - 1
+            if 0 <= idx < len(paths):
+                integration_path = paths[idx][0]
+            else:
+                click.echo("Invalid choice.")
+                return
+        except ValueError:
+            click.echo("Invalid choice.")
+            return
 
     result = pi.setup(integration_path, families=families)
 
