@@ -461,8 +461,8 @@ class TestPath4FixLoop:
         assert investigation_text in prompt
         # It should use the RESIDUAL_PROMPT_TEMPLATE structure
         assert "ITERATION" in prompt
-        assert "Still Broken" in prompt
-        assert "Already Fixed" in prompt
+        assert "Still Drifting" in prompt
+        assert "Already Resolved" in prompt
 
     def test_resolution_progress_calculation(self, tmp_path):
         from evolution.fixer import Fixer

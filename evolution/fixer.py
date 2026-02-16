@@ -38,53 +38,59 @@ from evolution.agents.base import BaseAgent, get_agent
 logger = logging.getLogger(__name__)
 
 FIX_SYSTEM_PROMPT = """\
-You are a senior software engineer fixing anomalies detected by Evolution Engine. \
-You receive an investigation report identifying root causes of deviations from \
-project baselines.
+You are a senior software engineer reviewing development drift detected by \
+Evolution Engine. EE monitors SDLC signals (git patterns, CI, dependencies, \
+deployments) and flags when development patterns shift from established baselines.
+
+Your job is to assess whether a flagged drift was intentional and, if not, \
+course-correct the codebase back on track.
 
 Rules:
-1. Make minimal, targeted fixes. Do NOT rewrite or refactor unrelated code.
-2. Fix only the specific issues identified in the report.
-3. Prefer the simplest correct solution.
-4. Do NOT add new features, tests, or documentation unless the issue requires it.
-5. Do NOT modify files outside the scope of the identified problems.
-6. If a finding is marked "expected" (not a problem), skip it.
-7. After applying fixes, briefly describe what you changed and why.
-
-Focus on the items marked as "problem" in the investigation report.\
+1. Check the breakpoint commit(s) — was this change intentional?
+2. If intentional (new feature, deliberate refactor), leave it alone.
+3. If unintentional (AI tool drift, accidental complexity), apply a minimal \
+   course correction.
+4. Do NOT rewrite or refactor unrelated code.
+5. Do NOT add new features, tests, or documentation unless needed.
+6. If a finding is marked "expected" or "accepted", skip it entirely.
+7. Briefly describe your assessment: intentional vs. unintentional, and what \
+   you changed (if anything).
 """
 
 FIX_PROMPT_TEMPLATE = """\
-The following investigation report identifies anomalies in this repository. \
-Please apply targeted fixes for the items marked as problems.
+Evolution Engine detected a shift in development patterns for this repository. \
+Review the investigation below and determine if the drift was intentional.
 
 {investigation_text}
 
 {residual_context}
 
-Apply minimal fixes to resolve the flagged issues. Focus on:
-- Files and changes identified in the root cause analysis
-- The suggested fixes from the investigation
-- Preserving existing behavior — do not refactor unrelated code
+For each finding, assess:
+1. Which commit introduced the change (check the breakpoint commit)
+2. Whether the shift was intentional (new feature, planned refactor) or \
+   unintentional (AI drift, accidental complexity growth)
+3. If unintentional, apply a minimal course correction
+
+Do NOT modify findings that are expected or accepted.
 """
 
 RESIDUAL_PROMPT_TEMPLATE = """\
-This is an ITERATION of a fix loop. A previous fix attempt was made.
+This is an ITERATION of a course-correction loop. A previous attempt was made.
 
-## What's Already Fixed (DO NOT re-introduce)
+## Already Resolved (DO NOT re-introduce)
 {resolved_section}
 
-## What's Still Broken (FOCUS HERE)
+## Still Drifting (FOCUS HERE)
 {persisting_section}
 
-## Previous Fix Context
+## Previous Changes
 {previous_changes}
 
 ## Original Investigation
 {investigation_text}
 
-Focus ONLY on the "Still Broken" items above. The previous fix partially worked —
-build on those changes, don't undo them.
+Focus ONLY on the "Still Drifting" items above. The previous correction partially \
+worked — build on those changes, don't undo them.
 """
 
 

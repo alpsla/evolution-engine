@@ -231,6 +231,98 @@ class TestImport:
 
 
 
+    def test_import_promotes_local_instead_of_duplicating(self, tmp_path):
+        """When a local pattern exists, import should promote it, not create a duplicate."""
+        db_path = tmp_path / "kb.db"
+        kb = SQLiteKnowledgeStore(db_path)
+
+        # Pre-existing local pattern
+        kb.create_pattern({
+            "fingerprint": "aaa111bbb222",
+            "scope": "local",
+            "pattern_type": "co_occurrence",
+            "discovery_method": "statistical",
+            "sources": ["git", "ci"],
+            "metrics": ["files_touched", "run_duration"],
+            "correlation_strength": 0.6,
+            "occurrence_count": 10,
+            "confidence_tier": "statistical",
+            "confidence_status": "emerging",
+        })
+        kb.close()
+
+        # Import community pattern with same fingerprint
+        community_pattern = {
+            "fingerprint": "aaa111bbb222",
+            "scope": "community",
+            "pattern_type": "co_occurrence",
+            "discovery_method": "statistical",
+            "sources": ["git", "ci"],
+            "metrics": ["files_touched", "run_duration"],
+            "correlation_strength": 0.6,
+            "occurrence_count": 10,
+            "confidence_tier": "statistical",
+        }
+
+        result = import_patterns(db_path, [community_pattern], min_attestations=0)
+        assert result["imported"] == 1
+        assert result["skipped"] == 0
+
+        # Verify: local pattern promoted, NO community duplicate created
+        kb = SQLiteKnowledgeStore(db_path)
+        local = kb.get_pattern_by_fingerprint("aaa111bbb222", scope="local")
+        community = kb.get_pattern_by_fingerprint("aaa111bbb222", scope="community")
+        assert local is not None
+        assert local["confidence_status"] == "community_confirmed"
+        assert community is None  # No duplicate
+        kb.close()
+
+    def test_import_skips_local_without_quorum(self, tmp_path):
+        """When a local pattern exists but quorum not met, skip without duplicating."""
+        db_path = tmp_path / "kb.db"
+        kb = SQLiteKnowledgeStore(db_path)
+
+        kb.create_pattern({
+            "fingerprint": "aaa111bbb222",
+            "scope": "local",
+            "pattern_type": "co_occurrence",
+            "discovery_method": "statistical",
+            "sources": ["git", "ci"],
+            "metrics": ["files_touched", "run_duration"],
+            "correlation_strength": 0.6,
+            "occurrence_count": 10,
+            "confidence_tier": "statistical",
+            "confidence_status": "emerging",
+        })
+        kb.close()
+
+        community_pattern = {
+            "fingerprint": "aaa111bbb222",
+            "scope": "community",
+            "pattern_type": "co_occurrence",
+            "discovery_method": "statistical",
+            "sources": ["git", "ci"],
+            "metrics": ["files_touched", "run_duration"],
+            "correlation_strength": 0.6,
+            "occurrence_count": 10,
+            "confidence_tier": "statistical",
+        }
+
+        # Require quorum of 3 — no attestations provided
+        result = import_patterns(db_path, [community_pattern], min_attestations=3)
+        assert result["imported"] == 0
+        assert result["skipped"] == 1
+
+        # Verify: local pattern NOT promoted, no duplicate
+        kb = SQLiteKnowledgeStore(db_path)
+        local = kb.get_pattern_by_fingerprint("aaa111bbb222", scope="local")
+        community = kb.get_pattern_by_fingerprint("aaa111bbb222", scope="community")
+        assert local is not None
+        assert local["confidence_status"] == "emerging"  # Unchanged
+        assert community is None  # No duplicate
+        kb.close()
+
+
 class TestExportImportRoundTrip:
     def test_round_trip(self, kb_with_patterns, tmp_path):
         """Export from repo A → import to repo B → verify scope separation."""

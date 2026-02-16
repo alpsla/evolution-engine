@@ -572,10 +572,10 @@ class TestResidualMode:
             )
 
         # Check all template sections are present
-        assert "ITERATION of a fix loop" in prompt
-        assert "Already Fixed" in prompt
-        assert "Still Broken" in prompt
-        assert "Previous Fix Context" in prompt
+        assert "ITERATION of a course-correction loop" in prompt
+        assert "Already Resolved" in prompt
+        assert "Still Drifting" in prompt
+        assert "Previous Changes" in prompt
         assert "Original Investigation" in prompt
         assert "Investigation text here" in prompt
         assert "Modified files:" in prompt

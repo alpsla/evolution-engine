@@ -5,7 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from evolution.report_generator import generate_report, _esc, _fmt_num, _format_date
+from evolution.report_generator import (
+    generate_report, _esc, _fmt_num, _format_date, _detect_remote_url,
+    _render_html,
+)
 
 
 @pytest.fixture
@@ -185,8 +188,8 @@ class TestGenerateReport:
 
     def test_contains_pattern_section(self, advisory_dir):
         html = generate_report(advisory_dir)
-        assert "Recurring Patterns" in html
-        assert "Known Pattern" in html
+        assert "Patterns" in html
+        assert "Community-Confirmed Pattern" in html
 
     def test_contains_evidence(self, advisory_dir):
         html = generate_report(advisory_dir)
@@ -252,18 +255,21 @@ class TestGenerateReport:
         assert 'id="change-dependency-dependency_count"' in html
 
     def test_change_cards_contain_action_buttons(self, advisory_dir):
-        """Each change card should have Investigate and Dismiss action buttons."""
+        """Each change card should have Accept and Fix with AI action buttons."""
         html = generate_report(advisory_dir)
         assert 'class="change-actions' in html
-        assert ">Investigate</button>" in html
-        assert ">Dismiss</button>" in html
-        # Verify the investigate command references the correct family
-        assert "evo investigate . --family git" in html
-        assert "evo investigate . --family dependency" in html
-        # Verify the dismiss command uses the correct index
-        assert "evo accept . 0" in html
+        assert "Accept" in html
+        assert "Fix with AI" in html
+        # Verify the accept commands use correct 1-based indices
         assert "evo accept . 1" in html
         assert "evo accept . 2" in html
+        assert "evo accept . 3" in html
+        # Verify fix prompt references correct families
+        assert "evo investigate . --family git" in html
+        assert "evo investigate . --family dependency" in html
+        # Verify progress tracker
+        assert 'id="progressTracker"' in html
+        assert "0</span> of 3 resolved" in html
 
     def test_filter_buttons_present(self, advisory_dir):
         """Severity filter buttons should appear in the changes section."""
@@ -315,3 +321,87 @@ class TestHelpers:
         assert _format_date("2026-02-09T12:30:00Z") == "Feb 09, 2026 at 12:30 PM"
         assert _format_date("") == ""
         assert _format_date("not-a-date") == "not-a-date"
+
+
+class TestReportPolish:
+    """Tests for Fix #15: confidence, commit links, similar-severity patterns."""
+
+    def test_confidence_note_shown(self, advisory_dir):
+        """Executive summary should show confidence based on commit count."""
+        html = generate_report(advisory_dir)
+        assert "Based on" in html
+        assert "prior commit" in html
+
+    def test_commit_links_with_remote(self):
+        """When remote_url is provided, commit SHAs should be clickable."""
+        advisory = {
+            "scope": "test/repo",
+            "generated_at": "2026-02-09T12:00:00Z",
+            "period": {"from": "2026-01-01", "to": "2026-02-09"},
+            "summary": {
+                "significant_changes": 1,
+                "families_affected": ["git"],
+                "known_patterns_matched": 0,
+                "candidate_patterns_matched": 0,
+            },
+            "changes": [{
+                "family": "git", "metric": "files_touched",
+                "normal": {"mean": 3, "median": 2, "mad": 1},
+                "current": 50, "deviation_stddev": 10.0,
+                "trigger_commit": "abc123def456", "commit_message": "Big refactor",
+            }],
+            "pattern_matches": [], "candidate_patterns": [],
+        }
+        evidence = {
+            "commits": [{"sha": "abc123def456", "message": "Big refactor",
+                         "author": {"name": "Test"}, "timestamp": "2026-02-08T10:00:00Z"}],
+            "files_affected": [], "dependencies_changed": [], "timeline": [],
+        }
+        html = _render_html(advisory, evidence, "Test",
+                            remote_url="https://github.com/owner/repo")
+        assert 'href="https://github.com/owner/repo/commit/abc123def456"' in html
+        assert 'class="commit-link"' in html
+
+    def test_commit_links_without_remote(self):
+        """Without remote_url, commit SHAs should be plain text."""
+        advisory = {
+            "scope": "test/repo",
+            "generated_at": "2026-02-09T12:00:00Z",
+            "period": {"from": "2026-01-01", "to": "2026-02-09"},
+            "summary": {
+                "significant_changes": 1,
+                "families_affected": ["git"],
+                "known_patterns_matched": 0,
+                "candidate_patterns_matched": 0,
+            },
+            "changes": [{
+                "family": "git", "metric": "files_touched",
+                "normal": {"mean": 3, "median": 2, "mad": 1},
+                "current": 50, "deviation_stddev": 10.0,
+                "trigger_commit": "abc123def456",
+            }],
+            "pattern_matches": [], "candidate_patterns": [],
+        }
+        evidence = {
+            "commits": [{"sha": "abc123def456", "message": "Refactor",
+                         "author": {"name": "Test"}, "timestamp": "2026-02-08T10:00:00Z"}],
+            "files_affected": [], "dependencies_changed": [], "timeline": [],
+        }
+        html = _render_html(advisory, evidence, "Test", remote_url="")
+        assert "<code>abc123de</code>" in html
+        assert "commit-link" not in html.split("fix-prompt-text")[0]  # not in commit attribution
+
+    def test_detect_remote_url_no_repo(self, tmp_path):
+        """Non-git directory should return empty string."""
+        assert _detect_remote_url(tmp_path) == ""
+
+    def test_similar_severity_patterns_label(self, advisory_dir):
+        """Pattern groups should use 'similar-severity patterns' not 'related patterns'."""
+        from evolution.report_generator import _build_grouped_pattern_card
+        patterns = [
+            {"sources": ["git"], "metrics": ["dispersion"], "correlation_strength": 0.5},
+            {"sources": ["git"], "metrics": ["dispersion"], "correlation_strength": 0.4},
+        ]
+        html = _build_grouped_pattern_card(patterns, "Community-Confirmed Pattern")
+        assert "similar-severity patterns" in html
+        assert "related patterns" not in html

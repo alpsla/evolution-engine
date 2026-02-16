@@ -55,7 +55,9 @@ def relative_change(observed, baseline_median) -> str:
     if 0.85 <= ratio <= 1.2:
         return f"about the same as usual ({typical})"
     elif ratio > 1.2:
-        if ratio >= 2:
+        if ratio >= 100:
+            return f"significantly above baseline ({typical})"
+        elif ratio >= 2:
             return f"about {_fmt_ratio(ratio)}x more than usual ({typical})"
         else:
             return f"slightly more than usual ({typical})"
@@ -63,7 +65,9 @@ def relative_change(observed, baseline_median) -> str:
         if observed == 0:
             return f"dropped to zero ({typical})"
         inverse = baseline_median / observed
-        if inverse >= 2:
+        if inverse >= 100:
+            return f"significantly below baseline ({typical})"
+        elif inverse >= 2:
             return f"about {_fmt_ratio(inverse)}x less than usual ({typical})"
         else:
             return f"slightly less than usual ({typical})"
@@ -95,68 +99,68 @@ def _fmt_ratio(ratio: float) -> str:
 
 _METRIC_INSIGHTS = {
     # Git metrics
-    ("files_touched", "up"): "Larger changes tend to need more review time and carry more risk of unintended side effects.",
-    ("files_touched", "down"): "Smaller changes are generally lower risk and easier to review.",
-    ("dispersion", "up"): "Changes spread across unrelated areas are harder to review and more likely to cause unexpected interactions.",
-    ("dispersion", "down"): "Changes are concentrated in related areas, which is usually easier to reason about.",
+    ("files_touched", "up"): "More files changed than usual in this commit.",
+    ("files_touched", "down"): "Fewer files changed than usual in this commit.",
+    ("dispersion", "up"): "Changes spread across unrelated areas of the codebase.",
+    ("dispersion", "down"): "Changes concentrated in related areas of the codebase.",
     ("change_locality", "up"): "The changed files frequently change together, suggesting a focused modification.",
-    ("change_locality", "down"): "The changed files don't usually change together, which may signal a cross-cutting concern.",
-    ("cochange_novelty_ratio", "up"): "Many file pairings in this change haven't been seen together before, suggesting a novel modification.",
+    ("change_locality", "down"): "The changed files don't usually change together, suggesting a cross-cutting modification.",
+    ("cochange_novelty_ratio", "up"): "Many file pairings in this change haven't been seen together before.",
     ("cochange_novelty_ratio", "down"): "This change follows well-established patterns of file co-changes.",
 
     # CI metrics
-    ("run_duration", "up"): "Longer builds may indicate added complexity or resource-heavy tests.",
-    ("run_duration", "down"): "Faster builds could indicate removed tests or simplified build steps.",
-    ("run_failed", "up"): "A build failure needs attention before merging.",
+    ("run_duration", "up"): "Build took longer than usual.",
+    ("run_duration", "down"): "Build completed faster than usual.",
+    ("run_failed", "up"): "Build failed.",
     ("run_failed", "down"): "Build is passing again.",
 
     # Testing metrics
-    ("total_tests", "up"): "More tests are running, which could indicate expanded coverage.",
-    ("total_tests", "down"): "Fewer tests are running, which could indicate removed or skipped tests.",
+    ("total_tests", "up"): "More tests are running than usual.",
+    ("total_tests", "down"): "Fewer tests are running than usual.",
     ("suite_duration", "up"): "The test suite is running slower than usual.",
     ("suite_duration", "down"): "The test suite is completing faster than usual.",
-    ("skip_rate", "up"): "More tests are being skipped, which may mask failures.",
+    ("skip_rate", "up"): "More tests are being skipped than usual.",
     ("skip_rate", "down"): "Fewer tests are being skipped than usual.",
 
     # Dependency metrics
-    ("dependency_count", "up"): "More dependencies increase the surface area for supply-chain issues.",
-    ("dependency_count", "down"): "Fewer dependencies reduces the supply-chain attack surface.",
-    ("max_depth", "up"): "Deeper dependency trees make it harder to track transitive vulnerabilities.",
-    ("max_depth", "down"): "A shallower dependency tree is easier to audit and maintain.",
+    ("dependency_count", "up"): "Dependency count increased.",
+    ("dependency_count", "down"): "Dependency count decreased.",
+    ("max_depth", "up"): "Dependency tree is deeper than usual.",
+    ("max_depth", "down"): "Dependency tree is shallower than usual.",
 
     # Schema metrics
-    ("endpoint_count", "up"): "More API endpoints expand the public interface that needs to be maintained.",
-    ("endpoint_count", "down"): "Removing endpoints may break existing consumers.",
-    ("type_count", "up"): "More types in the API schema add complexity for consumers.",
-    ("type_count", "down"): "Fewer types may simplify the API but could break existing integrations.",
-    ("field_count", "up"): "More fields expand the API surface area.",
-    ("field_count", "down"): "Fewer fields may break consumers that depend on removed fields.",
-    ("schema_churn", "up"): "High schema churn can destabilize API consumers.",
-    ("schema_churn", "down"): "Low schema churn indicates a stable API.",
+    ("endpoint_count", "up"): "More API endpoints than before.",
+    ("endpoint_count", "down"): "Fewer API endpoints than before.",
+    ("type_count", "up"): "More types in the API schema.",
+    ("type_count", "down"): "Fewer types in the API schema.",
+    ("field_count", "up"): "More fields in the API schema.",
+    ("field_count", "down"): "Fewer fields in the API schema.",
+    ("schema_churn", "up"): "API schema changed more than usual.",
+    ("schema_churn", "down"): "API schema is stable.",
 
     # Deployment metrics
-    ("release_cadence_hours", "up"): "Longer time between releases — this may indicate a process bottleneck.",
-    ("release_cadence_hours", "down"): "Faster-than-usual releases may skip normal review processes.",
-    ("is_prerelease", "up"): "This is a pre-release, which typically gets less production testing.",
+    ("release_cadence_hours", "up"): "Longer time between releases than usual.",
+    ("release_cadence_hours", "down"): "Shorter time between releases than usual.",
+    ("is_prerelease", "up"): "This is a pre-release.",
     ("is_prerelease", "down"): "This is a stable release.",
     ("asset_count", "up"): "More release assets than usual.",
-    ("asset_count", "down"): "Fewer release assets than usual — some expected artifacts may be missing.",
+    ("asset_count", "down"): "Fewer release assets than usual.",
 
     # Config metrics
-    ("resource_count", "up"): "More managed resources increase infrastructure complexity.",
-    ("resource_count", "down"): "Fewer resources may indicate decommissioning.",
-    ("resource_type_count", "up"): "More resource types increase operational complexity.",
-    ("resource_type_count", "down"): "Fewer resource types simplifies operations.",
-    ("config_churn", "up"): "High configuration churn increases the risk of misconfigurations.",
-    ("config_churn", "down"): "Low configuration churn indicates stable infrastructure.",
+    ("resource_count", "up"): "More managed resources than before.",
+    ("resource_count", "down"): "Fewer managed resources than before.",
+    ("resource_type_count", "up"): "More resource types than before.",
+    ("resource_type_count", "down"): "Fewer resource types than before.",
+    ("config_churn", "up"): "Configuration changed more than usual.",
+    ("config_churn", "down"): "Configuration is stable.",
 
     # Security metrics
-    ("vulnerability_count", "up"): "More vulnerabilities detected — review and prioritize fixes.",
-    ("vulnerability_count", "down"): "Fewer vulnerabilities is a positive trend.",
-    ("critical_count", "up"): "Critical vulnerabilities require immediate attention.",
-    ("critical_count", "down"): "Fewer critical vulnerabilities is a positive trend.",
+    ("vulnerability_count", "up"): "More vulnerabilities detected.",
+    ("vulnerability_count", "down"): "Fewer vulnerabilities detected.",
+    ("critical_count", "up"): "Critical vulnerabilities detected.",
+    ("critical_count", "down"): "Fewer critical vulnerabilities detected.",
     ("fixable_ratio", "up"): "A higher proportion of vulnerabilities have available fixes.",
-    ("fixable_ratio", "down"): "Fewer vulnerabilities have available fixes — manual remediation may be needed.",
+    ("fixable_ratio", "down"): "Fewer vulnerabilities have available fixes.",
 }
 
 
@@ -242,8 +246,9 @@ def friendly_pattern(pattern: dict) -> str:
             # Causal-style: "When X happens, Y tends to Z"
             trigger = family_names[0]
             outcome = " and ".join(metric_names)
+            verb = "occur" if trigger.endswith("s") else "occurs"
             return (
-                f"{prefix}when {trigger} occurs, {outcome} tends to "
+                f"{prefix}when {trigger} {verb}, {outcome} tends to "
                 f"{direction}, suggesting {strength} relationship between these areas."
             )
         else:
