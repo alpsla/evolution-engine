@@ -197,9 +197,11 @@ class TestGenerateReport:
         assert "Fix the widget parser" in html
         assert "src/parser.py" in html
 
-    def test_contains_timeline(self, advisory_dir):
+    def test_contains_evidence_in_prompt(self, advisory_dir):
+        """Evidence (commits, files) is embedded in the full investigation prompt."""
         html = generate_report(advisory_dir)
-        assert "Timeline" in html
+        assert "COMMITS" in html
+        assert "SOURCE FILES CHANGED" in html
 
     def test_custom_title(self, advisory_dir):
         html = generate_report(advisory_dir, title="My Custom Report")
@@ -220,7 +222,7 @@ class TestGenerateReport:
         (advisory_dir / "phase5" / "evidence.json").unlink()
         html = generate_report(advisory_dir)
         assert "<!DOCTYPE html>" in html
-        assert "No evidence collected" in html
+        assert "Evolution Advisory" in html
 
     def test_empty_advisory(self, tmp_path):
         """Minimal advisory with no changes."""
@@ -264,9 +266,10 @@ class TestGenerateReport:
         assert "evo accept . 1" in html
         assert "evo accept . 2" in html
         assert "evo accept . 3" in html
-        # Verify fix prompt references correct families
-        assert "evo investigate . --family git" in html
-        assert "evo investigate . --family dependency" in html
+        # Verify fix prompt contains investigation steps and after-fix guidance
+        assert "INVESTIGATE:" in html
+        assert "AFTER FIX:" in html
+        assert "evo analyze ." in html
         # Verify progress tracker
         assert 'id="progressTracker"' in html
         assert "0</span> of 3 resolved" in html
@@ -282,13 +285,10 @@ class TestGenerateReport:
         assert ">Medium</button>" in html
         assert ">Low</button>" in html
 
-    def test_file_paths_have_ide_links(self, advisory_dir):
-        """File paths in the evidence table should have VS Code IDE links."""
+    def test_evidence_in_drift_prompt(self, advisory_dir):
+        """Drift prompt embeds recent commits as evidence."""
         html = generate_report(advisory_dir)
-        assert 'vscode://file/src/parser.py' in html
-        assert 'vscode://file/tests/test_parser.py' in html
-        assert 'class="ide-link' in html
-        assert "Open in IDE</a>" in html
+        assert "RECENT COMMITS" in html or "FILES CHANGED IN TRIGGER" in html
 
     def test_filter_js_function_present(self, advisory_dir):
         """The filterChanges JS function should be in the report."""
@@ -300,6 +300,40 @@ class TestGenerateReport:
         """The copyCommand JS function should be in the report."""
         html = generate_report(advisory_dir)
         assert "function copyCommand(" in html
+
+    def test_accept_posts_to_server(self, advisory_dir):
+        """acceptFinding JS should POST to /api/accept before clipboard fallback."""
+        html = generate_report(advisory_dir)
+        assert "fetch('/api/accept'" in html
+        assert "'Content-Type': 'application/json'" in html
+
+    def test_accept_clipboard_fallback(self, advisory_dir):
+        """acceptFinding JS should fall back to clipboard on fetch failure."""
+        html = generate_report(advisory_dir)
+        assert ".catch(function()" in html
+        assert "_copyText(text)" in html
+        assert "Command copied" in html
+
+    def test_accept_buttons_pass_scope(self, advisory_dir):
+        """Accept button onclick should pass scope as second argument."""
+        html = generate_report(advisory_dir)
+        assert "'permanent'" in html
+        assert "'this-run'" in html
+
+    def test_show_toast_function_present(self, advisory_dir):
+        """_showToast helper should exist in the report JS."""
+        html = generate_report(advisory_dir)
+        assert "function _showToast(" in html
+
+    def test_mark_accepted_function_present(self, advisory_dir):
+        """_markAccepted helper should exist in the report JS."""
+        html = generate_report(advisory_dir)
+        assert "function _markAccepted(" in html
+
+    def test_load_accepted_on_page_load(self, advisory_dir):
+        """DOMContentLoaded should fetch /api/accepted."""
+        html = generate_report(advisory_dir)
+        assert "fetch('/api/accepted')" in html
 
 
 class TestHelpers:

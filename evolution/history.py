@@ -130,7 +130,12 @@ def format_diff_summary(before: dict, after: dict, diff: dict) -> str:
     if diff["persisting"]:
         lines.append("STILL UNUSUAL:")
         for p in diff["persisting"]:
-            trend = "improving" if p["improved"] else "not improving"
+            if p["improved"]:
+                trend = "improving"
+            elif abs(p.get("was_deviation", 0) - p.get("now_deviation", 0)) < 0.1:
+                trend = "historical trigger — consider accepting"
+            else:
+                trend = "not improving"
             lines.append(f"  {p['family']} / {p['metric']} — "
                          f"deviation {p['was_deviation']:.1f} -> "
                          f"{p['now_deviation']:.1f} ({trend})")

@@ -78,7 +78,11 @@ class Phase2Engine:
         self.min_baseline = min_baseline
 
     def _load_events(self, source_family: str = None, source_type: str = None):
-        """Load events, optionally filtered by family or type."""
+        """Load events, optionally filtered by family or type.
+
+        Events are sorted chronologically by observed_at to ensure
+        deterministic sliding-window baselines.
+        """
         events = []
         for p in sorted(self.events_path.glob("*.json")):
             with open(p, "r", encoding="utf-8") as f:
@@ -88,6 +92,7 @@ class Phase2Engine:
             if source_type and ev.get("source_type") != source_type:
                 continue
             events.append(ev)
+        events.sort(key=lambda e: e.get("observed_at", ""))
         return events
 
     def _emit_signals(self, events, engine_id, source_type, metric_fn, window_data_fn):

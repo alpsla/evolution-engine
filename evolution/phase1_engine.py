@@ -93,6 +93,17 @@ class Phase1Engine:
             if key in self.index:
                 continue
 
+            # Use override, then payload timestamp, then wall clock as fallback
+            observed_at = override_observed_at
+            if not observed_at:
+                payload = raw_event.get("payload", {})
+                observed_at = (
+                    payload.get("committed_at")
+                    or payload.get("authored_at")
+                    or payload.get("timestamp")
+                    or (datetime.utcnow().isoformat() + "Z")
+                )
+
             source_event = {
                 "source_family": raw_event.get("source_family", ""),
                 "source_type": raw_event["source_type"],
@@ -100,7 +111,7 @@ class Phase1Engine:
                 "ordering_mode": raw_event["ordering_mode"],
                 "attestation": raw_event["attestation"],
                 "predecessor_refs": raw_event.get("predecessor_refs"),
-                "observed_at": override_observed_at or (datetime.utcnow().isoformat() + "Z"),
+                "observed_at": observed_at,
                 "payload": raw_event["payload"],
             }
 
