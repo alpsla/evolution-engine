@@ -7,7 +7,7 @@
 >
 > The plan is intentionally conservative: each step validates an architectural assumption before expanding scope.
 >
-> **Last updated:** February 14, 2026 (Pattern pipeline E2E tested, Upstash Redis live, PyPI patterns published; 1333 tests)
+> **Last updated:** February 15, 2026 (Pattern quality improvements: stricter discovery, push quality gate, sharing prompt; 1331 tests)
 
 ---
 
@@ -1470,8 +1470,12 @@ Round 5 — Future:
 - [x] `evo hooks install/status/uninstall .` — tested in previous session
 - [x] `evo watch .` — tested in previous session
 
+**Tested (CLI analysis flow — pattern quality verified on codequal repo, 2026-02-16):**
+- [x] `evo analyze .` — 0 repo-specific noise patterns (was 32 with old thresholds), 28 community-confirmed patterns correctly classified, 4 significant changes detected
+
 **Not yet tested:**
 - [ ] `evo patterns list .`
+- [ ] `evo patterns push .` — verify weak patterns filtered with log message
 - [ ] `evo history .`
 - [ ] `evo verify`
 - [ ] `evo config list`
@@ -1479,6 +1483,62 @@ Round 5 — Future:
 **Remaining SDLC paths:**
 - [ ] Path 2: Git Hooks — `evo init --path hooks`, post-commit trigger, auto-analyze
 - [ ] Path 3: GitHub Action — `evo init --path action`, PR comments, CI integration
+
+### 13.3.1 `evo sources` Issues (February 16, 2026, codequal repo)
+
+Three issues found during manual testing:
+
+1. **Redundant token hints for already-connected families** — CI is already connected via
+   `github_actions_local` (Tier 1), but the bottom still suggests `GITHUB_TOKEN` to "unlock ci".
+   `explain_missing()` in `registry.py` should suppress Tier 2 hints when Tier 1 is already
+   active for that family, or soften the message (e.g. "unlock additional CI data via API").
+
+2. **Irrelevant tool suggestions** — GitLab CI is connected (`.gitlab-ci.yml` detected), yet
+   `GITLAB_TOKEN` is still suggested. Jenkins isn't in the project at all but still appears.
+   The missing-token logic lists ALL known Tier 2 adapters regardless of project relevance.
+   Fix: only suggest tokens for tools actually detected in the repo.
+
+3. **Adapter install hints for unpublished packages** — `pip install evo-adapter-sentry` etc.
+   will fail because these packages don't exist on PyPI yet. Options:
+   - Suppress install hint until the package is actually published (check PyPI)
+   - Change wording to "Coming soon" or "Adapter not yet available"
+   - Build and publish the adapter packages
+
+### 13.4 Pattern Quality Improvements (February 15, 2026)
+
+**Problem:** Codequal analysis showed "5 of 31 repo-specific patterns" — but 28 were mislabeled community patterns (fixed earlier). Remaining 3 local patterns had correlations of -0.024, -0.065, and -0.242 (noise). Two shared metrics but had different fingerprints (dedup failure).
+
+**Root causes:** Permissive Phase 4 discovery thresholds, no quality gate on push, no way for users to share patterns post-analysis.
+
+**Key principle — Strict Push, Lenient Consume:**
+- **PUSH** (sharing) — strict: only `|correlation| >= 0.3` and `occurrence_count >= 3`
+- **CONSUME** (display) — lenient: community-confirmed patterns always used locally
+- Phase 4 thresholds gate NEW pattern discovery only, not community pattern matching
+
+**Changes implemented:**
+
+1. **Phase 4 discovery thresholds tightened** (`phase4_engine.py`):
+   - `min_support`: 3 → 5, `min_correlation`: 0.3 → 0.4, `min_lift`: 1.5 → 2.0
+   - `min_effect_size`: 0.2 → 0.35, `direction_threshold`: 1.0 → 1.5
+
+2. **Quality gate on push** (`kb_export.py`, `kb_sync.py`):
+   - `export_patterns()` now filters by `min_correlation` parameter
+   - `_build_pattern_payload()` uses `min_occurrences=3, min_correlation=0.3`
+   - `SyncResult` reports `filtered` count
+
+3. **Post-analyze sharing prompt** (`orchestrator.py`, `config.py`, `cli.py`):
+   - `_count_shareable_patterns()` queries KB for eligible local patterns
+   - One-time TTY prompt: "Found N pattern(s) ready to share..."
+   - Respects `sync.share_prompted` (never asks twice) and `sync.privacy_level`
+
+**Tests:** 1331 passing (13 new tests for correlation filtering, shareable counting, CLI prompt behavior)
+
+**Verified (February 16, 2026):** Pattern quality improvements confirmed working on codequal repo.
+After deleting `knowledge.db` + `registry_cache.json` and re-running `evo analyze .`:
+- 0 repo-specific patterns discovered (was 32 with old thresholds + stale cache)
+- 28 community-confirmed patterns correctly classified
+- 4 significant changes detected (change_locality, cochange_novelty, dispersion, dependencies)
+- CLI output correctly shows "COMMUNITY-CONFIRMED PATTERNS (5 of 28)"
 
 ---
 
@@ -1490,13 +1550,17 @@ Round 5 — Future:
 
 ---
 
-> **Summary (February 14, 2026 — updated after guided walkthrough):**
+> **Summary (February 16, 2026 — pattern quality verified):**
 >
-> **All engine priorities complete. UX overhaul DONE (§13).** All 15 UX issues from guided CLI path
-> walkthrough resolved: advisory time scope bug, severity calibration, pattern dedup, fix prompt
-> philosophy (drift detection, not bug fixing), CLI output verbosity, decision flow in HTML report,
-> setup wizard, adapter suggestions, and more. Additional live-testing fixes: JS clipboard fallback,
-> string escaping, file URL paths, per-finding trigger files. 1318 tests passing.
+> **All engine priorities complete. UX overhaul DONE (§13). Pattern quality hardened and verified (§13.4).**
+> Phase 4 discovery thresholds tightened to reduce noise patterns. Quality gate added to push
+> path — weak patterns (|correlation| < 0.3, occurrences < 3) never reach the community registry.
+> Post-analyze sharing prompt offers users a one-time opt-in to share patterns. Strict push,
+> lenient consume: community-confirmed patterns always used locally regardless of local occurrence
+> count. CLI analysis flow tested on codequal repo (Feb 16): 0 noise patterns, 28 community
+> patterns correctly classified. `evo sources` issues documented (§13.3.1).
+> 1331 tests passing. **Next: remaining CLI commands (`evo patterns list/push`,
+> `evo history`, `evo verify`, `evo config list`), Path 2 (Git Hooks), Path 3 (GitHub Action).**
 >
 > **Product philosophy clarified:** EE is a drift detector for AI-assisted development. "Fix"
 > means course-correct from the breakpoint commit, not patch a bug. The advisory is a drift
@@ -1507,7 +1571,7 @@ Round 5 — Future:
 > Cython build, FP validation, inline suggestions, CI wheel builds, website, Stripe integration,
 > opt-in telemetry, run history, GitLab compatibility, accept deviations, pattern pipeline,
 > and adapter ecosystem are implemented and tested.
-> **1318 tests passing.** The full pipeline runs end-to-end in 6.6 seconds on fastapi
+> **1331 tests passing.** The full pipeline runs end-to-end in 6.6 seconds on fastapi
 > (27,390 signals, 6 significant changes).
 >
 > **What's built:**
