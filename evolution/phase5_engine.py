@@ -20,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from evolution.friendly import risk_level, relative_change, metric_insight, friendly_pattern
+from evolution.friendly import risk_level, relative_change, metric_insight, friendly_pattern, pattern_risk_assessment
 from evolution.phase4_engine import (
     Phase4Engine,
     signals_to_components,
@@ -104,10 +104,14 @@ def _dedup_and_limit_patterns(patterns: list[dict], limit: int = 5) -> list[dict
         ):
             seen[key] = p
 
-    # Sort by absolute correlation descending, take top N
+    # Sort by severity (critical first), then by absolute correlation as tiebreaker
+    _sev_rank = {"positive": 0, "info": 1, "watch": 2, "concern": 3, "critical": 4}
     deduped = sorted(
         seen.values(),
-        key=lambda p: abs(p.get("correlation") or p.get("correlation_strength") or 0),
+        key=lambda p: (
+            _sev_rank.get(pattern_risk_assessment(p)["severity"], 1),
+            abs(p.get("correlation") or p.get("correlation_strength") or 0),
+        ),
         reverse=True,
     )
     return deduped[:limit]

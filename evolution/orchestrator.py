@@ -812,11 +812,22 @@ class Orchestrator:
             if p.exists():
                 shutil.rmtree(p)
 
-        # Phase 2, 3, 5: derived outputs
-        for subdir in ["phase2", "phase3", "phase5"]:
+        # Phase 2, 3: derived outputs
+        for subdir in ["phase2", "phase3"]:
             p = self.evo_dir / subdir
             if p.exists():
                 shutil.rmtree(p)
+
+        # Phase 5: clear outputs but preserve history/ (run snapshots)
+        phase5_dir = self.evo_dir / "phase5"
+        if phase5_dir.exists():
+            for item in phase5_dir.iterdir():
+                if item.name == "history":
+                    continue
+                if item.is_dir():
+                    shutil.rmtree(item)
+                else:
+                    item.unlink()
 
         # Phase 4: clear summary but keep knowledge.db
         phase4_dir = self.evo_dir / "phase4"

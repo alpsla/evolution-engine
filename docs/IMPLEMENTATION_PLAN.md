@@ -7,7 +7,7 @@
 >
 > The plan is intentionally conservative: each step validates an architectural assumption before expanding scope.
 >
-> **Last updated:** February 15, 2026 (Pattern quality improvements: stricter discovery, push quality gate, sharing prompt; 1331 tests)
+> **Last updated:** February 16, 2026 (Interactive report, determinism fix, verification loop; 1352 tests)
 
 ---
 
@@ -1330,6 +1330,8 @@ The remaining items before public beta:
 | 38 | ~~Stripe E2E testing~~ ✅ — 10/10 sandbox tests passing (purchase, cancel, FOUNDING50 discount, payment failure) | Done | — |
 | 38b | **Stripe live-mode testing** — repeat all 3 flows with real Stripe dashboard after going live (see §12.4) | Low | Yes — before accepting real payments |
 | 39 | **User review flow** — analyze → accept → investigate → fix → verify | Low | Yes — validate core UX |
+| 39b | ~~Interactive report~~ ✅ — report server, accept API, evidence in prompts, verification banner | Done | — |
+| 39c | ~~Analysis determinism~~ ✅ — payload timestamps, chronological sort, 3-run verification | Done | — |
 | 40 | ~~PyPI publication~~ ✅ — `evolution-engine` + `evo-patterns-community` 2026.2.15 | Done | — |
 | 41 | ~~Custom domain~~ ✅ — codequal.dev configured for Vercel | Done | — |
 | 42 | **Community beta** — announce, gather feedback | Low | No — begins once 36-39 are verified |
@@ -1361,7 +1363,7 @@ Pre-requisites:
 
 ## 13. UX Overhaul — Guided Walkthrough Findings (February 14, 2026)
 
-> **Status: DONE (2026-02-15) — All 15 fixes implemented and tested. 1318 tests passing.**
+> **Status: DONE (2026-02-15) — All 15 fixes implemented and tested. 1352 tests passing.**
 >
 > Manual walkthrough of the CLI path (Path 1) on a real repo (codequal) revealed
 > fundamental UX issues. All 15 fixes have been implemented across engine, CLI output,
@@ -1473,11 +1475,15 @@ Round 5 — Future:
 **Tested (CLI analysis flow — pattern quality verified on codequal repo, 2026-02-16):**
 - [x] `evo analyze .` — 0 repo-specific noise patterns (was 32 with old thresholds), 28 community-confirmed patterns correctly classified, 4 significant changes detected
 
+**Tested (Interactive report + verification, 2026-02-16):**
+- [x] `evo analyze . --verify` — re-analyze + compare against previous snapshot, verification banner
+- [x] `evo analyze . --open` — launches report server subprocess, serves at 127.0.0.1:8485
+- [x] Report Accept buttons — POST to server, persist to `.evo/accepted.json`
+
 **Not yet tested:**
 - [ ] `evo patterns list .`
 - [ ] `evo patterns push .` — verify weak patterns filtered with log message
 - [ ] `evo history .`
-- [ ] `evo verify`
 - [ ] `evo config list`
 
 **Remaining SDLC paths:**
@@ -1531,7 +1537,7 @@ Three issues found during manual testing:
    - One-time TTY prompt: "Found N pattern(s) ready to share..."
    - Respects `sync.share_prompted` (never asks twice) and `sync.privacy_level`
 
-**Tests:** 1331 passing (13 new tests for correlation filtering, shareable counting, CLI prompt behavior)
+**Tests:** 1352 passing (13 new for correlation filtering + 21 new for report server and determinism)
 
 **Verified (February 16, 2026):** Pattern quality improvements confirmed working on codequal repo.
 After deleting `knowledge.db` + `registry_cache.json` and re-running `evo analyze .`:
@@ -1542,7 +1548,73 @@ After deleting `knowledge.db` + `registry_cache.json` and re-running `evo analyz
 
 ---
 
-## 14. Plan Maintenance
+## 14. Interactive Report & Determinism (February 16, 2026)
+
+> **Status: DONE — All changes implemented and tested. 1352 tests passing (6.10s).**
+
+### 14.1 Interactive Report Server
+
+Report Accept buttons now persist to `.evo/accepted.json` via a local HTTP server (`evolution/report_server.py`).
+
+- **Server**: `http://127.0.0.1:8485` — modeled on `setup_ui.py` (stdlib `http.server`, zero deps)
+- **Routes**: `GET /` (serve HTML), `POST /api/accept` (persist acceptance), `GET /api/accepted` (list)
+- **Port selection**: tries 8485, then 8486–8499 if busy; auto-shutdown after 10 min idle
+- **Fallback**: clipboard copy on `file://` URLs (no server needed)
+- **Accept scopes**: permanent (persists to `.evo/accepted.json`) and this-run (session only)
+- **CLI integration**: `evo analyze . --open` launches server subprocess; `--serve` flag for explicit serve
+
+### 14.2 Evidence in Prompts
+
+Evidence Package section **removed** from HTML report — evidence embedded directly in per-finding prompts.
+
+- `_build_change_card()` accepts `all_commits` and `deps_changed`, shows top 5 recent commits + dependency changes
+- `_is_build_artifact()` filters `.map`, `.d.ts`, `.d.ts.map`, `.js.map`, `.css.map` from AI prompts
+- Full investigation prompt deduplicated: patterns grouped with "N independent confirmations"
+- Only actionable patterns (severity >= watch) included in prompts
+- References `evo analyze . --verify` and `evo accept . <N>` for next steps
+
+### 14.3 Verification Loop (`--verify`)
+
+`evo analyze . --verify` — re-analyze + compare against previous snapshot in one command.
+
+- Verification banner in HTML report shows before/after per signal with trend arrows
+- "Historical trigger" label when before/after deviation identical (older commit, not recent drift)
+- `.verify-note` guidance explains what historical triggers mean
+- `orchestrator.py` properly cleans `verification.json` on non-verify runs
+
+### 14.4 Analysis Determinism Fix
+
+**Root cause 1**: `phase1_engine.py` used `datetime.utcnow()` for `observed_at` on git events — non-deterministic.
+**Fix**: Extract `committed_at`/`authored_at`/`timestamp` from payload before falling back to wall clock.
+
+**Root cause 2**: `phase2_engine.py` sorted events by filename (hash) — random order.
+**Fix**: Sort events by `observed_at` (chronological) after loading.
+
+**Verified**: 3 consecutive runs produced identical results (same advisory IDs, same deviations).
+
+### 14.5 Additional Fixes
+
+- **Orchestrator history bug**: `_clean_pipeline_data()` was deleting `phase5/history/` — fixed to skip `history/` directory
+- **CLI pattern sort**: `_dedup_and_limit_patterns` now sorts by severity (critical first) instead of correlation strength
+
+### 14.6 Files
+
+| File | Change |
+|------|--------|
+| `evolution/report_server.py` | **NEW** — local HTTP server for interactive report |
+| `tests/unit/test_report_server.py` | **NEW** — server tests |
+| `evolution/report_generator.py` | Heavy rewrite — evidence in prompts, Evidence Package removed, JS rewritten |
+| `evolution/cli.py` | Server subprocess launch on `--open`, `--serve` flag |
+| `evolution/orchestrator.py` | History dir preservation, verification cleanup |
+| `evolution/phase1_engine.py` | Determinism: payload timestamp for `observed_at` |
+| `evolution/phase2_engine.py` | Determinism: chronological sort |
+| `evolution/phase5_engine.py` | Severity sort for patterns |
+| `evolution/history.py` | Historical trigger label |
+| `tests/unit/test_report_generator.py` | Updated assertions for new structure |
+
+---
+
+## 15. Plan Maintenance
 
 - This document is updated **only** when a phase is completed or reordered.
 - Changes must reference Architecture Vision principles.
@@ -1550,67 +1622,40 @@ After deleting `knowledge.db` + `registry_cache.json` and re-running `evo analyz
 
 ---
 
-> **Summary (February 16, 2026 — pattern quality verified):**
+> **Summary (February 16, 2026):**
 >
-> **All engine priorities complete. UX overhaul DONE (§13). Pattern quality hardened and verified (§13.4).**
-> Phase 4 discovery thresholds tightened to reduce noise patterns. Quality gate added to push
-> path — weak patterns (|correlation| < 0.3, occurrences < 3) never reach the community registry.
-> Post-analyze sharing prompt offers users a one-time opt-in to share patterns. Strict push,
-> lenient consume: community-confirmed patterns always used locally regardless of local occurrence
-> count. CLI analysis flow tested on codequal repo (Feb 16): 0 noise patterns, 28 community
-> patterns correctly classified. `evo sources` issues documented (§13.3.1).
-> 1331 tests passing. **Next: remaining CLI commands (`evo patterns list/push`,
-> `evo history`, `evo verify`, `evo config list`), Path 2 (Git Hooks), Path 3 (GitHub Action).**
+> **All engine priorities complete. 1352 tests passing (6.10s).**
 >
-> **Product philosophy clarified:** EE is a drift detector for AI-assisted development. "Fix"
-> means course-correct from the breakpoint commit, not patch a bug. The advisory is a drift
-> alarm, not a bug report.
->
-> **All priorities complete. Product launch infrastructure deployed and E2E tested.** All 5 engine phases,
-> open-core infrastructure, AI agent integration, GitHub Action, source prescan, cloud sync,
-> Cython build, FP validation, inline suggestions, CI wheel builds, website, Stripe integration,
-> opt-in telemetry, run history, GitLab compatibility, accept deviations, pattern pipeline,
-> and adapter ecosystem are implemented and tested.
-> **1331 tests passing.** The full pipeline runs end-to-end in 6.6 seconds on fastapi
-> (27,390 signals, 6 significant changes).
+> All 5 engine phases, open-core infrastructure, AI agent integration, GitHub Action, source prescan,
+> cloud sync, Cython build, FP validation, inline suggestions, CI wheel builds, website, Stripe
+> integration, opt-in telemetry, run history, GitLab compatibility, accept deviations, pattern
+> pipeline, adapter ecosystem, UX overhaul (§13), pattern quality hardening (§13.4), and interactive
+> report with determinism fix (§14) are implemented and tested.
 >
 > **What's built:**
-> - `evo analyze .` — zero-config CLI with 30+ commands
+> - `evo analyze .` — zero-config CLI with 30+ commands, deterministic results
+> - `evo analyze . --verify` — re-analyze + compare against previous snapshot
+> - Interactive HTML report with Accept buttons (local HTTP server), evidence in prompts
 > - `evo accept` + `evo accepted` — hide acknowledged deviations from future advisories
-> - PM-friendly output across all display layers (risk labels, relative comparisons, practical insights)
-> - 3-tier adapter ecosystem (built-in, API, plugins) with scaffold and validation
-> - License system (free/pro tiers, HMAC-signed keys, configurable signing key, Stripe checkout)
-> - HTML report generator (`evo report`) with risk badges, insight rows, friendly patterns
-> - **27 universal patterns bundled** from 43 repos across 8 languages
+> - PM-friendly output across all display layers (risk badges, relative comparisons, practical insights)
+> - 3-tier adapter ecosystem (built-in, API, plugins) with scaffold, validation, security scanning
+> - License system (free/pro tiers, HMAC-signed keys, Stripe checkout)
 > - AI agent integration (`evo investigate`, `evo fix`) — RALF-style fix-verify loop
 > - GitHub Action (`action/action.yml`) — PR comments with risk + investigation + verify + inline suggestions
 > - Run history (`evo history`) — snapshot, compare, clean advisory runs over time
 > - Cloud KB sync (`evo patterns pull/push`) — opt-in anonymous pattern sharing
-> - **Website** (`website/`) — Ocean Depth dark theme on Vercel (landing, docs, privacy, success pages)
-> - **Stripe integration** — Pro subscription checkout, webhook license generation, success page
-> - **Legal docs** — 5 PDFs generated for lawyer review (privacy, ToS, 3rd-party API, AI safety, data flow)
+> - **27 universal patterns** from 43 repos across 8 languages (PyPI distribution)
+> - Website (`website/`) — codequal.dev on Vercel (landing, docs, privacy, success pages)
+> - Stripe integration — Pro subscription checkout, webhook license generation
 >
-> **Remaining before beta (testing backlog):**
+> **Remaining before beta:**
 > 1. **Lawyer review** — ToS + Privacy under review; corrected docs → translator verification
 > 2. **GitLab manual testing** — 7 scenarios (LAUNCH_PLAN.md §12.2)
-> 3. ~~Stripe E2E testing~~ ✅ — 10/10 sandbox tests passing
-> 3b. **Stripe live-mode testing** — repeat all flows after going live
+> 3. **Stripe live-mode testing** — repeat flows after going live
 > 4. **User review flow** — end-to-end: analyze → accept → investigate → fix → verify
-> 5. ~~PyPI publication~~ ✅ — `evolution-engine` + `evo-patterns-community` published
-> 6. ~~Custom domain~~ ✅ — codequal.dev configured
-> 7. ~~Pattern pipeline E2E~~ ✅ — Upstash Redis live, push/pull/import tested, PyPI auto-fetch working
-> 8. **Community beta launch** (see `docs/LAUNCH_PLAN.md` for full timeline)
+> 5. **Community beta launch** (see `docs/LAUNCH_PLAN.md` for full timeline)
 >
-> **New (February 12, 2026):**
-> - **Accept deviations** (`evolution/accepted.py`) — `evo accept` + `evo accepted` (list/remove/clear)
-> - **Legal PDFs** — 5 docs converted for lawyer review (privacy, ToS, 3rd-party API, AI safety, data flow)
-> - **Run history** — snapshot, list, show, diff, clean with CLI commands
-> - **GitLab compatibility** — verified on gitlab-org/gitlab-styles (516 commits, 677 events)
-> - **Stripe E2E tested** — 10/10 sandbox tests passing (Pro purchase, cancellation, FOUNDING50 discount, payment failure)
-> - Testing backlog consolidated: GitLab, Stripe live-mode, user review flow
-> - 586 tests passing (1.88s)
->
-> **The engagement flow:**
+> **Engagement flow:**
 > ```
 > evo analyze → Advisory → AI investigates → AI fixes → evo verify
 >                                                          │
@@ -1619,27 +1664,6 @@ After deleting `knowledge.db` + `registry_cache.json` and re-running `evo analyz
 >                                                    No: loop back ↑
 > ```
 >
-> **New (February 13, 2026):**
-> - **Adapter ecosystem governance** — security scanning, trust tiers, blocklist, version checks, reporting
-> - `evolution/adapter_security.py` — regex + AST static analysis for dangerous patterns (9 critical, 4 warning, 1 info check)
-> - `evolution/adapter_versions.py` — PyPI version checking with 24h cache, self-update nudge
-> - Trust tiers: `built-in` → `verified` → `community` → `local` (auto-assigned in registry)
-> - Blocklist: bundled + local `~/.evo/blocklist.json`, block/unblock CLI commands
-> - New CLI commands: `security-check`, `block`, `unblock`, `check-updates`, `report`
-> - `--security` flag on `evo adapter validate`
-> - Version nudge in `evo analyze` output
-> - `docs/adapters/` — 5 docs (README, SECURITY, TRUST_TIERS, LIFECYCLE, BUILDING)
-> - `examples/evo-adapter-pytest-cov/` — reference adapter implementation
-> - E2E lifecycle test covering scaffold → validate → security-check → block/unblock
-> - 625 → ~662+ tests
-> - Updated: ADAPTER_CONTRACT.md (security requirements), INTEGRATIONS.md (link to new docs)
->
-> **New (February 14, 2026):**
-> - **Pattern pipeline fully deployed and E2E tested** — Upstash Redis backend, Vercel handler, CLI push/pull, orchestrator direct-pull
-> - `evo-patterns-community` 2026.2.15 published on PyPI (28 patterns across 4 families)
-> - Dual redundancy: Redis registry (immediate) + PyPI packages (durable) — tested Redis-down fallback
-> - Config metadata system (`_GROUPS`, `_METADATA`) for `evo setup` interactive configuration
-> - Hooks defaults (`hooks.trigger`, `hooks.min_severity`, `hooks.background`, etc.)
-> - Fixed: `config.py` stale registry URL (`registry.codequal.dev/v1` → `codequal.dev/api`)
-> - Fixed: `git` ↔ `version_control` family name mismatch in pattern import filters
-> - 1333 tests passing (6.10s)
+> **Product philosophy:** EE is a drift detector for AI-assisted development. "Fix" means
+> course-correct from the breakpoint commit, not patch a bug. The advisory is a drift alarm,
+> not a bug report.

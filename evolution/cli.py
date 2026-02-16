@@ -56,6 +56,32 @@ import click
 from evolution import __version__
 
 
+def _open_report_with_server(evo_dir: Path, report_path: Path):
+    """Launch report server as subprocess and open browser.
+
+    Falls back to file:// URL if the server fails to start.
+    """
+    import subprocess
+    import time
+    import webbrowser
+
+    try:
+        from evolution.report_server import ReportServer
+        port = ReportServer.find_available_port()
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "evolution.report_server",
+             str(evo_dir), str(report_path), str(port)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        time.sleep(0.3)
+        if proc.poll() is not None:
+            raise RuntimeError("Server exited immediately")
+        webbrowser.open(f"http://127.0.0.1:{port}")
+    except Exception:
+        webbrowser.open(report_path.resolve().as_uri())
+
+
 @click.group()
 @click.version_option(version=__version__, prog_name="evo")
 def main():
@@ -79,7 +105,8 @@ def main():
 @click.option("--show-prompt", is_flag=True, help="Print investigation prompt after analysis")
 @click.option("--no-report", is_flag=True, help="Skip HTML report generation")
 @click.option("--open/--no-open", "open_browser", default=None, help="Open HTML report in browser (default: auto-detect TTY)")
-def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verbose, show_prompt, no_report, open_browser):
+@click.option("--verify", is_flag=True, help="Compare results against previous run after analysis")
+def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verbose, show_prompt, no_report, open_browser, verify):
     """Analyze a repository. Detects adapters automatically."""
     from evolution.orchestrator import Orchestrator
 
@@ -149,13 +176,33 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verb
             click.echo("=" * 60)
             click.echo(prompt_path.read_text())
 
+    # --verify: compare against previous run
+    verify_diff = None
+    if verify and result["status"] == "complete" and not json_output:
+        try:
+            from evolution.history import HistoryManager
+            evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
+            hm = HistoryManager(evo_path)
+            runs = hm.list_runs(limit=2)
+            if len(runs) >= 2:
+                verify_diff = hm.compare(runs[1]["timestamp"], runs[0]["timestamp"])
+                # Persist so `evo report` can render the banner too
+                verify_path = evo_path / "phase5" / "verification.json"
+                verify_path.write_text(json.dumps(verify_diff, default=str))
+                click.echo()
+                click.echo(verify_diff["summary_text"])
+            else:
+                click.echo("\nNo previous run to compare against (this is the first analysis).")
+        except Exception as e:
+            click.echo(f"\n[warn] Could not compare runs: {e}")
+
     # Auto-generate HTML report (unless --no-report or --json)
     if result["status"] == "complete" and not json_output and not no_report:
         try:
             from evolution.report_generator import generate_report
 
             evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
-            html = generate_report(evo_path)
+            html = generate_report(evo_path, verification=verify_diff)
             report_path = evo_path / "report.html"
             report_path.write_text(html)
 
@@ -166,8 +213,7 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verb
             # Auto-open: True if explicitly requested, or if TTY detected and not explicitly disabled
             should_open = open_browser if open_browser is not None else sys.stdout.isatty()
             if should_open:
-                import webbrowser
-                webbrowser.open(file_url)
+                _open_report_with_server(evo_path, report_path)
         except Exception as e:
             if not quiet:
                 click.echo(f"\n[warn] Could not generate report: {e}")
@@ -1934,7 +1980,8 @@ def license_activate(key):
 @click.option("--evo-dir", help="Override .evo directory path")
 @click.option("--title", help="Custom report title")
 @click.option("--open", "open_browser", is_flag=True, help="Open in browser after generating")
-def report(path, output, evo_dir, title, open_browser):
+@click.option("--serve", is_flag=True, help="Start local server for interactive report (blocking)")
+def report(path, output, evo_dir, title, open_browser, serve):
     """Generate an HTML report from the latest advisory."""
     from evolution.report_generator import generate_report
 
@@ -1964,9 +2011,13 @@ def report(path, output, evo_dir, title, open_browser):
     from evolution.telemetry import track_event
     track_event("cli_command", {"command": "report"})
 
-    if open_browser:
-        import webbrowser
-        webbrowser.open(f"file://{output_path.resolve()}")
+    if serve:
+        from evolution.report_server import ReportServer
+        srv = ReportServer(evo_path, output_path)
+        click.echo(f"Serving report at http://127.0.0.1:{srv.port} (Ctrl+C to stop)")
+        srv.serve()
+    elif open_browser:
+        _open_report_with_server(evo_path, output_path)
 
 
 # ─────────────────── evo verify ───────────────────
