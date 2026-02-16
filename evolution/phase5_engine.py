@@ -188,14 +188,14 @@ class Phase5Engine:
         kb.close()
         return knowledge
 
-    def _load_phase4_patterns(self) -> list[dict]:
-        """Load Phase 4 candidate patterns."""
+    def _load_phase4_patterns(self, scope: str = None) -> list[dict]:
+        """Load Phase 4 candidate patterns, optionally filtered by scope."""
         from evolution.knowledge_store import SQLiteKnowledgeStore
         db_path = self.phase4_path / "knowledge.db"
         if not db_path.exists():
             return []
         kb = SQLiteKnowledgeStore(db_path)
-        patterns = kb.list_patterns()
+        patterns = kb.list_patterns(scope=scope)
         kb.close()
         return patterns
 
@@ -1002,7 +1002,8 @@ class Phase5Engine:
         explanations = self._load_explanations()
         all_events = self._load_events()
         knowledge = self._load_phase4_knowledge()
-        patterns = self._load_phase4_patterns()
+        community_patterns = self._load_phase4_patterns(scope="community")
+        local_patterns = self._load_phase4_patterns(scope="local")
 
         if not all_signals:
             return {"status": "no_signals", "advisory": None}
@@ -1016,9 +1017,13 @@ class Phase5Engine:
         # Step 2: Evidence collection
         evidence = self._collect_evidence(significant, all_events)
 
-        # Step 3: Pattern matching (promoted knowledge + candidates)
+        # Step 3: Pattern matching
+        # Community-confirmed: promoted knowledge + community patterns from registry
         pattern_matches = self._match_patterns(significant, knowledge)
-        candidate_patterns = self._match_candidate_patterns(significant, patterns)
+        community_matches = self._match_candidate_patterns(significant, community_patterns)
+        pattern_matches.extend(community_matches)
+        # Repo-specific: only locally discovered patterns
+        candidate_patterns = self._match_candidate_patterns(significant, local_patterns)
 
         # Step 4: Compile advisory
         # Build change list (with commit attribution)

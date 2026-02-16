@@ -181,29 +181,25 @@ def metric_insight(metric: str, direction: str) -> str:
 
 _FRIENDLY_FAMILY = {
     "git": "code changes", "version_control": "code changes",
-    "ci": "CI/build activity", "testing": "testing activity",
+    "ci": "CI builds", "testing": "test runs",
     "dependency": "dependency changes", "schema": "API changes",
-    "deployment": "deployment activity", "config": "configuration changes",
+    "deployment": "deployments", "config": "config changes",
     "security": "security scans",
 }
 
 _FRIENDLY_METRIC = {
-    "files_touched": "the number of files changed",
-    "dispersion": "how spread out changes are across the codebase",
-    "change_locality": "how focused changes are in related areas",
-    "cochange_novelty_ratio": "how many unfamiliar file combinations appear",
-    "run_duration": "build duration",
-    "run_failed": "build failures",
-    "dependency_count": "the number of dependencies",
-    "max_depth": "dependency tree depth",
-    "release_cadence_hours": "time between releases",
-    "is_prerelease": "pre-release frequency",
+    "files_touched": "file count",
+    "dispersion": "code spread",
+    "change_locality": "change focus",
+    "cochange_novelty_ratio": "novelty of file pairings",
+    "run_duration": "build time",
+    "run_failed": "build failure rate",
+    "dependency_count": "dependency count",
+    "max_depth": "dependency depth",
+    "release_cadence_hours": "release frequency",
+    "is_prerelease": "pre-release rate",
     "asset_count": "release artifact count",
 }
-
-_CORR_STRENGTH = [
-    (0.7, "strong"), (0.4, "moderate"), (0.2, "mild"),
-]
 
 
 def friendly_pattern(pattern: dict) -> str:
@@ -232,36 +228,24 @@ def friendly_pattern(pattern: dict) -> str:
         if not metric_names:
             metric_names = [_FRIENDLY_METRIC.get(m, m.replace("_", " ")) for m in metrics]
 
-        # Determine relationship strength
-        abs_corr = abs(corr)
-        strength = "a"
-        for threshold, word in _CORR_STRENGTH:
-            if abs_corr >= threshold:
-                strength = f"a {word}"
-                break
-
         direction = "increase" if corr >= 0 else "decrease"
+        metric_verb = "tend" if len(metric_names) > 1 else "tends"
 
         if len(families) == 1:
-            # Causal-style: "When X happens, Y tends to Z"
             trigger = family_names[0]
             outcome = " and ".join(metric_names)
             verb = "occur" if trigger.endswith("s") else "occurs"
             return (
-                f"{prefix}when {trigger} {verb}, {outcome} tends to "
-                f"{direction}, suggesting {strength} relationship between these areas."
+                f"{prefix}when {trigger} {verb}, "
+                f"{outcome} {metric_verb} to {direction}."
             )
         else:
-            # Co-occurrence: "When X and Y happen together, A and B tend to move together"
             area_str = " and ".join(family_names)
             metric_str = " and ".join(metric_names)
-            if corr >= 0:
-                movement = "move together"
-            else:
-                movement = "move in opposite directions"
+            movement = "move together" if corr >= 0 else "move in opposite directions"
             return (
                 f"{prefix}when {area_str} happen together, "
-                f"{metric_str} tend to {movement}."
+                f"{metric_str} {metric_verb} to {movement}."
             )
 
     # Absolute fallback: if no structured fields, strip stats from raw desc
