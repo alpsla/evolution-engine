@@ -221,6 +221,15 @@ def check_adapter_discovery(state: dict, repo_path: str | Path = None):
                     f"(detected {svc.display_name} in repo). "
                     f"Install: pip install {adapter_pkg}",
                 )
+            else:
+                # Adapter not on PyPI yet — hint it's coming
+                _add_notification(
+                    state,
+                    TYPE_ADAPTER_AVAILABLE,
+                    f"coming:{adapter_pkg}",
+                    f"Detected {svc.display_name} in repo — "
+                    f"adapter coming soon. Request: evo adapter request {svc.family}",
+                )
     except Exception as e:
         log.debug("Adapter discovery check failed: %s", e)
 

@@ -1176,13 +1176,24 @@ All SDLC integration features are implemented and have 1333 automated tests pass
 
 ### Open Items
 
+**See `docs/IMPLEMENTATION_PLAN.md` §13 for the full UX overhaul plan (15 issues, prioritized fix order).**
+
+Summary of critical findings from guided walkthrough (CLI path on codequal repo):
+
 | # | Issue | Priority | Status |
 |---|-------|----------|--------|
-| 1 | **Installation guidance incomplete** — docs say `pip install evolution-engine` but don't mention venv setup, Python version requirement (>=3.10), or PATH activation. Users who run `pip install` in a venv won't have `evo` on PATH without `source .venv/bin/activate`. Need to document: venv creation, activation, `pipx` alternative, from-source install. | HIGH | TODO |
-| 2 | **`evo setup` wizard not documented** — neither the CLI wizard nor the `--ui` browser mode are explained in QUICKSTART.md, README.md, or website/docs.html. Need: walkthrough of wizard flow (Enter/s/q navigation), example output, config groups, how CLI and UI share config. | MEDIUM | TODO |
-| 3 | **`--json` mixes progress output** — `evo analyze . --json` prints human-readable progress before the JSON. Works with `--json --quiet` but `--json` alone should probably suppress progress. | LOW | Pre-existing |
-| 4 | **"No events" error unclear** — when run outside a git repo, message says "No events ingested. Check that the repo has git history." Should detect missing `.git` and say "No .git directory found." | LOW | TODO |
-| 5 | **`evo setup --ui` needs browser testing** — server starts and binds, but couldn't verify from sandbox. Needs manual test on real machine. | MEDIUM | TODO |
-| 6 | **Guided user walkthrough** — need to complete manual walkthrough of all 21 steps on a real repo (codequal). Transition doc at `memory/session-2026-02-14-manual-testing.md`. | HIGH | In progress |
+| 1 | **Advisory time scope bug** — period shows 9 months instead of specific commits | HIGH | Investigated, fix planned |
+| 2 | **Pattern dedup bug** — community import doesn't check local scope, 42 shown vs 37 unique | HIGH | Root cause found |
+| 3 | **Fix prompt philosophy wrong** — says "fix bugs" but EE is a drift detector | HIGH | Redesign planned |
+| 4 | **CLI output too verbose** — internal telemetry (6712 signals) shown to users | HIGH | Fix planned |
+| 5 | **Setup wizard contradicts auto-detect** — asks user to type "git,ci,dependency" | HIGH | Redesign planned |
+| 6 | **Adapter install suggestions broken** — suggests `pip install` for non-existent packages | HIGH | Confirmed |
+| 7 | **HTML report missing decision flow** — no accept/fix/verify loop guidance | HIGH | Fix planned |
+| 8 | **Installation guidance incomplete** — no venv/PATH/Python version docs | HIGH | TODO |
+| 9 | **`evo setup` wizard not documented in onboarding** | MEDIUM | TODO |
+| 10 | **`--json` mixes progress output** | LOW | Pre-existing |
+| 11 | **"No events" error unclear outside git repo** | LOW | TODO |
+| 12 | **`evo setup --ui` needs manual browser test** | MEDIUM | TODO |
+| 13 | **Guided walkthrough** — CLI path tested, Hooks + Action paths remain | HIGH | In progress |
 
 *Last updated: 2026-02-14*

@@ -12,6 +12,8 @@ Or via CLI:
 """
 
 import json
+import re
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -19,6 +21,32 @@ from evolution.friendly import (
     risk_level, relative_change, metric_insight, friendly_pattern,
     pattern_risk_assessment, _severity_rank,
 )
+
+
+def _detect_remote_url(repo_dir: Path) -> str:
+    """Try to detect the remote URL from git config.
+
+    Returns a base URL like 'https://github.com/owner/repo' or empty string.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            capture_output=True, text=True, cwd=str(repo_dir), timeout=5,
+        )
+        if result.returncode != 0:
+            return ""
+        url = result.stdout.strip()
+        # SSH: git@github.com:owner/repo.git → https://github.com/owner/repo
+        m = re.match(r"git@([^:]+):(.+?)(?:\.git)?$", url)
+        if m:
+            return f"https://{m.group(1)}/{m.group(2)}"
+        # HTTPS: https://github.com/owner/repo.git → https://github.com/owner/repo
+        m = re.match(r"(https?://[^/]+/.+?)(?:\.git)?$", url)
+        if m:
+            return m.group(1)
+        return ""
+    except Exception:
+        return ""
 
 FAMILY_LABELS = {
     "git": "Version Control",
@@ -98,10 +126,14 @@ def generate_report(
     scope = advisory.get("scope", "Unknown Repository")
     title = title or f"Evolution Advisory \u2014 {scope}"
 
-    return _render_html(advisory, evidence, title, calibration_result)
+    # Try to detect git remote for commit links
+    repo_dir = evo_dir.parent
+    remote_url = _detect_remote_url(repo_dir)
+
+    return _render_html(advisory, evidence, title, calibration_result, remote_url)
 
 
-def _render_html(advisory, evidence, title, cal=None):
+def _render_html(advisory, evidence, title, cal=None, remote_url=""):
     scope = advisory.get("scope", "Unknown")
     summary = advisory.get("summary", {})
     changes = advisory.get("changes", [])
@@ -119,10 +151,19 @@ def _render_html(advisory, evidence, title, cal=None):
     advisory_id = advisory.get("advisory_id", "")
     families_affected = summary.get("families_affected", [])
 
+    # Confidence: use commits count from evidence
+    n_commits = len(commits)
+
     cover = _build_cover_page(scope, period_from, period_to, advisory_id, generated)
-    exec_summary = _build_executive_summary(summary, families_affected, cal)
+    exec_summary = _build_executive_summary(summary, families_affected, cal, n_commits)
     findings_html = _build_key_findings(changes, pattern_matches, candidate_patterns, families_affected)
-    changes_html = _build_changes_section(changes)
+    # Build commit lookup for per-finding evidence
+    commits_by_sha = {}
+    for cm in commits:
+        sha = cm.get("sha", "")
+        if sha:
+            commits_by_sha[sha] = cm
+    changes_html = _build_changes_section(changes, remote_url, commits_by_sha)
     patterns_html = _build_pattern_section(pattern_matches, candidate_patterns)
     all_patterns = list(pattern_matches) + list(candidate_patterns)
     invest_html = _build_investigation_section(
@@ -130,7 +171,7 @@ def _render_html(advisory, evidence, title, cal=None):
         all_patterns,
     )
     evidence_html = _build_evidence_section(
-        commits, files_affected, deps_changed, timeline, evidence,
+        commits, files_affected, deps_changed, timeline, evidence, remote_url,
     )
 
     return (
@@ -184,7 +225,7 @@ def _build_cover_page(scope, period_from, period_to, advisory_id, generated):
     )
 
 
-def _build_executive_summary(summary, families_affected, cal=None):
+def _build_executive_summary(summary, families_affected, cal=None, n_commits=0):
     sig = summary.get("significant_changes", 0)
     n_fam = len(families_affected)
     patterns = summary.get("known_patterns_matched", 0)
@@ -216,6 +257,14 @@ def _build_executive_summary(summary, families_affected, cal=None):
             '</p>'
         )
 
+    confidence_html = ""
+    if n_commits > 0:
+        confidence_html = (
+            '<p class="confidence-note">'
+            f'Based on {n_commits:,} prior commit{"s" if n_commits != 1 else ""}'
+            '</p>'
+        )
+
     return (
         '<section class="executive-summary">\n'
         '  <h2>Executive Summary</h2>\n'
@@ -223,6 +272,7 @@ def _build_executive_summary(summary, families_affected, cal=None):
         '    ' + '\n    '.join(cards) + '\n'
         '  </div>\n'
         f'  {families_html}\n'
+        f'  {confidence_html}\n'
         '</section>'
     )
 
@@ -290,14 +340,13 @@ def _build_key_findings(changes, pattern_matches, candidate_patterns, families_a
     if pattern_matches:
         n = len(pattern_matches)
         bullets.append(
-            f'{n} known pattern{"s" if n != 1 else ""} matched, '
-            'indicating previously observed cross-signal correlations.'
+            f'{n} community-confirmed pattern{"s" if n != 1 else ""} matched '
+            'from patterns seen across other projects.'
         )
     if candidate_patterns:
         n = len(candidate_patterns)
         bullets.append(
-            f'{n} emerging pattern{"s" if n != 1 else ""} detected '
-            'that may become recurring if observed again.'
+            f'{n} repo-specific pattern{"s" if n != 1 else ""} discovered in this repository.'
         )
 
     items_html = "\n".join(f'    <li>{b}</li>' for b in bullets)
@@ -311,7 +360,7 @@ def _build_key_findings(changes, pattern_matches, candidate_patterns, families_a
     )
 
 
-def _build_changes_section(changes):
+def _build_changes_section(changes, remote_url="", commits_by_sha=None):
     if not changes:
         return (
             '<section class="changes-detected page-break-before">\n'
@@ -321,7 +370,10 @@ def _build_changes_section(changes):
         )
 
     n = len(changes)
-    cards = "\n".join(_build_change_card(c, idx) for idx, c in enumerate(changes))
+    cards = "\n".join(
+        _build_change_card(c, idx, remote_url, commits_by_sha or {})
+        for idx, c in enumerate(changes)
+    )
 
     filter_buttons = (
         '  <div class="severity-filters no-print">\n'
@@ -332,6 +384,14 @@ def _build_changes_section(changes):
         '  </div>\n'
     )
 
+    progress_bar = (
+        '  <div class="progress-tracker no-print" id="progressTracker">\n'
+        f'    <span id="resolvedCount">0</span> of {n} resolved\n'
+        '    <div class="progress-bar"><div class="progress-fill" id="progressFill" '
+        f'style="width: 0%;" data-total="{n}"></div></div>\n'
+        '  </div>\n'
+    )
+
     return (
         '<section class="changes-detected page-break-before">\n'
         '  <h2>What Changed in Your Codebase</h2>\n'
@@ -339,13 +399,14 @@ def _build_changes_section(changes):
         f'    We\'ve detected {n} change{"s" if n != 1 else ""} that differ from your project\'s\n'
         '    normal patterns. Each change shows what typically happens versus what we observed this time.\n'
         '  </p>\n'
+        f'{progress_bar}'
         f'{filter_buttons}'
         f'  {cards}\n'
         '</section>'
     )
 
 
-def _build_change_card(c, index=0):
+def _build_change_card(c, index=0, remote_url="", commits_by_sha=None):
     family = c.get("family", "")
     metric_key = c.get("metric", "")
     metric_name = METRIC_LABELS.get(metric_key, metric_key)
@@ -391,15 +452,86 @@ def _build_change_card(c, index=0):
             '  </details>\n'
         )
 
-    # Action buttons for investigate/dismiss
-    investigate_cmd = f"evo investigate . --family {family}"
-    dismiss_cmd = f'evo accept . {index} --reason &quot;Expected behavior&quot;'
-    action_buttons = (
-        '  <div class="change-actions no-print">\n'
-        f'    <button class="btn btn-action" onclick="copyCommand(this, \'{_esc(investigate_cmd)}\')">Investigate</button>\n'
-        f'    <button class="btn btn-action btn-action-dismiss" onclick="copyCommand(this, \'{dismiss_cmd}\')">Dismiss</button>\n'
-        '  </div>\n'
+    # Action buttons: Accept + Fix with AI
+    accept_idx = index + 1  # 1-based for CLI
+    accept_cmd = f'evo accept . {accept_idx} --reason &quot;Expected behavior&quot;'
+    accept_thisrun = f'evo accept . {accept_idx} --scope this-run --reason &quot;Expected behavior&quot;'
+
+    # Build drift prompt for Fix with AI — scoped to this finding's commit
+    full_trigger = c.get("trigger_commit", "")
+    commit_sha = full_trigger[:8]
+    commit_msg = _esc(c.get("commit_message", "").split("\n")[0])
+    drift_prompt = (
+        f"Development pattern shift detected in {_esc(family_label)}.\\n\\n"
+        f"SIGNAL: {_esc(metric_name)} is {abs_dev:.1f}x {direction} the typical baseline "
+        f"(observed: {_fmt_num(current)}, typical: {_fmt_num(median)}).\\n"
     )
+    if commit_sha:
+        drift_prompt += f"TRIGGER COMMIT: {commit_sha} — {commit_msg}\\n"
+
+    # Add per-finding file evidence from the trigger commit
+    trigger_files = c.get("trigger_files", [])
+    if not trigger_files:
+        # Fallback: look up from evidence commits
+        commit_data = (commits_by_sha or {}).get(full_trigger, {})
+        trigger_files = commit_data.get("files_changed", [])
+    if trigger_files:
+        drift_prompt += f"\\nFILES CHANGED ({len(trigger_files)}):\\n"
+        for fp in trigger_files[:15]:
+            drift_prompt += f"  - {_esc(fp)}\\n"
+        if len(trigger_files) > 15:
+            drift_prompt += f"  ... and {len(trigger_files) - 15} more\\n"
+
+    drift_prompt += (
+        "\\nINVESTIGATE:\\n"
+        "1. Was this change intentional or did the AI drift from goals?\\n"
+        "2. If unintentional, identify the breakpoint commit.\\n"
+        "3. Suggest a course correction (not a bug fix — a realignment).\\n\\n"
+        f"Run: evo investigate . --family {_esc(family)}"
+    )
+
+    action_buttons = (
+        f'  <div class="change-actions no-print" id="actions-{index}">\n'
+        f'    <div class="accept-group">\n'
+        f'      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu({index})">Accept &mdash; Expected</button>\n'
+        f'      <div class="accept-menu" id="accept-menu-{index}">\n'
+        f'        <button onclick="acceptFinding({index}, \'{accept_cmd}\')">Accept permanently</button>\n'
+        f'        <button onclick="acceptFinding({index}, \'{accept_thisrun}\')">Accept for this run only</button>\n'
+        f'      </div>\n'
+        f'    </div>\n'
+        f'    <button class="btn btn-action btn-fix" onclick="toggleFixPrompt({index})">Fix with AI</button>\n'
+        f'  </div>\n'
+        f'  <div class="fix-prompt-panel no-print" id="fix-prompt-{index}">\n'
+        f'    <div class="fix-prompt-header">\n'
+        f'      <strong>Drift Investigation Prompt</strong>\n'
+        f'      <button class="btn btn-copy-sm" onclick="copyFixPrompt({index})">Copy</button>\n'
+        f'    </div>\n'
+        f'    <pre class="fix-prompt-text" id="fix-prompt-text-{index}">{drift_prompt}</pre>\n'
+        f'    <div class="fix-prompt-guide">\n'
+        f'      <strong>Use with:</strong>\n'
+        f'      <span>Cursor &mdash; paste in chat</span>\n'
+        f'      <span>Claude Code &mdash; paste in terminal</span>\n'
+        f'      <span>Copilot &mdash; paste in chat panel</span>\n'
+        f'    </div>\n'
+        f'  </div>\n'
+    )
+
+    # Commit attribution line with optional link
+    commit_html = ""
+    full_sha = c.get("trigger_commit", "")
+    if full_sha:
+        sha_display = full_sha[:8]
+        msg_display = _esc(c.get("commit_message", "").split("\n")[0][:60])
+        if remote_url:
+            commit_link = f'{remote_url}/commit/{_esc(full_sha)}'
+            sha_html = f'<a href="{commit_link}" target="_blank" class="commit-link"><code>{sha_display}</code></a>'
+        else:
+            sha_html = f'<code>{sha_display}</code>'
+        commit_html = (
+            f'  <div class="commit-attribution">'
+            f'Trigger: {sha_html} {msg_display}'
+            f'</div>\n'
+        )
 
     return (
         f'<div class="change-card {dev_class}" id="{anchor_id}">\n'
@@ -424,6 +556,7 @@ def _build_change_card(c, index=0):
         '    </div>\n'
         '  </div>\n'
         f'  <div class="deviation-badge">{abs_dev:.1f}x {direction} typical range</div>\n'
+        f'{commit_html}'
         f'{action_buttons}'
         f'{tech_html}'
         '</div>'
@@ -502,7 +635,7 @@ def _build_grouped_pattern_card(patterns, badge_label):
         f'  <span class="badge"{badge_style}>{badge_label}</span>\n'
         f'  <span class="severity-badge severity-{severity}">'
         f'{sev_display["icon"]} {_esc(sev_display["label"])}</span>\n'
-        f'  <span class="pattern-group-count">{len(patterns)} related patterns</span>\n'
+        f'  <span class="pattern-group-count">{len(patterns)} similar-severity patterns</span>\n'
         f'  <h3 style="margin-top: 0.5em;">{_esc(sources_str)}</h3>\n'
         f'  <div class="pattern-meta">{_esc(metrics_str)}</div>\n'
         f'{desc_html}'
@@ -576,11 +709,11 @@ def _build_pattern_section(matches, candidates):
         reverse=True,
     )
 
-    known_cards = _grouped_cards(sorted_matches, "Known Pattern")
-    emerging_cards = _grouped_cards(sorted_candidates, "Emerging Pattern")
+    known_cards = _grouped_cards(sorted_matches, "Community-Confirmed Pattern")
+    emerging_cards = _grouped_cards(sorted_candidates, "Repo-Specific Pattern")
 
-    known_html = _collapsible_pattern_cards(known_cards, "Known Patterns", PATTERN_VISIBLE_LIMIT)
-    emerging_html = _collapsible_pattern_cards(emerging_cards, "Emerging Patterns", PATTERN_VISIBLE_LIMIT)
+    known_html = _collapsible_pattern_cards(known_cards, "Community-Confirmed Patterns", PATTERN_VISIBLE_LIMIT)
+    emerging_html = _collapsible_pattern_cards(emerging_cards, "Repo-Specific Patterns", PATTERN_VISIBLE_LIMIT)
 
     # Build overall risk banner
     banner_html = _build_pattern_risk_banner(highest_severity, severity_counts, len(all_patterns))
@@ -606,7 +739,7 @@ def _build_pattern_section(matches, candidates):
 
     return (
         '<section class="patterns page-break-before">\n'
-        '  <h2>Recurring Patterns</h2>\n'
+        '  <h2>Patterns</h2>\n'
         f'  {banner_html}\n'
         f'  {guidance}\n'
         f'  {known_html}\n'
@@ -750,7 +883,7 @@ def _build_investigation_section(scope, period_from, period_to, changes,
     )
 
 
-def _build_evidence_section(commits, files, deps, timeline, evidence_raw):
+def _build_evidence_section(commits, files, deps, timeline, evidence_raw, remote_url=""):
     has_evidence = bool(commits or files or deps or timeline)
     if not has_evidence:
         return (
@@ -780,7 +913,7 @@ def _build_evidence_section(commits, files, deps, timeline, evidence_raw):
     evidence_json = json.dumps(evidence_export).replace("</", "<\\/")
 
     details = []
-    details.append(_build_commits_table(commits))
+    details.append(_build_commits_table(commits, remote_url))
     details.append(_build_files_table(files))
     details.append(_build_deps_table(deps))
     details.append(_build_timeline(timeline))
@@ -808,19 +941,27 @@ def _build_evidence_section(commits, files, deps, timeline, evidence_raw):
     )
 
 
-def _build_commits_table(commits):
+def _build_commits_table(commits, remote_url=""):
     if not commits:
         return ""
     LIMIT = 20
     visible_rows = []
     hidden_rows = []
     for i, c in enumerate(commits):
-        sha = c.get("sha", "")[:8]
+        full_sha = c.get("sha", "")
+        sha = full_sha[:8]
         msg = c.get("message", "").split("\n")[0][:80]
         author = c.get("author", {}).get("name", "")
         ts = _format_date(c.get("timestamp", ""))
+        if remote_url and full_sha:
+            sha_html = (
+                f'<a href="{_esc(remote_url)}/commit/{_esc(full_sha)}" '
+                f'target="_blank" class="commit-link"><code>{_esc(sha)}</code></a>'
+            )
+        else:
+            sha_html = f'<code>{_esc(sha)}</code>'
         row = (
-            f'<tr><td><code>{_esc(sha)}</code></td>'
+            f'<tr><td>{sha_html}</td>'
             f'<td>{_esc(msg)}</td>'
             f'<td>{_esc(author)}</td>'
             f'<td>{ts}</td></tr>'
@@ -1014,7 +1155,7 @@ def _build_prompt(scope, period_from, period_to, changes, commits, files,
                 lines.append(f"- [{sev_label}] {desc}")
             else:
                 descs = [friendly_pattern(p) for p in group]
-                lines.append(f"- [{sev_label}] {len(group)} related patterns:")
+                lines.append(f"- [{sev_label}] {len(group)} similar-severity patterns:")
                 for d in descs:
                     lines.append(f"    * {d}")
             lines.append(f"  Impact: {risk['impact']}")
@@ -1366,15 +1507,52 @@ div.evidence-overflow.show { display: block; }
 .btn-filter:hover { background: var(--color-bg-subtle); border-color: var(--color-secondary); }
 .btn-filter.active { background: var(--color-secondary); color: white;
   border-color: var(--color-secondary); }
-.change-actions { display: flex; gap: 0.5em; margin-top: 0.75em; }
+.change-actions { display: flex; gap: 0.5em; margin-top: 0.75em; align-items: flex-start; }
 .btn-action { background: var(--color-bg-subtle); border: 1px solid var(--color-border);
   color: var(--color-primary); padding: 0.4em 1em; border-radius: 6px; cursor: pointer;
   font-weight: 600; font-size: 9pt; transition: all 250ms ease-out; }
 .btn-action:hover { background: var(--color-secondary); color: white;
   border-color: var(--color-secondary); }
-.btn-action-dismiss { color: var(--color-text-muted); }
-.btn-action-dismiss:hover { background: var(--color-warning); color: white;
-  border-color: var(--color-warning); }
+.accept-group { position: relative; }
+.accept-menu { display: none; position: absolute; top: 100%; left: 0; margin-top: 4px;
+  background: white; border: 1px solid var(--color-border); border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 10; min-width: 200px; }
+.accept-menu.show { display: block; }
+.accept-menu button { display: block; width: 100%; text-align: left; padding: 0.6em 1em;
+  border: none; background: none; cursor: pointer; font-size: 9pt; color: var(--color-text); }
+.accept-menu button:hover { background: var(--color-bg-subtle); }
+.accept-menu button:first-child { border-radius: 6px 6px 0 0; }
+.accept-menu button:last-child { border-radius: 0 0 6px 6px; }
+.btn-accept.accepted { background: var(--color-success); color: white;
+  border-color: var(--color-success); pointer-events: none; }
+.btn-fix { color: var(--color-secondary); }
+.fix-prompt-panel { display: none; margin-top: 0.75em; background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border); border-radius: 8px; padding: 1em; }
+.fix-prompt-panel.show { display: block; }
+.fix-prompt-header { display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 0.5em; }
+.fix-prompt-text { background: white; border: 1px solid var(--color-border);
+  border-radius: 6px; padding: 0.75em; font-size: 9pt; white-space: pre-wrap;
+  word-break: break-word; max-height: 200px; overflow-y: auto; margin: 0; }
+.btn-copy-sm { background: var(--color-secondary); color: white; border: none;
+  padding: 0.3em 0.8em; border-radius: 4px; cursor: pointer; font-size: 8pt;
+  font-weight: 600; }
+.btn-copy-sm:hover { opacity: 0.85; }
+.fix-prompt-guide { margin-top: 0.5em; font-size: 8pt; color: var(--color-text-muted);
+  display: flex; gap: 1em; flex-wrap: wrap; }
+.fix-prompt-guide span { background: white; padding: 0.2em 0.5em; border-radius: 4px;
+  border: 1px solid var(--color-border); }
+.progress-tracker { display: flex; align-items: center; gap: 0.75em;
+  margin-bottom: 1em; font-size: 10pt; font-weight: 600; color: var(--color-text-muted); }
+.progress-bar { flex: 1; max-width: 200px; height: 6px; background: var(--color-border);
+  border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--color-success); border-radius: 3px;
+  transition: width 300ms ease-out; }
+.commit-attribution { font-size: 9pt; color: var(--color-text-muted); margin-top: 0.5em; }
+.commit-link { color: var(--color-secondary); text-decoration: none; }
+.commit-link:hover { text-decoration: underline; }
+.confidence-note { font-size: 9pt; color: var(--color-text-muted); margin-top: 0.5em;
+  font-style: italic; }
 .change-card.filter-hidden { display: none; }
 .ide-link { font-size: 8pt; color: var(--color-secondary); text-decoration: none;
   margin-left: 0.5em; font-weight: 600; }
@@ -1401,15 +1579,40 @@ footer strong { color: var(--color-secondary); }
 # ─── JS ───
 
 _JS = """<script>
+// Clipboard helper — works on file:// URLs where navigator.clipboard is blocked
+function _copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text);
+  }
+  // Fallback for file:// protocol
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  return Promise.resolve();
+}
+function _flashBtn(btn, label, duration) {
+  var orig = btn.textContent;
+  btn.textContent = label;
+  btn.style.background = 'var(--color-success)';
+  btn.style.color = 'white';
+  btn.style.borderColor = 'var(--color-success)';
+  setTimeout(function() {
+    btn.textContent = orig;
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }, duration || 2000);
+}
 function copyPrompt() {
   var el = document.getElementById('fullPrompt');
   if (!el) return;
-  navigator.clipboard.writeText(el.textContent).then(function() {
-    var btn = document.getElementById('copyBtn');
-    var orig = btn.textContent;
-    btn.textContent = 'Copied!';
-    btn.style.background = 'var(--color-success)';
-    setTimeout(function() { btn.textContent = orig; btn.style.background = ''; }, 2000);
+  _copyText(el.textContent).then(function() {
+    _flashBtn(document.getElementById('copyBtn'), 'Copied!');
   });
 }
 function savePromptToFile() {
@@ -1460,18 +1663,54 @@ function toggleTableRows(id, btn) {
 }
 function copyCommand(btn, cmd) {
   var text = cmd.replace(/&quot;/g, '"');
-  navigator.clipboard.writeText(text).then(function() {
-    var orig = btn.textContent;
-    btn.textContent = 'Copied!';
-    btn.style.background = 'var(--color-success)';
-    btn.style.color = 'white';
-    btn.style.borderColor = 'var(--color-success)';
-    setTimeout(function() {
-      btn.textContent = orig;
-      btn.style.background = '';
-      btn.style.color = '';
-      btn.style.borderColor = '';
-    }, 2000);
+  _copyText(text).then(function() { _flashBtn(btn, 'Copied!'); });
+}
+function toggleAcceptMenu(idx) {
+  var menu = document.getElementById('accept-menu-' + idx);
+  if (!menu) return;
+  document.querySelectorAll('.accept-menu.show').forEach(function(m) {
+    if (m !== menu) m.classList.remove('show');
+  });
+  menu.classList.toggle('show');
+}
+function acceptFinding(idx, cmd) {
+  var text = cmd.replace(/&quot;/g, '"');
+  _copyText(text).then(function() {
+    var menu = document.getElementById('accept-menu-' + idx);
+    if (menu) menu.classList.remove('show');
+    var actions = document.getElementById('actions-' + idx);
+    if (actions) {
+      var btn = actions.querySelector('.btn-accept');
+      if (btn) {
+        btn.textContent = 'Accepted \u2713';
+        btn.classList.add('accepted');
+      }
+    }
+    updateProgress();
+  });
+}
+function updateProgress() {
+  var total = document.querySelectorAll('.btn-accept').length;
+  var resolved = document.querySelectorAll('.btn-accept.accepted').length;
+  var counter = document.getElementById('resolvedCount');
+  var fill = document.getElementById('progressFill');
+  if (counter) counter.textContent = resolved;
+  if (fill) fill.style.width = (total > 0 ? (resolved / total * 100) : 0) + '%';
+}
+function toggleFixPrompt(idx) {
+  var panel = document.getElementById('fix-prompt-' + idx);
+  if (panel) panel.classList.toggle('show');
+}
+function copyFixPrompt(idx) {
+  var el = document.getElementById('fix-prompt-text-' + idx);
+  if (!el) return;
+  var text = el.textContent.replace(/\\\\n/g, '\\n');
+  _copyText(text).then(function() {
+    var btn = el.parentElement.querySelector('.btn-copy-sm');
+    if (btn) {
+      btn.textContent = 'Copied!';
+      setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+    }
   });
 }
 function filterChanges(level, btn) {
@@ -1498,5 +1737,13 @@ document.addEventListener('DOMContentLoaded', function() {
   for (var i = 0; i < btns.length; i++) {
     btns[i].setAttribute('data-label', btns[i].textContent);
   }
+  // Close accept menus when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.accept-group')) {
+      document.querySelectorAll('.accept-menu.show').forEach(function(m) {
+        m.classList.remove('show');
+      });
+    }
+  });
 });
 </script>"""

@@ -89,7 +89,7 @@ class TestRelativeChange:
 class TestMetricInsight:
     def test_files_touched_up(self):
         result = metric_insight("files_touched", "up")
-        assert "review" in result.lower()
+        assert "more files" in result.lower()
 
     def test_dispersion_up(self):
         result = metric_insight("dispersion", "up")
@@ -97,15 +97,15 @@ class TestMetricInsight:
 
     def test_run_failed_up(self):
         result = metric_insight("run_failed", "up")
-        assert "failure" in result.lower() or "attention" in result.lower()
+        assert "failed" in result.lower()
 
     def test_dependency_count_up(self):
         result = metric_insight("dependency_count", "up")
-        assert "supply-chain" in result.lower() or "dependencies" in result.lower()
+        assert "dependency" in result.lower() or "increased" in result.lower()
 
     def test_release_cadence_down(self):
         result = metric_insight("release_cadence_hours", "down")
-        assert "review" in result.lower() or "faster" in result.lower()
+        assert "shorter" in result.lower() or "releases" in result.lower()
 
     def test_unknown_metric(self):
         assert metric_insight("nonexistent_metric", "up") == ""

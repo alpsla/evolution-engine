@@ -53,12 +53,13 @@ class Orchestrator:
         # Check license
         self.license = get_license(str(self.repo_path))
 
-        # Gate LLM features behind Pro tier
+        # Gate LLM features behind Pro tier (message deferred to "Next steps")
         if enable_llm and not self.license.is_pro():
-            self._log("LLM features require Evolution Engine Pro. Set EVO_LICENSE_KEY or visit https://codequal.dev/pro")
             self.enable_llm = False
+            self._llm_gated = True
         else:
             self.enable_llm = enable_llm
+            self._llm_gated = False
 
         # Disable LLM by default
         if not self.enable_llm:
@@ -73,6 +74,7 @@ class Orchestrator:
         scope: str = None,
         json_output: bool = False,
         quiet: bool = False,
+        verbose: bool = False,
     ) -> dict:
         """Execute the full pipeline.
 
@@ -80,6 +82,7 @@ class Orchestrator:
             scope: Scope identifier for the advisory (default: repo dir name).
             json_output: If True, return machine-readable dict only.
             quiet: If True, suppress stdout output.
+            verbose: If True, show detailed phase-level output.
 
         Returns:
             Pipeline result dict with event/signal/pattern/advisory counts.
@@ -93,6 +96,7 @@ class Orchestrator:
         scope = scope or self.repo_path.name
         start = time.monotonic()
         log = self._log if not quiet else lambda *a, **k: None
+        vlog = log if verbose else lambda *a, **k: None
 
         # ── Snapshot previous advisory for loop closure ──
         previous_advisory = self._load_previous_advisory()
@@ -102,15 +106,15 @@ class Orchestrator:
 
         # ── Detect adapters ──
         detected = self.registry.detect(self.tokens)
-        log(f"Detected {len(detected)} adapters across "
-            f"{len(set(c.family for c in detected))} families")
+        vlog(f"Detected {len(detected)} adapters across "
+             f"{len(set(c.family for c in detected))} families")
 
         for c in detected:
-            log(f"  [{c.family}] {c.adapter_name} (tier {c.tier})")
+            vlog(f"  [{c.family}] {c.adapter_name} (tier {c.tier})")
 
         missing = self.registry.explain_missing(self.tokens)
         for msg in missing:
-            log(f"  {msg}")
+            vlog(f"  {msg}")
 
         # ── Phase 1: Ingest events ──
         phase1 = Phase1Engine(self.evo_dir)
@@ -125,10 +129,10 @@ class Orchestrator:
 
         # Git commits (always first — other families may depend on commit SHAs)
         if "version_control" in families_to_run:
-            log("\n[Phase 1] Ingesting git commits...")
+            vlog("\n[Phase 1] Ingesting git commits...")
             count = self._ingest_git(phase1)
             family_counts["version_control"] = count
-            log(f"  git: {count} events")
+            vlog(f"  git: {count} events")
 
         # File-based families via GitHistoryWalker
         walker_families = []
@@ -140,19 +144,19 @@ class Orchestrator:
             walker_families.append("config")
 
         if walker_families:
-            log(f"\n[Phase 1] Walking git history for {', '.join(walker_families)}...")
+            vlog(f"\n[Phase 1] Walking git history for {', '.join(walker_families)}...")
             walker_counts = self._ingest_walker(phase1, walker_families)
             family_counts.update(walker_counts)
             for fam, count in walker_counts.items():
-                log(f"  {fam}: {count} events")
+                vlog(f"  {fam}: {count} events")
 
         # API families (concurrent) — gated by Pro license
         api_families = []
+        _gated_families = []
         if not self.license.is_pro() and any(
             f in families_to_run for f in ["ci", "deployment", "security"]
         ):
-            log("\nCI/deployment/security data requires Evolution Engine Pro.")
-            log("Set EVO_LICENSE_KEY or visit https://codequal.dev/pro")
+            _gated_families = [f for f in ["ci", "deployment", "security"] if f in families_to_run]
         else:
             if "ci" in families_to_run and self._has_tier2("ci"):
                 api_families.append("ci")
@@ -162,24 +166,40 @@ class Orchestrator:
                 api_families.append("security")
 
         if api_families:
-            log(f"\n[Phase 1] Fetching API data for {', '.join(api_families)}...")
+            vlog(f"\n[Phase 1] Fetching API data for {', '.join(api_families)}...")
             api_counts = self._ingest_api(phase1, api_families)
             family_counts.update(api_counts)
             for fam, count in api_counts.items():
-                log(f"  {fam}: {count} events")
+                vlog(f"  {fam}: {count} events")
 
         # ── Tier 3: Plugin adapters ──
         plugin_configs = [c for c in detected if c.tier == 3 and c.adapter_class]
         if plugin_configs:
-            log(f"\n[Phase 1] Ingesting from {len(plugin_configs)} plugin adapter(s)...")
-            plugin_counts = self._ingest_plugins(phase1, plugin_configs, log)
+            vlog(f"\n[Phase 1] Ingesting from {len(plugin_configs)} plugin adapter(s)...")
+            plugin_counts = self._ingest_plugins(phase1, plugin_configs, vlog)
             for f, c in plugin_counts.items():
                 family_counts[f] = family_counts.get(f, 0) + c
-                log(f"  {f}: {c} events (plugin)")
+                vlog(f"  {f}: {c} events (plugin)")
 
         total_events = sum(family_counts.values())
         active_families = [f for f, c in family_counts.items() if c > 0]
-        log(f"\n  Total: {total_events} events across {len(active_families)} families")
+
+        # Simplified progress: show what was analyzed
+        _family_labels = {
+            "version_control": "Git history",
+            "dependency": "Dependencies",
+            "schema": "API schemas",
+            "config": "Configuration",
+            "ci": "CI/CD",
+            "deployment": "Deployments",
+            "security": "Security",
+        }
+        for fam in active_families:
+            label = _family_labels.get(fam, fam)
+            count = family_counts.get(fam, 0)
+            log(f"  \u2713 {label} ({count} events)")
+
+        vlog(f"\n  Total: {total_events} events across {len(active_families)} families")
 
         if total_events == 0:
             return {
@@ -189,51 +209,51 @@ class Orchestrator:
             }
 
         # ── Phase 2: Baselines & Signals ──
-        log("\n[Phase 2] Computing baselines...")
+        vlog("\n[Phase 2] Computing baselines...")
         t0 = time.monotonic()
         phase2 = Phase2Engine(self.evo_dir, window_size=50, min_baseline=5)
         signals = phase2.run_all_parallel()
         signal_counts = {f: len(s) for f, s in signals.items() if s}
         total_signals = sum(signal_counts.values())
-        log(f"  {total_signals} signals ({time.monotonic() - t0:.1f}s)")
+        vlog(f"  {total_signals} signals ({time.monotonic() - t0:.1f}s)")
 
         # ── Phase 3: Explanations ──
-        log("\n[Phase 3] Generating explanations...")
+        vlog("\n[Phase 3] Generating explanations...")
         t0 = time.monotonic()
         phase3 = Phase3Engine(self.evo_dir)
         explanations = phase3.run()
-        log(f"  {len(explanations)} explanations ({time.monotonic() - t0:.1f}s)")
+        vlog(f"  {len(explanations)} explanations ({time.monotonic() - t0:.1f}s)")
 
         # ── Phase 4: Pattern Discovery ──
-        log("\n[Phase 4] Discovering patterns...")
+        vlog("\n[Phase 4] Discovering patterns...")
         t0 = time.monotonic()
         phase4 = Phase4Engine(self.evo_dir)
 
         # Auto-pull community patterns if enabled (before discovery)
-        self._auto_pull_community_patterns(log)
+        self._auto_pull_community_patterns(vlog)
 
         # Fetch patterns from registry handler (immediate availability)
-        registry_imported = self._import_registry_patterns(active_families, log)
+        registry_imported = self._import_registry_patterns(active_families, vlog)
         if registry_imported:
-            log(f"  Imported {registry_imported} pattern(s) from community registry")
+            vlog(f"  Imported {registry_imported} pattern(s) from community registry")
 
         # Auto-fetch and import patterns from PyPI pattern packages (durable backup)
-        pkg_imported = self._import_pattern_packages(active_families, log)
+        pkg_imported = self._import_pattern_packages(active_families, vlog)
         if pkg_imported:
-            log(f"  Imported {pkg_imported} pattern(s) from community packages")
+            vlog(f"  Imported {pkg_imported} pattern(s) from community packages")
 
         p4_result = phase4.run()
         phase4.close()
-        log(f"  {p4_result.get('patterns_discovered', 0)} discovered, "
-            f"{p4_result.get('knowledge_artifacts', 0)} knowledge "
-            f"({time.monotonic() - t0:.1f}s)")
+        vlog(f"  {p4_result.get('patterns_discovered', 0)} discovered, "
+             f"{p4_result.get('knowledge_artifacts', 0)} knowledge "
+             f"({time.monotonic() - t0:.1f}s)")
 
         # ── Phase 5: Advisory ──
-        log("\n[Phase 5] Generating advisory...")
+        vlog("\n[Phase 5] Generating advisory...")
         t0 = time.monotonic()
         phase5 = Phase5Engine(self.evo_dir)
         p5_result = phase5.run(scope=scope)
-        log(f"  Status: {p5_result['status']} ({time.monotonic() - t0:.1f}s)")
+        vlog(f"  Status: {p5_result['status']} ({time.monotonic() - t0:.1f}s)")
 
         # ── Auto-snapshot advisory for run history ──
         if p5_result["status"] == "complete" and p5_result.get("advisory"):
@@ -285,9 +305,26 @@ class Orchestrator:
             if not json_output:
                 log(f"\n{p5_result.get('human_summary', '')}")
 
-        # ── Prescan hint (non-intrusive) ──
+        # ── Next steps (consolidated hints) ──
         if not json_output:
-            self._prescan_hint(log, active_families)
+            next_steps = []
+            if self._llm_gated:
+                next_steps.append(
+                    "AI investigation available with Pro. "
+                    "Run `evo setup .` to configure, or visit https://codequal.dev/pro"
+                )
+            if _gated_families:
+                n = len(_gated_families)
+                next_steps.append(
+                    f"Run `evo setup .` to unlock {n} more signal "
+                    f"{'family' if n == 1 else 'families'} ({', '.join(_gated_families)})"
+                )
+            self._prescan_hint_collect(next_steps, active_families)
+
+            if next_steps:
+                log("\nNext steps:")
+                for step in next_steps:
+                    log(f"  \u2192 {step}")
 
         log(f"\nDone in {elapsed}s")
         return result
@@ -311,6 +348,23 @@ class Orchestrator:
                 log("  Run `evo sources` to see what connecting them would add.")
         except Exception:
             pass  # prescan is advisory, never block the pipeline
+
+    def _prescan_hint_collect(self, hints: list[str], active_families: list[str]):
+        """Collect prescan hints into a list instead of printing."""
+        try:
+            from evolution.prescan import SourcePrescan
+
+            prescan = SourcePrescan(self.repo_path)
+            detected = prescan.scan()
+            connected_set = set(active_families)
+            unconnected = [s for s in detected if s.family not in connected_set]
+
+            if unconnected:
+                names = ", ".join(s.display_name for s in unconnected[:3])
+                extra = f" (+{len(unconnected) - 3} more)" if len(unconnected) > 3 else ""
+                hints.append(f"Detected {names}{extra} — run `evo sources` for details")
+        except Exception:
+            pass
 
     # ─────────────────── Community Pattern Auto-Pull ───────────────────
 

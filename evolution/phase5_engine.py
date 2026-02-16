@@ -85,6 +85,34 @@ def _content_hash(data) -> str:
     return hashlib.sha256(encoded).hexdigest()[:16]
 
 
+def _dedup_and_limit_patterns(patterns: list[dict], limit: int = 5) -> list[dict]:
+    """Deduplicate patterns by (families, metrics, direction) and return top N.
+
+    Groups patterns that share the same family+metric+direction key and
+    keeps the one with the highest correlation strength from each group.
+    """
+    seen = {}
+    for p in patterns:
+        families = tuple(sorted(p.get("families") or p.get("sources") or []))
+        metrics = tuple(sorted(p.get("metrics") or []))
+        corr = p.get("correlation") or p.get("correlation_strength") or 0
+        direction = "up" if corr >= 0 else "down"
+        key = (families, metrics, direction)
+
+        if key not in seen or abs(corr) > abs(
+            seen[key].get("correlation") or seen[key].get("correlation_strength") or 0
+        ):
+            seen[key] = p
+
+    # Sort by absolute correlation descending, take top N
+    deduped = sorted(
+        seen.values(),
+        key=lambda p: abs(p.get("correlation") or p.get("correlation_strength") or 0),
+        reverse=True,
+    )
+    return deduped[:limit]
+
+
 class Phase5Engine:
     """Phase 5: Advisory & Evidence Layer."""
 
@@ -450,7 +478,8 @@ class Phase5Engine:
 
     # ─────────────────── 4. Formatters ───────────────────
 
-    def _format_change(self, signal: dict, explanations: dict) -> dict:
+    def _format_change(self, signal: dict, explanations: dict,
+                       all_events: dict = None) -> dict:
         """Format a single significant signal as a change entry."""
         dev = signal["deviation"]["measure"]
         baseline = signal["baseline"]
@@ -466,6 +495,25 @@ class Phase5Engine:
         if exp:
             explanation = exp.get("summary", "")
 
+        # Commit attribution — trace back to the triggering event
+        trigger_commit = ""
+        commit_message = ""
+        observed_at = ""
+        trigger_files = []
+        if all_events and event_ref:
+            event = all_events.get(event_ref, {})
+            payload = event.get("payload", {})
+            observed_at = Phase4Engine._extract_event_timestamp(event)
+
+            if event.get("source_type") == "git":
+                trigger_commit = payload.get("commit_hash", "")
+                commit_message = payload.get("message", "")
+                trigger_files = payload.get("files", [])
+            else:
+                trigger = payload.get("trigger", {})
+                trigger_commit = trigger.get("commit_sha", "")
+                commit_message = trigger.get("commit_message", "")
+
         return {
             "family": engine_id,
             "metric": metric,
@@ -480,6 +528,10 @@ class Phase5Engine:
             "deviation_unit": signal["deviation"].get("unit", "modified_zscore"),
             "description": explanation,
             "event_ref": event_ref,
+            "trigger_commit": trigger_commit,
+            "commit_message": commit_message,
+            "observed_at": observed_at,
+            "trigger_files": trigger_files,
         }
 
     def _append_change_lines(self, lines: list, change: dict, indent: str = "") -> None:
@@ -537,8 +589,21 @@ class Phase5Engine:
         families_str = " and ".join(
             FAMILY_LABELS.get(f, f) for f in summary["families_affected"]
         )
-        lines.append(f"{summary['significant_changes']} unusual changes detected "
-                     f"across {families_str}.")
+        accepted_count = summary.get("accepted_changes", 0)
+        if accepted_count:
+            accepted_metrics = summary.get("accepted_metrics", [])
+            accepted_str = ", ".join(accepted_metrics[:3])
+            if len(accepted_metrics) > 3:
+                accepted_str += f" +{len(accepted_metrics) - 3} more"
+            lines.append(
+                f"{summary['significant_changes']} significant changes detected "
+                f"across {families_str} ({accepted_count} accepted — filtered: {accepted_str})."
+            )
+        else:
+            lines.append(
+                f"{summary['significant_changes']} significant changes detected "
+                f"across {families_str}."
+            )
         if n_groups and n_groups < summary["significant_changes"]:
             lines.append(f"(Grouped into {n_groups} trigger events)")
         lines.append("")
@@ -561,20 +626,24 @@ class Phase5Engine:
                 self._append_change_lines(lines, change, indent="")
                 lines.append("")
 
-        # Pattern matches
+        # Pattern matches (community-confirmed, top 5)
         if advisory.get("pattern_matches"):
-            lines.append("RECURRING PATTERNS")
+            shown = _dedup_and_limit_patterns(advisory["pattern_matches"])
+            total = len(advisory["pattern_matches"])
+            lines.append(f"COMMUNITY-CONFIRMED PATTERNS ({len(shown)} of {total})")
             lines.append("")
-            for pm in advisory["pattern_matches"]:
+            for pm in shown:
                 desc = friendly_pattern(pm)
                 lines.append(f"  {desc}")
                 lines.append("")
 
-        # Candidate patterns
+        # Candidate patterns (repo-specific, top 5)
         if advisory.get("candidate_patterns"):
-            lines.append("RECURRING PATTERNS (emerging)")
+            shown = _dedup_and_limit_patterns(advisory["candidate_patterns"])
+            total = len(advisory["candidate_patterns"])
+            lines.append(f"REPO-SPECIFIC PATTERNS ({len(shown)} of {total})")
             lines.append("")
-            for cp in advisory["candidate_patterns"]:
+            for cp in shown:
                 desc = friendly_pattern(cp)
                 lines.append(f"  {desc}")
                 lines.append("")
@@ -625,8 +694,9 @@ class Phase5Engine:
                 lines.append(f"   \u2192 {insight}")
 
         if advisory.get("pattern_matches"):
+            shown = _dedup_and_limit_patterns(advisory["pattern_matches"], limit=3)
             lines.append("")
-            for pm in advisory["pattern_matches"]:
+            for pm in shown:
                 desc = friendly_pattern(pm)
                 lines.append(f"Pattern: {desc}")
 
@@ -656,9 +726,17 @@ class Phase5Engine:
         for c in advisory["changes"]:
             family_label = FAMILY_LABELS.get(c["family"], c["family"])
             metric_label = METRIC_LABELS.get(c["metric"], c["metric"])
+            commit_info = ""
+            if c.get("trigger_commit"):
+                sha_short = c["trigger_commit"][:8]
+                msg = c.get("commit_message", "")
+                # Use first line of commit message
+                msg_line = msg.split("\n")[0] if msg else ""
+                commit_info = f" [commit {sha_short}: {msg_line}]" if msg_line else f" [commit {sha_short}]"
             changes_text.append(
                 f"- {family_label} / {metric_label}: normally {c['normal']['mean']:.4g}, "
                 f"now {c['current']:.4g} ({abs(c['deviation_stddev']):.1f} stddev deviation)"
+                f"{commit_info}"
             )
 
         evidence = advisory.get("evidence", {})
@@ -669,12 +747,12 @@ class Phase5Engine:
             for commit in evidence["commits"][:10]:
                 files = ", ".join(commit.get("files_changed", [])[:5])
                 evidence_text.append(
-                    f"  {commit['sha'][:8]} — {commit.get('message', '')[:80]} "
+                    f"  {commit['sha'][:8]} — {commit.get('message', '').split(chr(10))[0][:80]} "
                     f"(files: {files})"
                 )
 
         if evidence.get("tests_impacted"):
-            evidence_text.append("FAILING TESTS:")
+            evidence_text.append("TESTS AFFECTED:")
             for test in evidence["tests_impacted"][:10]:
                 evidence_text.append(f"  {test['name']} — {test['status_now']}")
 
@@ -689,17 +767,17 @@ class Phase5Engine:
                 evidence_text.append(f"  {t['timestamp'][:16]} [{t['family']}] {t['event']}")
 
         prompt = (
-            f"Here is a structural analysis of {scope} over the period "
+            f"Development pattern shift detected in {scope} during "
             f"{period['from'][:10]} to {period['to'][:10]}.\n\n"
-            f"CHANGES DETECTED:\n"
+            f"DRIFT SIGNALS:\n"
             + "\n".join(changes_text)
             + "\n\n"
             + "\n".join(evidence_text)
             + "\n\n"
-            "Based on this evidence:\n"
-            "1. What is the most likely root cause of the observed changes?\n"
-            "2. Which specific files should be reviewed first?\n"
-            "3. Are there any dependency or configuration changes that may explain the test failures?\n"
+            "Investigate this drift:\n"
+            "1. Which commit(s) introduced the pattern shift?\n"
+            "2. Was this change intentional (new feature, refactor) or unintentional (AI drift, accidental complexity)?\n"
+            "3. If unintentional, what is the minimal course correction?\n"
         )
 
         return prompt
@@ -943,13 +1021,18 @@ class Phase5Engine:
         candidate_patterns = self._match_candidate_patterns(significant, patterns)
 
         # Step 4: Compile advisory
-        # Determine period from events
-        timestamps = [e.get("observed_at", "") for e in all_events.values() if e.get("observed_at")]
-        period_from = min(timestamps) if timestamps else now
-        period_to = max(timestamps) if timestamps else now
+        # Build change list (with commit attribution)
+        changes = [self._format_change(s, explanations, all_events) for s in significant]
 
-        # Build change list
-        changes = [self._format_change(s, explanations) for s in significant]
+        # Determine period from significant signal events only (not full history)
+        sig_event_refs = {s.get("event_ref", "") for s in significant} - {""}
+        sig_timestamps = [
+            Phase4Engine._extract_event_timestamp(all_events[ref])
+            for ref in sig_event_refs
+            if ref in all_events and Phase4Engine._extract_event_timestamp(all_events[ref])
+        ]
+        period_from = min(sig_timestamps) if sig_timestamps else now
+        period_to = max(sig_timestamps) if sig_timestamps else now
 
         # Deduplicate changes by family+metric (keep highest deviation)
         seen_changes = {}
@@ -962,6 +1045,7 @@ class Phase5Engine:
         # Filter out accepted deviations (scope-aware)
         commit_list = self._get_commit_list(all_events)
         filtered_changes = []
+        accepted_changes = []
         for c in changes:
             commit_sha = c.get("trigger_commit", "")
             event_date = c.get("observed_at", "")
@@ -971,12 +1055,14 @@ class Phase5Engine:
                 event_date=event_date,
                 commit_list=commit_list,
             ):
+                accepted_changes.append(c)
                 continue
             filtered_changes.append(c)
         changes = filtered_changes
 
         if not changes:
-            return {"status": "no_significant_changes", "advisory": None}
+            return {"status": "no_significant_changes", "advisory": None,
+                    "accepted_count": len(accepted_changes)}
 
         # Families affected
         families_affected = sorted(set(c["family"] for c in changes))
@@ -999,6 +1085,8 @@ class Phase5Engine:
             "period": {"from": period_from, "to": period_to},
             "summary": {
                 "significant_changes": len(changes),
+                "accepted_changes": len(accepted_changes),
+                "accepted_metrics": [f"{c['family']}/{c['metric']}" for c in accepted_changes],
                 "families_affected": families_affected,
                 "known_patterns_matched": len(pattern_matches),
                 "candidate_patterns_matched": len(candidate_patterns),

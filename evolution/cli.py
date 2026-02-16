@@ -75,10 +75,11 @@ def main():
 @click.option("--llm", is_flag=True, help="Enable LLM-enhanced explanations")
 @click.option("--scope", "-s", help="Scope identifier for the advisory")
 @click.option("--quiet", "-q", is_flag=True, help="Suppress progress output")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed phase-level output")
 @click.option("--show-prompt", is_flag=True, help="Print investigation prompt after analysis")
 @click.option("--no-report", is_flag=True, help="Skip HTML report generation")
-@click.option("--open", "open_browser", is_flag=True, help="Open HTML report in browser after analysis")
-def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, show_prompt, no_report, open_browser):
+@click.option("--open/--no-open", "open_browser", default=None, help="Open HTML report in browser (default: auto-detect TTY)")
+def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verbose, show_prompt, no_report, open_browser):
     """Analyze a repository. Detects adapters automatically."""
     from evolution.orchestrator import Orchestrator
 
@@ -100,6 +101,7 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, show
         scope=scope,
         json_output=json_output,
         quiet=quiet,
+        verbose=verbose,
     )
 
     # Telemetry: prompt on first analyze, track completion
@@ -157,10 +159,13 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, show
             report_path = evo_path / "report.html"
             report_path.write_text(html)
 
-            file_url = f"file://{report_path.resolve()}"
+            resolved = report_path.resolve()
+            file_url = resolved.as_uri()  # proper file:///path on all platforms
             click.echo(f"\nReport: \033]8;;{file_url}\033\\{report_path}\033]8;;\033\\")
 
-            if open_browser:
+            # Auto-open: True if explicitly requested, or if TTY detected and not explicitly disabled
+            should_open = open_browser if open_browser is not None else sys.stdout.isatty()
+            if should_open:
                 import webbrowser
                 webbrowser.open(file_url)
         except Exception as e:
@@ -1922,7 +1927,7 @@ def report(path, output, evo_dir, title, open_browser):
 
     output_path = Path(output) if output else evo_path / "report.html"
     output_path.write_text(html)
-    file_url = f"file://{output_path.resolve()}"
+    file_url = output_path.resolve().as_uri()  # proper file:///path
     # OSC 8 hyperlink: clickable in modern terminals (iTerm2, VS Code, etc.)
     click.echo(f"Report generated: \033]8;;{file_url}\033\\{output_path}\033]8;;\033\\")
 
@@ -2100,10 +2105,7 @@ def config_reset(key):
 @click.option("--ui", is_flag=True, help="Open browser-based settings page")
 @click.option("--port", default=8484, type=int, help="Port for --ui server (default: 8484)")
 def setup(path, reset, ui, port):
-    """Interactive configuration wizard.
-
-    Walks through settings by category. Press Enter to keep current values.
-    Skip a group by typing 's'. Type 'q' to save and quit at any time.
+    """Smart setup wizard — auto-detects sources, checks tokens, asks key preferences.
 
     Use --ui to open a browser-based settings page instead.
 
@@ -2133,108 +2135,81 @@ def setup(path, reset, ui, port):
 
     click.echo("Evolution Engine Setup")
     click.echo("=" * 40)
-    click.echo("Press Enter to keep current value, 's' to skip group, 'q' to save & quit.\n")
 
-    groups = config_groups()
+    # ── Step 1: Auto-detect sources ──
+    click.echo("\nDetecting signal sources...")
+    try:
+        from evolution.prescan import SourcePrescan
+        prescan = SourcePrescan(path)
+        detected = prescan.scan()
+        if detected:
+            for svc in detected:
+                click.echo(f"  \u2713 {svc.display_name} ({svc.family})")
+        else:
+            click.echo("  No additional sources detected (git is always available)")
+    except Exception:
+        click.echo("  (prescan skipped)")
+
+    # ── Step 2: Check for GitHub token ──
     changed = 0
+    github_token = os.environ.get("GITHUB_TOKEN", "")
+    if not github_token:
+        click.echo("\nNo GITHUB_TOKEN found in environment.")
+        try:
+            raw = click.prompt(
+                "  GitHub token (for CI/deployment data, or Enter to skip)",
+                default="", show_default=False,
+            ).strip()
+            if raw:
+                os.environ["GITHUB_TOKEN"] = raw
+                click.echo("  \u2713 Token set for this session")
+                click.echo("  To persist: export GITHUB_TOKEN=<token> in your shell profile")
+        except (EOFError, click.Abort):
+            pass
+    else:
+        click.echo(f"\n  \u2713 GITHUB_TOKEN detected")
 
-    for group_key, group_info in groups.items():
-        keys = config_keys_for_group(group_key)
-        if not keys:
-            continue
+    # ── Step 3: Key preferences only ──
+    click.echo("\nPreferences (Enter to keep default):\n")
 
-        click.echo(f"\n--- {group_info['label']} ---")
-        if group_info.get("description"):
-            click.echo(f"  {group_info['description']}\n")
+    # Privacy level
+    meta = config_metadata("sync.privacy_level")
+    current = cfg.get("sync.privacy_level")
+    labels = meta.get("allowed_labels", {})
+    allowed = meta.get("allowed", [0, 1, 2])
+    click.echo("  Community pattern sharing:")
+    for opt in allowed:
+        label = labels.get(opt, str(opt))
+        marker = " <-" if opt == current else ""
+        click.echo(f"    {opt}. {label}{marker}")
+    try:
+        raw = click.prompt("  Choice", default="", show_default=False).strip()
+        if raw and raw.isdigit():
+            value = int(raw)
+            if value in allowed and value != current:
+                cfg.set("sync.privacy_level", value)
+                changed += 1
+    except (EOFError, click.Abort):
+        pass
 
-        skip_group = False
-        for key in keys:
-            if skip_group:
-                break
-
-            meta = config_metadata(key)
-            current = cfg.get(key)
-            display = meta.get("display", key)
-            key_type = meta.get("type", "str")
-
-            # Show current value
-            labels = meta.get("allowed_labels", {})
-            current_display = labels.get(current, current) if labels else current
-
-            if key_type == "bool":
-                prompt_text = f"  {display} [{current_display}]"
-                try:
-                    raw = click.prompt(prompt_text, default="", show_default=False).strip()
-                except (EOFError, click.Abort):
-                    break
-                if raw.lower() == 'q':
-                    click.echo(f"\nSaved {changed} change(s).")
-                    return
-                if raw.lower() == 's':
-                    skip_group = True
-                    continue
-                if raw == "":
-                    continue
-                value = raw.lower() in ("true", "yes", "y", "1")
-                if value != current:
-                    cfg.set(key, value)
-                    changed += 1
-
-            elif key_type == "choice":
-                allowed = meta.get("allowed", [])
-                options = []
-                for i, opt in enumerate(allowed, 1):
-                    label = labels.get(opt, opt)
-                    marker = " <-" if opt == current else ""
-                    options.append(f"    {i}. {label}{marker}")
-
-                click.echo(f"  {display}")
-                click.echo("\n".join(options))
-                try:
-                    raw = click.prompt(f"  Choice [current: {current_display}]", default="", show_default=False).strip()
-                except (EOFError, click.Abort):
-                    break
-                if raw.lower() == 'q':
-                    click.echo(f"\nSaved {changed} change(s).")
-                    return
-                if raw.lower() == 's':
-                    skip_group = True
-                    continue
-                if raw == "":
-                    continue
-                try:
-                    idx = int(raw) - 1
-                    if 0 <= idx < len(allowed):
-                        value = allowed[idx]
-                        if value != current:
-                            cfg.set(key, value)
-                            changed += 1
-                except (ValueError, IndexError):
-                    click.echo(f"    Invalid choice: {raw}")
-
-            else:  # str, int
-                placeholder = meta.get("placeholder", "")
-                hint = f" (e.g. {placeholder})" if placeholder else ""
-                try:
-                    raw = click.prompt(f"  {display}{hint} [{current_display}]", default="", show_default=False).strip()
-                except (EOFError, click.Abort):
-                    break
-                if raw.lower() == 'q':
-                    click.echo(f"\nSaved {changed} change(s).")
-                    return
-                if raw.lower() == 's':
-                    skip_group = True
-                    continue
-                if raw == "":
-                    continue
-                value = _parse_value(raw)
-                if value != current:
-                    cfg.set(key, value)
-                    changed += 1
+    # Auto-open report
+    current_open = cfg.get("report.auto_open")
+    try:
+        raw = click.prompt(
+            f"\n  Auto-open HTML report after analysis? [{'yes' if current_open else 'no'}]",
+            default="", show_default=False,
+        ).strip()
+        if raw:
+            value = raw.lower() in ("true", "yes", "y", "1")
+            if value != current_open:
+                cfg.set("report.auto_open", value)
+                changed += 1
+    except (EOFError, click.Abort):
+        pass
 
     click.echo(f"\nSetup complete. {changed} setting(s) changed.")
-    click.echo(f"Config file: {cfg.path}")
-    click.echo("Run `evo config list` to see all settings.")
+    click.echo(f"Config: {cfg.path}")
+    click.echo("\nRun `evo analyze .` to start, or `evo config list` to see all settings.")
 
 
 # ─────────────────── evo hooks ───────────────────

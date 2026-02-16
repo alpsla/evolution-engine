@@ -139,22 +139,31 @@ def import_patterns(
         validated_attestations = validate_attestations(raw_attestations)
         validated["attestations"] = validated_attestations
 
-        # Step 4: Check for duplicates (same fingerprint + scope)
+        # Step 4: Check for duplicates (any scope — local or community)
         existing = kb.get_pattern_by_fingerprint(
             validated["fingerprint"],
-            scope="community",
         )
+
         if existing:
-            skipped += 1
+            existing_scope = existing.get("scope", "local")
+
+            if existing_scope == "community":
+                # Already imported — skip
+                skipped += 1
+                continue
+
+            # Local pattern exists — promote it instead of creating duplicate
+            has_quorum = meets_quorum(validated, min_attestations)
+            if has_quorum:
+                kb.update_pattern(existing["pattern_id"], {
+                    "confidence_status": "community_confirmed",
+                })
+                imported += 1
+            else:
+                skipped += 1
             continue
 
-        # Also check if a local pattern already has this fingerprint
-        local_match = kb.get_pattern_by_fingerprint(
-            validated["fingerprint"],
-            scope="local",
-        )
-
-        # Step 5: Quorum check
+        # Step 5: Quorum check (no existing pattern)
         has_quorum = meets_quorum(validated, min_attestations)
 
         # Step 6: Store as community pattern
@@ -174,12 +183,6 @@ def import_patterns(
                 imported += 1
             else:
                 quarantined += 1
-
-            # If a local pattern matches and quorum met, promote it
-            if local_match and has_quorum:
-                kb.update_pattern(local_match["pattern_id"], {
-                    "confidence_status": "community_confirmed",
-                })
         except Exception as e:
             rejected += 1
             errors.append(str(e))

@@ -1359,7 +1359,130 @@ Pre-requisites:
 
 ---
 
-## 13. Plan Maintenance
+## 13. UX Overhaul — Guided Walkthrough Findings (February 14, 2026)
+
+> **Status: DONE (2026-02-15) — All 15 fixes implemented and tested. 1318 tests passing.**
+>
+> Manual walkthrough of the CLI path (Path 1) on a real repo (codequal) revealed
+> fundamental UX issues. All 15 fixes have been implemented across engine, CLI output,
+> onboarding, and HTML report layers. Additional issues found during live testing
+> (JS clipboard, escaping, file URLs, per-finding evidence) also resolved.
+
+### 13.0 Product Philosophy Clarification
+
+**EE is a drift detector for AI-assisted development, NOT a bug finder.**
+
+AI coding tools (Cursor, Copilot, Claude Code, Codex) can hallucinate, drift from goals,
+or compound errors. EE watches SDLC signals and flags: "Development pattern shifted here."
+
+- "Fix" means **course-correct** from the breakpoint commit, not "patch a bug"
+- The advisory is a **drift alarm**, not a bug report
+- Investigation = "when did the AI go off track?" not "what's broken?"
+- The fix prompt should help the AI tool adjust course, not apply classical code fixes
+
+This reframes the fix prompt, advisory tone, and the entire "investigate → fix → verify" loop.
+
+### 13.1 Issues Found (ordered by fix priority)
+
+**Engine-level (affect all 3 SDLC paths):**
+
+| # | Issue | Priority | Files |
+|---|-------|----------|-------|
+| 1 | **Pattern dedup bug** — `kb_export.py` import only checks community scope, not local. 5 fingerprints stored in both scopes → 42 patterns shown instead of 37. | HIGH | `kb_export.py` |
+| 2 | **Advisory time scope** — Period computed from ALL events (9 months) instead of significant signals only. Findings not attributed to specific commits. | HIGH | `phase5_engine.py` L946-949 |
+| 3 | **Severity calibration** — All 5 findings show as Critical. Thresholds exist (6σ+) but when every deviation is huge (2708x), everything lands in Critical. | HIGH | `friendly.py` L12-34 |
+| 4 | **Pattern display** — 40+ patterns dumped as wall of text. Duplicates, contradictions ("dispersion increases" AND "dispersion decreases"), grammar ("occurs" → "occur"). | HIGH | `phase5_engine.py`, `friendly.py` |
+| 5 | **Fix prompt philosophy** — Prompt says "apply targeted fixes" for SDLC deviations. Should be drift-aware: find breakpoint commit, assess intentionality, suggest course correction. Generic template mentions "test failures" when none exist. Accepted findings not filtered from prompt. | HIGH | `fixer.py`, `investigator.py` |
+| 6 | **Outdated terminology** — "emerging patterns that may become recurring if observed again" is wrong. Patterns are active immediately, no "observe again" gate. | MEDIUM | `phase5_engine.py` |
+
+**CLI output (Path 1 specific):**
+
+| # | Issue | Priority | Files |
+|---|-------|----------|-------|
+| 7 | **Verbose internal telemetry** — "[Phase 2] 6712 signals (1.1s)" etc. Users don't know what signals are. Show brief progress, not pipeline internals. | HIGH | `orchestrator.py` |
+| 8 | **Auto-open HTML report** — CLI says "Report: .evo/report.html" instead of opening browser. `evo analyze` should auto-open; `--no-open` for CI. Report becomes primary UI, CLI becomes launcher. | HIGH | `cli.py`, `orchestrator.py` |
+| 9 | **Token hints lost mid-scroll** — GITHUB_TOKEN/GITLAB_TOKEN hints printed during detection, scroll past unseen. Move to end-of-output "Next steps" or point to `evo setup`. | HIGH | `orchestrator.py` |
+| 10 | **Accepted findings silent** — After `evo accept`, re-running shows 4 instead of 5 findings but gives zero acknowledgment that user's decision was applied. | HIGH | `orchestrator.py`, `phase5_engine.py` |
+
+**Onboarding & setup:**
+
+| # | Issue | Priority | Files |
+|---|-------|----------|-------|
+| 11 | **Smart onboarding** — Sources detection should happen pre-analysis. Auto-fetch adapters from PyPI if available. Remember notification state, only show new discoveries. | HIGH | `orchestrator.py`, `prescan.py` |
+| 12 | **Adapter install suggestions broken** — `evo sources` suggests `pip install evo-adapter-sentry` etc. but none exist on PyPI. Must check PyPI first; show "Request" if not available. | HIGH | `prescan.py`, `cli.py` |
+| 13 | **Setup wizard asks wrong questions** — "Which signal families?" contradicts auto-detect philosophy. Wizard should show what was detected and ask for tokens/preferences only. | HIGH | `cli.py`, `setup_ui.py` |
+
+**HTML report:**
+
+| # | Issue | Priority | Files |
+|---|-------|----------|-------|
+| 14 | **Missing decision flow** — Report has no accept/fix/verify loop guidance. Needs: per-finding Accept (with scope picker) / Fix with AI (prompt + instructions for Cursor/Copilot/Claude Code) / iteration progress. | HIGH | `report_generator.py` |
+| 15 | **Missing commit links, confidence, group labels** — No clickable GitHub/GitLab commit links. Confidence hidden in collapsed details. "N related patterns" misleading (grouped by severity, not cause). | MEDIUM | `report_generator.py` |
+
+**Future (not blocking beta):**
+
+| # | Issue | Priority | Files |
+|---|-------|----------|-------|
+| 16 | **Build real adapters** — Sentry, PagerDuty, OpenTelemetry, Prometheus detected in codequal but no adapters on PyPI. | MEDIUM | New packages |
+| 17 | **Test Redis → PyPI cron** — Pattern publishing pipeline (registry → PyPI package) needs verification. | MEDIUM | Infra |
+
+### 13.2 Fix Order (dependencies first)
+
+```
+Round 1 — Engine fixes (affect all paths):
+  #1  Pattern dedup bug (small, concrete fix in kb_export.py)          ✅ DONE
+  #2  Advisory time scope + commit attribution (core bug)              ✅ DONE
+  #3  Severity calibration (adjust thresholds or capping)              ✅ DONE
+  #4  Pattern display (dedup, limit top 5, grammar)                    ✅ DONE
+  #5  Fix prompt redesign (drift framing, not bug fixing)              ✅ DONE
+  #6  Terminology update (emerging → local, recurring → confirmed)     ✅ DONE
+
+Round 2 — CLI output redesign:
+  #7  Simplify progress output (remove internal telemetry)             ✅ DONE
+  #8  Auto-open HTML report (report = primary UI)                      ✅ DONE
+  #9  Token hints to end summary or evo setup                          ✅ DONE
+  #10 Acknowledge accepted findings in output                          ✅ DONE
+
+Round 3 — Onboarding:
+  #11 Smart onboarding (pre-analysis adapter resolution)               ✅ DONE
+  #12 Fix adapter install suggestions (check PyPI first)               ✅ DONE
+  #13 Redesign setup wizard (auto-detect, tokens only)                 ✅ DONE
+
+Round 4 — HTML report:
+  #14 Add decision flow (accept/fix/verify loop)                       ✅ DONE
+  #15 Commit links, inline confidence, group labels                    ✅ DONE
+
+Round 5 — Future:
+  #16 Build real adapters (Sentry, PagerDuty, etc.)
+  #17 Test Redis → PyPI pipeline
+```
+
+### 13.3 Testing Status
+
+**Tested (CLI path — all 15 fixes verified on codequal repo, 2026-02-15):**
+- [x] `evo init .` — works
+- [x] `evo analyze .` — redesigned output, auto-open report, verbose flag
+- [x] `evo sources .` — adapter suggestions check PyPI, "coming soon" hint
+- [x] `evo accept . 1` — acknowledgment shown in output
+- [x] `evo fix . --dry-run` — drift-aware prompt with per-finding trigger files
+- [x] `evo setup .` — auto-detect sources, minimal prompts (privacy + auto-open)
+- [x] `evo report . --open` — decision flow, commit links, JS clipboard fix
+- [x] `evo hooks install/status/uninstall .` — tested in previous session
+- [x] `evo watch .` — tested in previous session
+
+**Not yet tested:**
+- [ ] `evo patterns list .`
+- [ ] `evo history .`
+- [ ] `evo verify`
+- [ ] `evo config list`
+
+**Remaining SDLC paths:**
+- [ ] Path 2: Git Hooks — `evo init --path hooks`, post-commit trigger, auto-analyze
+- [ ] Path 3: GitHub Action — `evo init --path action`, PR comments, CI integration
+
+---
+
+## 14. Plan Maintenance
 
 - This document is updated **only** when a phase is completed or reordered.
 - Changes must reference Architecture Vision principles.
@@ -1367,14 +1490,24 @@ Pre-requisites:
 
 ---
 
-> **Summary (February 14, 2026):**
+> **Summary (February 14, 2026 — updated after guided walkthrough):**
+>
+> **All engine priorities complete. UX overhaul DONE (§13).** All 15 UX issues from guided CLI path
+> walkthrough resolved: advisory time scope bug, severity calibration, pattern dedup, fix prompt
+> philosophy (drift detection, not bug fixing), CLI output verbosity, decision flow in HTML report,
+> setup wizard, adapter suggestions, and more. Additional live-testing fixes: JS clipboard fallback,
+> string escaping, file URL paths, per-finding trigger files. 1318 tests passing.
+>
+> **Product philosophy clarified:** EE is a drift detector for AI-assisted development. "Fix"
+> means course-correct from the breakpoint commit, not patch a bug. The advisory is a drift
+> alarm, not a bug report.
 >
 > **All priorities complete. Product launch infrastructure deployed and E2E tested.** All 5 engine phases,
 > open-core infrastructure, AI agent integration, GitHub Action, source prescan, cloud sync,
 > Cython build, FP validation, inline suggestions, CI wheel builds, website, Stripe integration,
 > opt-in telemetry, run history, GitLab compatibility, accept deviations, pattern pipeline,
 > and adapter ecosystem are implemented and tested.
-> **1333 tests passing (6.10s).** The full pipeline runs end-to-end in 6.6 seconds on fastapi
+> **1318 tests passing.** The full pipeline runs end-to-end in 6.6 seconds on fastapi
 > (27,390 signals, 6 significant changes).
 >
 > **What's built:**
