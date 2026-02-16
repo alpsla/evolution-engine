@@ -41,6 +41,7 @@ class SyncResult:
     pushed: int = 0          # patterns sent
     rejected: int = 0        # patterns that failed validation
     skipped: int = 0         # patterns already present
+    filtered: int = 0        # patterns filtered by quality gate
     error: Optional[str] = None
     registry_url: str = ""
     privacy_level: int = 0
@@ -53,6 +54,7 @@ class SyncResult:
             "pushed": self.pushed,
             "rejected": self.rejected,
             "skipped": self.skipped,
+            "filtered": self.filtered,
             "error": self.error,
             "registry_url": self.registry_url,
             "privacy_level": self.privacy_level,
@@ -198,6 +200,7 @@ class KBSync:
         return SyncResult(
             action="push", success=True,
             pushed=pushed_count,
+            filtered=getattr(self, "_last_filtered", 0),
             registry_url=self._registry_url,
             privacy_level=self._privacy_level,
         )
@@ -264,14 +267,28 @@ class KBSync:
 
         Each pattern includes an HMAC attestation from this instance,
         proving it was computed by a real EE installation.
+
+        Quality gate: only patterns with |correlation| >= 0.3 and
+        occurrence_count >= 3 are shared. Weak local patterns must
+        not pollute the community registry.
         """
         from evolution.kb_export import export_patterns
         from evolution.kb_security import get_instance_id
 
+        export_stats = {}
         digests = export_patterns(
-            self._db_path, min_occurrences=1, evo_dir=self._evo_dir
+            self._db_path,
+            min_occurrences=3,
+            min_correlation=0.3,
+            evo_dir=self._evo_dir,
+            stats=export_stats,
         )
         instance_id = get_instance_id(self._evo_dir)
+
+        filtered = export_stats.get("filtered", 0)
+        if filtered > 0:
+            log.info("Quality gate filtered %d weak pattern(s) from push", filtered)
+        self._last_filtered = filtered
 
         return {
             "level": 2,

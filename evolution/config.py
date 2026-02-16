@@ -24,6 +24,7 @@ _DEFAULTS = {
     "sync.privacy_level": 0,          # 0=nothing, 1=metadata, 2=anonymized digests
     "sync.registry_url": "https://codequal.dev/api",
     "sync.auto_pull": False,           # auto-pull community patterns on analyze
+    "sync.share_prompted": False,      # whether sharing prompt has been shown
     "llm.enabled": False,
     "llm.provider": "anthropic",
     "llm.model": "claude-sonnet-4-5-20250929",
@@ -178,6 +179,12 @@ _METADATA = {
         "group": "sync",
         "display": "Auto-pull community patterns?",
         "pro": True,
+    },
+    "sync.share_prompted": {
+        "description": "Whether sharing prompt has been shown",
+        "type": "bool",
+        "group": "sync",
+        "internal": True,
     },
     # ── Adapters ──
     "adapter.check_blocklist": {

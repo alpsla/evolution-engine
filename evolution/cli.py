@@ -195,6 +195,36 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verb
         except Exception:
             pass  # Never let notifications break analyze
 
+    # Post-analyze sharing prompt (one-time, TTY only)
+    if (result["status"] == "complete"
+            and not json_output and not quiet
+            and result.get("shareable_patterns", 0) > 0
+            and sys.stdout.isatty()):
+        try:
+            from evolution.config import EvoConfig
+            cfg = EvoConfig()
+            already_prompted = cfg.get("sync.share_prompted", False)
+            privacy_level = cfg.get("sync.privacy_level", 0)
+            if not already_prompted and privacy_level < 2:
+                n = result["shareable_patterns"]
+                click.echo(f"\nFound {n} pattern(s) ready to share with the community.")
+                click.echo("Sharing sends anonymized statistics only (no code leaves your machine).")
+                if click.confirm("Share patterns with the community?", default=False):
+                    cfg.set("sync.privacy_level", 2)
+                    from evolution.kb_sync import KBSync
+                    evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
+                    sync = KBSync(evo_dir=evo_path, config=cfg)
+                    sync_result = sync.push()
+                    if sync_result.success:
+                        click.echo(f"Shared {sync_result.pushed} pattern(s). Thank you!")
+                    else:
+                        click.echo(f"Could not share patterns: {sync_result.error}")
+                else:
+                    click.echo("No problem. Run `evo patterns push .` anytime.")
+                cfg.set("sync.share_prompted", True)
+        except Exception:
+            pass  # Never let sharing prompt break analyze
+
 
 # ─────────────────── evo accept ───────────────────
 

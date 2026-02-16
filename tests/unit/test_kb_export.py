@@ -323,6 +323,120 @@ class TestImport:
         kb.close()
 
 
+class TestExportCorrelationFilter:
+    """Tests for the min_correlation quality gate on export."""
+
+    def test_weak_correlation_filtered(self, tmp_path):
+        """Patterns with |correlation| < min_correlation are excluded."""
+        db_path = tmp_path / "kb.db"
+        kb = SQLiteKnowledgeStore(db_path)
+
+        # Weak pattern (correlation = -0.065)
+        kb.create_pattern({
+            "fingerprint": "weak111aaa222",
+            "scope": "local",
+            "discovery_method": "statistical",
+            "pattern_type": "co_occurrence",
+            "sources": ["git", "ci"],
+            "metrics": ["files_touched", "run_duration"],
+            "correlation_strength": -0.065,
+            "occurrence_count": 5,
+            "confidence_tier": "statistical",
+        })
+
+        # Strong pattern (correlation = 0.72)
+        kb.create_pattern({
+            "fingerprint": "strong111bbb222",
+            "scope": "local",
+            "discovery_method": "statistical",
+            "pattern_type": "co_occurrence",
+            "sources": ["git", "ci"],
+            "metrics": ["dispersion", "run_duration"],
+            "correlation_strength": 0.72,
+            "occurrence_count": 10,
+            "confidence_tier": "statistical",
+        })
+        kb.close()
+
+        stats = {}
+        digests = export_patterns(db_path, min_occurrences=3, min_correlation=0.3, stats=stats)
+        fps = [d["fingerprint"] for d in digests]
+
+        assert "strong111bbb222" in fps
+        assert "weak111aaa222" not in fps
+        assert stats["filtered"] == 1
+
+    def test_no_filter_when_min_correlation_zero(self, tmp_path):
+        """When min_correlation=0, all patterns pass."""
+        db_path = tmp_path / "kb.db"
+        kb = SQLiteKnowledgeStore(db_path)
+
+        kb.create_pattern({
+            "fingerprint": "weak111aaa222",
+            "scope": "local",
+            "discovery_method": "statistical",
+            "pattern_type": "co_occurrence",
+            "sources": ["git", "ci"],
+            "metrics": ["files_touched", "run_duration"],
+            "correlation_strength": -0.024,
+            "occurrence_count": 5,
+            "confidence_tier": "statistical",
+        })
+        kb.close()
+
+        stats = {}
+        digests = export_patterns(db_path, min_occurrences=3, min_correlation=0.0, stats=stats)
+        fps = [d["fingerprint"] for d in digests]
+
+        assert "weak111aaa222" in fps
+        assert stats["filtered"] == 0
+
+    def test_null_correlation_filtered(self, tmp_path):
+        """Patterns with no correlation_strength are filtered when gate is on."""
+        db_path = tmp_path / "kb.db"
+        kb = SQLiteKnowledgeStore(db_path)
+
+        kb.create_pattern({
+            "fingerprint": "null111aaa222",
+            "scope": "local",
+            "discovery_method": "statistical",
+            "pattern_type": "co_occurrence",
+            "sources": ["git", "ci"],
+            "metrics": ["files_touched", "run_duration"],
+            "correlation_strength": None,
+            "occurrence_count": 5,
+            "confidence_tier": "statistical",
+        })
+        kb.close()
+
+        stats = {}
+        digests = export_patterns(db_path, min_occurrences=3, min_correlation=0.3, stats=stats)
+        assert len(digests) == 0
+        assert stats["filtered"] == 1
+
+    def test_negative_correlation_passes_when_strong(self, tmp_path):
+        """Patterns with strong negative correlation should pass (|corr| >= 0.3)."""
+        db_path = tmp_path / "kb.db"
+        kb = SQLiteKnowledgeStore(db_path)
+
+        kb.create_pattern({
+            "fingerprint": "neg111aaa222",
+            "scope": "local",
+            "discovery_method": "statistical",
+            "pattern_type": "co_occurrence",
+            "sources": ["git", "ci"],
+            "metrics": ["files_touched", "run_duration"],
+            "correlation_strength": -0.55,
+            "occurrence_count": 5,
+            "confidence_tier": "statistical",
+        })
+        kb.close()
+
+        digests = export_patterns(db_path, min_occurrences=3, min_correlation=0.3)
+        fps = [d["fingerprint"] for d in digests]
+        assert "neg111aaa222" in fps
+
+
 class TestExportImportRoundTrip:
     def test_round_trip(self, kb_with_patterns, tmp_path):
         """Export from repo A → import to repo B → verify scope separation."""

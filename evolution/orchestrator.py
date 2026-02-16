@@ -289,6 +289,9 @@ class Orchestrator:
             "elapsed_seconds": elapsed,
         }
 
+        # Count patterns eligible for community sharing
+        result["shareable_patterns"] = self._count_shareable_patterns()
+
         if resolution:
             result["resolution"] = resolution
 
@@ -328,6 +331,35 @@ class Orchestrator:
 
         log(f"\nDone in {elapsed}s")
         return result
+
+    # ─────────────────── Shareable Pattern Count ───────────────────
+
+    def _count_shareable_patterns(self) -> int:
+        """Count local patterns eligible for community sharing.
+
+        A pattern is shareable if it has |correlation_strength| >= 0.3
+        and occurrence_count >= 3. This matches the quality gate in
+        kb_export.export_patterns().
+        """
+        db_path = self.evo_dir / "phase4" / "knowledge.db"
+        if not db_path.exists():
+            return 0
+        try:
+            from evolution.knowledge_store import SQLiteKnowledgeStore
+            kb = SQLiteKnowledgeStore(db_path)
+            count = 0
+            for p in kb.list_patterns(scope="local", min_occurrences=3):
+                corr = p.get("correlation_strength")
+                if corr is not None and abs(corr) >= 0.3:
+                    count += 1
+            for ka in kb.list_knowledge(scope="local"):
+                corr = ka.get("correlation_strength")
+                if corr is not None and abs(corr) >= 0.3:
+                    count += 1
+            kb.close()
+            return count
+        except Exception:
+            return 0
 
     # ─────────────────── Prescan Hint ───────────────────
 

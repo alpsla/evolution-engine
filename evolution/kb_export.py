@@ -32,8 +32,10 @@ from evolution.knowledge_store import SQLiteKnowledgeStore
 def export_patterns(
     db_path: str | Path,
     min_occurrences: int = 3,
+    min_correlation: float = 0.0,
     scope: str = None,
     evo_dir: str | Path = None,
+    stats: dict = None,
 ) -> list[dict]:
     """Export anonymized pattern digests from a knowledge base.
 
@@ -48,8 +50,10 @@ def export_patterns(
     Args:
         db_path: Path to knowledge.db
         min_occurrences: Minimum occurrences to export (filters noise)
+        min_correlation: Minimum |correlation_strength| to export (filters weak patterns)
         scope: Filter patterns by scope (default: all non-expired)
         evo_dir: Path to .evo directory (for signing)
+        stats: Optional dict to receive export statistics (filtered count)
 
     Returns:
         List of anonymized pattern digests with attestations.
@@ -61,9 +65,14 @@ def export_patterns(
 
     # Export promoted knowledge artifacts + strong patterns
     digests = []
+    filtered_count = 0
 
     # Knowledge artifacts (promoted patterns)
     for ka in kb.list_knowledge(scope=scope):
+        corr = ka.get("correlation_strength")
+        if min_correlation > 0 and (corr is None or abs(corr) < min_correlation):
+            filtered_count += 1
+            continue
         digest = _anonymize_knowledge(ka)
         if digest:
             digest["attestations"] = [create_attestation(digest, evo_path)]
@@ -73,12 +82,20 @@ def export_patterns(
     for p in kb.list_patterns(scope=scope, min_occurrences=min_occurrences):
         if p.get("confidence_tier") == "confirmed":
             continue  # Already exported as knowledge artifact
+        corr = p.get("correlation_strength")
+        if min_correlation > 0 and (corr is None or abs(corr) < min_correlation):
+            filtered_count += 1
+            continue
         digest = _anonymize_pattern(p)
         if digest:
             digest["attestations"] = [create_attestation(digest, evo_path)]
             digests.append(digest)
 
     kb.close()
+
+    if stats is not None:
+        stats["filtered"] = filtered_count
+
     return digests
 
 

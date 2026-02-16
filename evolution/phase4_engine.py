@@ -51,14 +51,14 @@ except ImportError:
 # ─────────────────── Configuration ───────────────────
 
 DEFAULT_PARAMS = {
-    "min_support": 3,          # Lowered from 10 for early-stage use; raise for production
-    "min_correlation": 0.3,    # Minimum pairwise correlation for co-occurrence
-    "min_lift": 1.5,           # Minimum lift for co-occurrence detection (alternative to correlation)
-    "min_effect_size": 0.2,    # Minimum Cohen's d for presence-based patterns
+    "min_support": 5,          # Minimum observations for statistical significance
+    "min_correlation": 0.4,    # Moderate correlation minimum for co-occurrence
+    "min_lift": 2.0,           # Minimum lift for co-occurrence detection
+    "min_effect_size": 0.35,   # Small-to-medium effect size (Cohen's d)
     "promotion_threshold": 10, # Occurrences to promote to knowledge (lowered for testing)
     "decay_window": 90,        # Days before unseen patterns decay
     "semantic_multiplier": 3,  # Extra evidence for LLM-only hypotheses
-    "direction_threshold": 1.0, # Stddev threshold for direction classification
+    "direction_threshold": 1.5, # Stddev threshold for direction classification
     "confidence_full_at": 30,  # Sample count at which confidence weight reaches 1.0
     "temporal_window_hours": 24,  # Time window for temporal alignment (supplementary to commit-SHA)
 }
