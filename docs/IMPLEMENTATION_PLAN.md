@@ -1314,22 +1314,70 @@ Docs page ✅                    Privacy page ✅
 39d. ~~Historical trend detection~~ ✅ — three-category classification (returned to normal / stabilized / active), observed values display, manual verification on codequal
 
 **Pending (37–46):**
-37. **GitLab manual testing** — 7 scenarios (LAUNCH_PLAN.md §12.2)
-38b. **Stripe live-mode testing** — repeat flows with real dashboard (blocked by #36)
-39. **User review flow** — full analyze → accept → investigate → fix → verify cycle
-43. **CLI command testing** — remaining commands on codequal repo:
+**Pending — SDLC Path Testing (3 integration paths):**
+
+43. **Path 1: CLI (manual testing)** — remaining commands on codequal repo:
+    - `evo analyze .` — full pipeline ✅ (tested Feb 16–17)
+    - `evo analyze . --verify` — verification with trend classification ✅ (tested Feb 17)
+    - `evo accept . <N>` / `evo accepted .` — accept/list/remove ✅ (tested Feb 14)
     - `evo patterns list .` — verify pattern listing
     - `evo patterns push .` — verify weak patterns filtered by quality gate
-    - `evo history .` — verify snapshot history
-    - `evo config list` — verify configuration display
-44. **Path 2: Git Hooks** — `evo init --path hooks`, trigger post-commit hook, verify notification fires
-45. **Path 3: GitHub Action** — `evo init --path action`, verify generated workflow, test PR comment output
+    - `evo history .` — verify snapshot list, show, diff, clean
+    - `evo config list` — verify display, link to `evo setup --ui`
+    - `evo sources .` — verify connected vs detected (fix §13.3.1 issues)
+    - `evo setup .` / `evo setup --ui` — verify setup wizard and browser UI
+    - `evo adapter list` / `evo adapter discover` — verify detection and guidance
+
+44. **Path 2: Git Hooks** — full lifecycle on test repo:
+    - `evo init --path hooks` — verify hook installation
+    - Make a commit → verify post-commit hook fires
+    - Verify notification appears (desktop or terminal)
+    - Verify `evo analyze` runs in background (non-blocking)
+    - Verify findings trigger report auto-open
+    - `evo hooks status` / `evo hooks uninstall` — verify management commands
+    - Edge cases: hook on clean commit (no findings), hook with severity below threshold
+
+45. **Path 3: GitHub/GitLab Action** — CI integration:
+    - `evo init --path action` — verify generated workflow file
+    - Verify workflow YAML is valid and references correct action
+    - Test PR comment format (`evo pr-comment` / `action/format_comment.py`)
+    - Verify investigate + inline suggestions steps in workflow
+    - Verify `--verify` step compares against previous run
+    - GitLab: verify `.gitlab-ci.yml` template generation
+    - 7 GitLab scenarios from LAUNCH_PLAN.md §12.2
+
+**Pending — UX & Polish:**
+
 46. **`evo sources` UX fixes** — 3 issues from §13.3.1:
     - Redundant token hints for already-connected families (suppress Tier 2 when Tier 1 active)
     - Irrelevant tool suggestions (only suggest tokens for tools detected in repo)
     - Adapter install hints for unpublished packages (suppress or "Coming soon")
 
-**Next — Testing & Beta Launch:**
+47. **Config cleanup** — remove outdated settings:
+    - Remove `llm.enabled/provider/model` — detect `ANTHROPIC_API_KEY` env var directly
+    - Remove `report.theme` — single theme
+    - Simplify `sync.privacy_level` — binary opt-in (share / don't share)
+    - Update setup UI (`setup_ui.py`) to match
+    - Add footer to `evo config list`: "Run `evo setup --ui` to edit in browser"
+
+48. **Adapter discovery UX** — friendlier guidance for detected-but-unconnected tools:
+    - Reword when adapters not on PyPI ("Community adapters coming — or build your own")
+    - Explain what connecting each tool would unlock (e.g., "Sentry → error tracking signals")
+    - Guided flow after `evo sources`: detect → explain value → scaffold if interested
+    - Suppress hints for tools not present in project (Jenkins, etc.)
+
+**Pending — External / Infrastructure:**
+
+36. **Lawyer review** — ToS + Privacy sign-off → corrected docs → translator verification
+38b. **Stripe live-mode testing** — repeat flows with real dashboard (blocked by #36)
+49. **Axiom dashboard & monitors** — build observability from existing Axiom ingest:
+    - API health dashboard (pattern registry, license webhook, website endpoints)
+    - Alert rules for errors, latency spikes, failed webhooks
+    - Usage metrics (analyses/day, patterns shared, licenses issued)
+
+**Launch:**
+
+42. **Community beta** — announce, gather feedback (begins once 36–49 verified)
 
 **See `docs/LAUNCH_PLAN.md`** for detailed beta program, launch timeline, and go-to-market strategy.
 
@@ -1347,21 +1395,24 @@ The remaining items before public beta:
 | 34 | ~~Accept deviations~~ ✅ — `evo accept` + `evo accepted` | Done | — |
 | 35 | ~~Legal docs~~ ✅ — PDFs generated for lawyer review | Done | — |
 | 36 | **Lawyer review** — ToS + Privacy sign-off → corrected docs → translator | Medium | Yes — must complete before accepting payments |
-| 37 | **GitLab manual testing** — 7 scenarios (LAUNCH_PLAN.md §12.2) | Low | Yes — verify before launch |
-| 38 | ~~Stripe E2E testing~~ ✅ — 10/10 sandbox tests passing (purchase, cancel, FOUNDING50 discount, payment failure) | Done | — |
-| 38b | **Stripe live-mode testing** — repeat all 3 flows with real Stripe dashboard after going live (see §12.4) | Low | Yes — before accepting real payments |
-| 39 | **User review flow** — analyze → accept → investigate → fix → verify | Low | Yes — validate core UX |
-| 39b | ~~Interactive report~~ ✅ — report server, accept API, evidence in prompts, verification banner | Done | — |
-| 39c | ~~Analysis determinism~~ ✅ — payload timestamps, chronological sort, 3-run verification | Done | — |
-| 39d | ~~Historical trend detection~~ ✅ — three-category classification, observed values, manual verification | Done | — |
+| 37 | ~~GitLab manual testing~~ — folded into #45 Path 3 | — | — |
+| 38 | ~~Stripe E2E testing~~ ✅ — 10/10 sandbox tests passing | Done | — |
+| 38b | **Stripe live-mode testing** — repeat all flows with real Stripe dashboard (see §12.4) | Low | Yes — blocked by #36 |
+| 39 | ~~User review flow~~ — folded into #43 Path 1 CLI testing | — | — |
+| 39b | ~~Interactive report~~ ✅ — report server, accept API, verification banner | Done | — |
+| 39c | ~~Analysis determinism~~ ✅ — payload timestamps, chronological sort | Done | — |
+| 39d | ~~Historical trend detection~~ ✅ — three-category classification, manual verification | Done | — |
 | 40 | ~~PyPI publication~~ ✅ — `evolution-engine` + `evo-patterns-community` 2026.2.15 | Done | — |
 | 41 | ~~Custom domain~~ ✅ — codequal.dev configured for Vercel | Done | — |
-| 42 | **Community beta** — announce, gather feedback | Low | No — begins once 36-45 are verified |
+| 42 | **Community beta** — announce, gather feedback | Low | No — begins once 43-49 verified |
 | 42b | ~~Pattern pipeline E2E~~ ✅ — Upstash Redis, registry handler, push/pull, PyPI auto-fetch | Done | — |
-| 43 | **CLI command testing** — `evo patterns list/push`, `evo history`, `evo config list` on codequal | Low | Yes — validate remaining CLI surface |
-| 44 | **Path 2: Git Hooks** — `evo init --path hooks`, trigger post-commit, verify notification | Low | Yes — validate SDLC integration |
-| 45 | **Path 3: GitHub Action** — `evo init --path action`, verify PR comment output | Low | Yes — validate CI integration |
-| 46 | **`evo sources` UX fixes** — 3 issues from §13.3.1 (redundant hints, irrelevant tools, unpublished adapters) | Medium | No — polish, not blocking |
+| **43** | **Path 1: CLI testing** — full command surface: analyze, verify, accept, patterns, history, config, sources, setup, adapters | Medium | Yes — validate core UX |
+| **44** | **Path 2: Git Hooks** — init, post-commit trigger, notification, background analysis, severity threshold, management | Medium | Yes — validate SDLC |
+| **45** | **Path 3: GitHub/GitLab Action** — init, workflow generation, PR comments, investigate, verify, inline suggestions, 7 GitLab scenarios | Medium | Yes — validate CI |
+| **46** | **`evo sources` UX fixes** — §13.3.1: redundant hints, irrelevant tools, unpublished adapters | Medium | Yes — users hit this early |
+| **47** | **Config cleanup** — remove outdated LLM/theme settings, simplify privacy, update setup UI | Medium | Yes — config is first impression |
+| **48** | **Adapter discovery UX** — friendlier guidance, explain value, suppress irrelevant suggestions | Medium | No — polish |
+| **49** | **Axiom dashboard & monitors** — API health, alerts, usage metrics from existing ingest | Medium | No — operational readiness |
 
 ### Manual Testing (Before Beta)
 
@@ -1723,16 +1774,23 @@ not just local scope.
 > - Website (`website/`) — codequal.dev on Vercel (landing, docs, privacy, success pages)
 > - Stripe integration — Pro subscription checkout, webhook license generation
 >
-> **Remaining before beta:**
-> 1. **Lawyer review** (#36) — ToS + Privacy under review; corrected docs → translator verification
-> 2. **GitLab manual testing** (#37) — 7 scenarios (LAUNCH_PLAN.md §12.2)
-> 3. **Stripe live-mode testing** (#38b) — repeat flows after going live (blocked by #36)
-> 4. **User review flow** (#39) — end-to-end: analyze → accept → investigate → fix → verify
-> 5. **CLI command testing** (#43) — patterns list/push, history, config on codequal
-> 6. **Path 2: Git Hooks** (#44) — init → post-commit hook → notification
-> 7. **Path 3: GitHub Action** (#45) — init → workflow generation → PR comments
-> 8. **`evo sources` UX fixes** (#46) — redundant hints, irrelevant tools, unpublished adapters
-> 9. **Community beta launch** (#42) (see `docs/LAUNCH_PLAN.md` for full timeline)
+> **Remaining before beta (3 SDLC paths + UX + infra):**
+>
+> *SDLC Integration Testing:*
+> 1. **Path 1: CLI** (#43) — full command surface: analyze, verify, accept, patterns, history, config, sources, setup, adapters
+> 2. **Path 2: Git Hooks** (#44) — init → post-commit trigger → notification → background analysis → management
+> 3. **Path 3: GitHub/GitLab Action** (#45) — init → workflow generation → PR comments → investigate → verify → 7 GitLab scenarios
+>
+> *UX & Polish:*
+> 4. **`evo sources` fixes** (#46) — suppress irrelevant tools, redundant hints, unpublished adapter hints
+> 5. **Config cleanup** (#47) — remove outdated LLM/theme settings, simplify privacy, update setup UI
+> 6. **Adapter discovery UX** (#48) — friendlier guidance, explain value of connecting detected tools
+>
+> *External / Infrastructure:*
+> 7. **Lawyer review** (#36) — ToS + Privacy sign-off → corrected docs → translator
+> 8. **Stripe live-mode testing** (#38b) — repeat flows after going live (blocked by #36)
+> 9. **Axiom dashboard** (#49) — API health, alerts, usage metrics from existing ingest
+> 10. **Community beta launch** (#42) — begins once 36–49 verified
 >
 > **Engagement flow:**
 > ```
