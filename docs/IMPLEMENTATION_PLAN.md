@@ -1337,14 +1337,18 @@ Docs page ✅                    Privacy page ✅
     - `evo hooks status` / `evo hooks uninstall` — verify management commands
     - Edge cases: hook on clean commit (no findings), hook with severity below threshold
 
-45. **Path 3: GitHub/GitLab Action** — CI integration:
+45. **Path 3: GitHub Action** — CI integration:
     - `evo init --path action` — verify generated workflow file
     - Verify workflow YAML is valid and references correct action
     - Test PR comment format (`evo pr-comment` / `action/format_comment.py`)
     - Verify investigate + inline suggestions steps in workflow
     - Verify `--verify` step compares against previous run
-    - GitLab: verify `.gitlab-ci.yml` template generation
-    - 7 GitLab scenarios from LAUNCH_PLAN.md §12.2
+
+37. **GitLab manual testing** — 7 scenarios on real GitLab repo:
+    - `evo analyze` on GitLab repo (gitlab-org/gitlab-styles or similar)
+    - Verify `.gitlab-ci.yml` detection and CI signal ingestion
+    - GitLab: verify `.gitlab-ci.yml` template generation via `evo init --path action`
+    - 7 scenarios from LAUNCH_PLAN.md §12.2
 
 **Pending — UX & Polish:**
 
@@ -1395,7 +1399,7 @@ The remaining items before public beta:
 | 34 | ~~Accept deviations~~ ✅ — `evo accept` + `evo accepted` | Done | — |
 | 35 | ~~Legal docs~~ ✅ — PDFs generated for lawyer review | Done | — |
 | 36 | **Lawyer review** — ToS + Privacy sign-off → corrected docs → translator | Medium | Yes — must complete before accepting payments |
-| 37 | ~~GitLab manual testing~~ — folded into #45 Path 3 | — | — |
+| **37** | **GitLab manual testing** — 7 scenarios on real GitLab repo (LAUNCH_PLAN.md §12.2) | Low | Yes — verify before launch |
 | 38 | ~~Stripe E2E testing~~ ✅ — 10/10 sandbox tests passing | Done | — |
 | 38b | **Stripe live-mode testing** — repeat all flows with real Stripe dashboard (see §12.4) | Low | Yes — blocked by #36 |
 | 39 | ~~User review flow~~ — folded into #43 Path 1 CLI testing | — | — |
@@ -1777,20 +1781,21 @@ not just local scope.
 > **Remaining before beta (3 SDLC paths + UX + infra):**
 >
 > *SDLC Integration Testing:*
-> 1. **Path 1: CLI** (#43) — full command surface: analyze, verify, accept, patterns, history, config, sources, setup, adapters
+> 1. ~~**Path 1: CLI** (#43)~~ ✅ — all commands tested on codequal (Feb 14–17)
 > 2. **Path 2: Git Hooks** (#44) — init → post-commit trigger → notification → background analysis → management
-> 3. **Path 3: GitHub/GitLab Action** (#45) — init → workflow generation → PR comments → investigate → verify → 7 GitLab scenarios
+> 3. **Path 3: GitHub Action** (#45) — init → workflow generation → PR comments → investigate → verify
+> 4. **GitLab manual testing** (#37) — 7 scenarios on real GitLab repo (LAUNCH_PLAN.md §12.2)
 >
 > *UX & Polish:*
-> 4. **`evo sources` fixes** (#46) — suppress irrelevant tools, redundant hints, unpublished adapter hints
-> 5. **Config cleanup** (#47) — remove outdated LLM/theme settings, simplify privacy, update setup UI
-> 6. **Adapter discovery UX** (#48) — friendlier guidance, explain value of connecting detected tools
+> 5. **`evo sources` fixes** (#46) — suppress irrelevant tools, redundant hints, unpublished adapter hints
+> 6. **Config cleanup** (#47) — remove outdated LLM/theme settings, simplify privacy, update setup UI
+> 7. **Adapter discovery UX** (#48) — friendlier guidance, explain value of connecting detected tools
 >
 > *External / Infrastructure:*
-> 7. **Lawyer review** (#36) — ToS + Privacy sign-off → corrected docs → translator
-> 8. **Stripe live-mode testing** (#38b) — repeat flows after going live (blocked by #36)
-> 9. **Axiom dashboard** (#49) — API health, alerts, usage metrics from existing ingest
-> 10. **Community beta launch** (#42) — begins once 36–49 verified
+> 8. **Lawyer review** (#36) — ToS + Privacy sign-off → corrected docs → translator
+> 9. **Stripe live-mode testing** (#38b) — repeat flows after going live (blocked by #36)
+> 10. **Axiom dashboard** (#49) — API health, alerts, usage metrics from existing ingest
+> 11. **Community beta launch** (#42) — begins once 36–49 verified
 >
 > **Engagement flow:**
 > ```
