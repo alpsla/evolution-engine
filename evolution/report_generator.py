@@ -98,6 +98,7 @@ FAMILY_ICONS = {
 }
 
 
+
 def generate_report(
     evo_dir: str | Path,
     title: str = None,
@@ -165,8 +166,11 @@ def _render_html(advisory, evidence, title, cal=None, remote_url="", verificatio
     # Confidence: use commits count from evidence
     n_commits = len(commits)
 
+    # Total patterns matched = community + repo-specific from advisory
+    total_patterns = len(pattern_matches) + len(candidate_patterns)
+
     cover = _build_cover_page(scope, period_from, period_to, advisory_id, generated)
-    exec_summary = _build_executive_summary(summary, families_affected, cal, n_commits)
+    exec_summary = _build_executive_summary(summary, families_affected, cal, n_commits, total_patterns)
     verify_html = _build_verification_banner(verification) if verification else ""
     findings_html = _build_key_findings(changes, pattern_matches, candidate_patterns, families_affected)
     # Build commit lookup for per-finding evidence
@@ -233,16 +237,15 @@ def _build_cover_page(scope, period_from, period_to, advisory_id, generated):
     )
 
 
-def _build_executive_summary(summary, families_affected, cal=None, n_commits=0):
+def _build_executive_summary(summary, families_affected, cal=None, n_commits=0, total_patterns=0):
     sig = summary.get("significant_changes", 0)
     n_fam = len(families_affected)
-    patterns = summary.get("known_patterns_matched", 0)
-    new_obs = summary.get("new_observations", summary.get("candidate_patterns_matched", 0))
+    new_obs = summary.get("new_observations", 0)
 
     cards = [
         _summary_card(str(sig), "Significant Changes"),
         _summary_card(str(n_fam), "Areas Affected"),
-        _summary_card(str(patterns), "Known Patterns"),
+        _summary_card(str(total_patterns), "Patterns Matched"),
         _summary_card(str(new_obs), "New Observations"),
     ]
     if cal:
@@ -329,7 +332,9 @@ def _build_verification_banner(verification):
             f'<tr class="verify-resolved"><td>{_esc(family)}</td><td>{_esc(metric)}</td>'
             f'<td colspan="2">Resolved</td><td>\u2705</td></tr>'
         )
-    has_historical = False
+    has_transient = False
+    has_persistent = False
+    has_stabilized = False
     for p in persisting:
         metric = METRIC_LABELS.get(p.get("metric", ""), p.get("metric", ""))
         family = FAMILY_LABELS.get(p.get("family", ""), p.get("family", ""))
@@ -342,11 +347,31 @@ def _build_verification_banner(verification):
         # Detect historical triggers: deviation unchanged means the most deviant
         # commit is an older one that wasn't affected by the recent fix
         if not improved and abs(was) > 0 and abs(was - now) < 0.1:
-            trend_label = "historical trigger"
-            has_historical = True
+            latest_dev = p.get("latest_deviation")
+            if latest_dev is not None and abs(latest_dev) >= 1.5:
+                # Still actively deviating in latest measurement
+                trend_label = "still actively deviating"
+                trend_class = "verify-trend-warn"
+                has_persistent = True
+            else:
+                # Low latest deviation — but did the value actually return?
+                latest_val = p.get("latest_value")
+                if _value_near_baseline(latest_val, p.get("normal", {})):
+                    trend_label = "returned to normal"
+                    has_transient = True
+                else:
+                    trend_label = "stabilized at new level"
+                    trend_class = "verify-trend-stabilized"
+                    has_stabilized = True
+        # Show actual observed values instead of raw σ numbers
+        before_val = _fmt_value(p.get("was_value"))
+        after_val = _fmt_value(p.get("current"))
+        normal = p.get("normal", {})
+        baseline = _fmt_value(normal.get("median", normal.get("mean")))
         rows.append(
             f'<tr><td>{_esc(family)}</td><td>{_esc(metric)}</td>'
-            f'<td>{was:.1f}</td><td>{now:.1f}</td>'
+            f'<td>{_esc(before_val)}</td>'
+            f'<td>{_esc(after_val)}<span class="verify-baseline"> / {_esc(baseline)}</span></td>'
             f'<td class="{trend_class}">{trend_icon} {trend_label}</td></tr>'
         )
     for n in new_changes:
@@ -370,15 +395,28 @@ def _build_verification_banner(verification):
     if n_new:
         chips.append(f'<span class="verify-chip verify-chip-new">\u26a0\ufe0f {n_new} new</span>')
 
-    # Guidance for historical triggers
+    # Guidance notes for historical triggers
     historical_note = ""
-    if has_historical:
-        historical_note = (
+    if has_transient:
+        historical_note += (
             '  <div class="verify-note">\n'
-            '    <strong>Historical trigger:</strong> These deviations are caused by older commits '
-            'still in the analysis window, not by recent changes. Your fix may be correct but '
-            'the historical extreme hasn\'t rolled out of the window yet. '
-            'If the deviation was expected, click <strong>Accept</strong> on the finding below to dismiss it.\n'
+            '    <strong>Transient spike:</strong> One-time spike from an older commit. '
+            'The metric has since returned to its baseline. Safe to accept.\n'
+            '  </div>\n'
+        )
+    if has_stabilized:
+        historical_note += (
+            '  <div class="verify-note-stabilized">\n'
+            '    <strong>Stabilized drift:</strong> An older commit shifted this metric to a new level '
+            'and it stayed there. The statistical model absorbed the change, but the value differs from '
+            'the original baseline. Consider whether this shift was intentional.\n'
+            '  </div>\n'
+        )
+    if has_persistent:
+        historical_note += (
+            '  <div class="verify-note-warn">\n'
+            '    <strong>Active deviation:</strong> This metric is still actively deviating in the latest '
+            'data. Investigation recommended.\n'
             '  </div>\n'
         )
 
@@ -393,7 +431,7 @@ def _build_verification_banner(verification):
         f'  </div>\n'
         f'  <div class="verify-chips">{"".join(chips)}</div>\n'
         f'  <table class="verify-table">\n'
-        f'    <thead><tr><th>Area</th><th>Signal</th><th>Before</th><th>After</th><th>Trend</th></tr></thead>\n'
+        f'    <thead><tr><th>Area</th><th>Signal</th><th>Before</th><th>After / Normal</th><th>Trend</th></tr></thead>\n'
         f'    <tbody>{rows_html}</tbody>\n'
         f'  </table>\n'
         f'{historical_note}'
@@ -452,17 +490,15 @@ def _build_key_findings(changes, pattern_matches, candidate_patterns, families_a
                 )
 
     # Summarize patterns
-    if pattern_matches:
-        n = len(pattern_matches)
-        bullets.append(
-            f'{n} community-confirmed pattern{"s" if n != 1 else ""} matched '
-            'from patterns seen across other projects.'
-        )
-    if candidate_patterns:
-        n = len(candidate_patterns)
-        bullets.append(
-            f'{n} repo-specific pattern{"s" if n != 1 else ""} discovered in this repository.'
-        )
+    n_known = len(pattern_matches) if pattern_matches else 0
+    n_new = len(candidate_patterns) if candidate_patterns else 0
+    if n_known or n_new:
+        parts = []
+        if n_known:
+            parts.append(f'{n_known} known pattern{"s" if n_known != 1 else ""} detected')
+        if n_new:
+            parts.append(f'{n_new} new pattern{"s" if n_new != 1 else ""} discovered')
+        bullets.append(". ".join(parts) + ".")
 
     items_html = "\n".join(f'    <li>{b}</li>' for b in bullets)
     return (
@@ -700,6 +736,16 @@ def _build_change_card(c, index=0, remote_url="", commits_by_sha=None,
             f'</div>\n'
         )
 
+    # Trend subtitle for historical triggers
+    trend_html = ""
+    if full_sha and not c.get("is_latest_event", True):
+        latest_dev = c.get("latest_deviation")
+        if latest_dev is not None:
+            if abs(latest_dev) >= 1.5:
+                trend_html = f'  <div class="trend-subtitle trend-elevated">\u2192 Still elevated (latest deviation: {abs(latest_dev):.1f}\u03c3)</div>\n'
+            else:
+                trend_html = f'  <div class="trend-subtitle trend-returning">\u2198 Returned to baseline</div>\n'
+
     return (
         f'<div class="change-card {dev_class}" id="{anchor_id}">\n'
         '  <div class="change-card-header">\n'
@@ -724,6 +770,7 @@ def _build_change_card(c, index=0, remote_url="", commits_by_sha=None,
         '  </div>\n'
         f'  <div class="deviation-badge">{abs_dev:.1f}x {direction} typical range</div>\n'
         f'{commit_html}'
+        f'{trend_html}'
         f'{action_buttons}'
         f'{tech_html}'
         '</div>'
@@ -864,23 +911,20 @@ def _build_pattern_section(matches, candidates):
         if _severity_rank(sev) > _severity_rank(highest_severity):
             highest_severity = sev
 
-    # Sort patterns by severity (most critical first)
-    sorted_matches = sorted(
-        matches,
-        key=lambda p: _severity_rank(pattern_risk_assessment(p)["severity"]),
-        reverse=True,
-    )
-    sorted_candidates = sorted(
-        candidates,
+    # Sort all patterns by severity (most critical first), unified list
+    matches_set = set(id(p) for p in matches)
+    all_sorted = sorted(
+        all_patterns,
         key=lambda p: _severity_rank(pattern_risk_assessment(p)["severity"]),
         reverse=True,
     )
 
-    known_cards = _grouped_cards(sorted_matches, "Community-Confirmed Pattern")
-    emerging_cards = _grouped_cards(sorted_candidates, "Repo-Specific Pattern")
+    all_cards = []
+    for p in all_sorted:
+        badge = "Known Pattern" if id(p) in matches_set else "New Pattern"
+        all_cards.extend(_grouped_cards([p], badge))
 
-    known_html = _collapsible_pattern_cards(known_cards, "Community-Confirmed Patterns", PATTERN_VISIBLE_LIMIT)
-    emerging_html = _collapsible_pattern_cards(emerging_cards, "Repo-Specific Patterns", PATTERN_VISIBLE_LIMIT)
+    cards_html = _collapsible_pattern_cards(all_cards, "patterns", PATTERN_VISIBLE_LIMIT)
 
     # Build overall risk banner
     banner_html = _build_pattern_risk_banner(highest_severity, severity_counts, len(all_patterns))
@@ -909,8 +953,7 @@ def _build_pattern_section(matches, candidates):
         '  <h2>Patterns</h2>\n'
         f'  {banner_html}\n'
         f'  {guidance}\n'
-        f'  {known_html}\n'
-        f'  {emerging_html}\n'
+        f'  {cards_html}\n'
         '</section>'
     )
 
@@ -1183,6 +1226,38 @@ def _build_prompt(scope, period_from, period_to, changes, commits, files,
 
 
 # ─── Helpers ───
+
+
+def _fmt_value(v) -> str:
+    """Format a metric value for human-readable display."""
+    if v is None:
+        return "\u2014"
+    if isinstance(v, (int, float)) and float(v) == int(v) and abs(v) < 1e9:
+        return f"{int(v):,}"
+    if isinstance(v, float):
+        if abs(v) >= 100:
+            return f"{v:,.0f}"
+        return f"{v:.2f}"
+    return str(v)
+
+
+def _value_near_baseline(latest_value, normal_dict: dict,
+                         threshold: float = 1.5) -> bool:
+    """Check if the latest observed value is close to the global baseline."""
+    if latest_value is None or not normal_dict:
+        return True  # fallback: assume returned
+    median = normal_dict.get("median")
+    if median is None:
+        return True
+    mad = normal_dict.get("mad", 0)
+    if mad and mad > 0:
+        modified_z = abs(0.6745 * (latest_value - median) / mad)
+        return modified_z < threshold
+    stddev = normal_dict.get("stddev", 0)
+    if stddev and stddev > 0:
+        z = abs((latest_value - median) / stddev)
+        return z < threshold
+    return latest_value == median
 
 
 def _esc(text: str) -> str:
@@ -1519,6 +1594,18 @@ div.evidence-overflow.show { display: block; }
 .verify-note { margin-top: 1em; padding: 0.75em 1em; background: #f8fafc;
   border-left: 3px solid var(--color-info); font-size: 10pt; color: var(--color-text-muted);
   border-radius: 0 4px 4px 0; line-height: 1.5; }
+.verify-trend-warn { color: #dc2626; font-weight: 600; }
+.verify-trend-stabilized { color: #dc6803; font-weight: 600; }
+.verify-note-stabilized { margin-top: 1em; padding: 0.75em 1em; background: #fffbeb;
+  border-left: 3px solid #f59e0b; font-size: 10pt; color: #92400e;
+  border-radius: 0 4px 4px 0; line-height: 1.5; }
+.verify-note-warn { margin-top: 1em; padding: 0.75em 1em; background: #fef2f2;
+  border-left: 3px solid #dc2626; font-size: 10pt; color: #991b1b;
+  border-radius: 0 4px 4px 0; line-height: 1.5; }
+.trend-subtitle { font-size: 9pt; margin-top: 0.25em; color: #78716c; }
+.trend-returning { color: #166534; }
+.trend-elevated { color: #dc6803; }
+.verify-baseline { color: var(--color-text-muted); font-size: 9pt; }
 .verify-new td { color: #92400e; }
 .page-break-before { page-break-before: always; }
 .page-break-after { page-break-after: always; }

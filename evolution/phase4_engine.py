@@ -924,10 +924,24 @@ class Phase4Engine:
         if pattern["confidence_tier"] == "speculative":
             threshold = threshold * self.params["semantic_multiplier"]
 
-        # Also check that knowledge doesn't already exist for this fingerprint
+        # Check that knowledge doesn't already exist for this fingerprint
         existing_ka = self.kb.get_knowledge_by_fingerprint(pattern["fingerprint"], pattern.get("scope", "local"))
         if existing_ka:
             return False
+
+        # Secondary dedup: check if knowledge with same sources+metrics exists
+        # (direction may have flipped, producing a different fingerprint)
+        pat_key = (
+            tuple(sorted(pattern.get("sources", []))),
+            tuple(sorted(pattern.get("metrics", []))),
+        )
+        for ka in self.kb.list_knowledge(scope=pattern.get("scope", "local")):
+            ka_key = (
+                tuple(sorted(ka.get("sources", []))),
+                tuple(sorted(ka.get("metrics", []))),
+            )
+            if ka_key == pat_key:
+                return False
 
         return count >= threshold
 
@@ -1064,6 +1078,22 @@ class Phase4Engine:
             for candidate in candidates:
                 # Check if this fingerprint already exists (any scope — local or community)
                 existing = self.kb.get_pattern_by_fingerprint(candidate["fingerprint"])
+
+                # Secondary dedup: check if a local pattern with the same
+                # sources+metrics already exists (direction may have flipped)
+                if not existing:
+                    cand_key = (
+                        tuple(sorted(candidate.get("sources", []))),
+                        tuple(sorted(candidate.get("metrics", []))),
+                    )
+                    for p in self.kb.list_patterns(scope="local"):
+                        p_key = (
+                            tuple(sorted(p.get("sources", []))),
+                            tuple(sorted(p.get("metrics", []))),
+                        )
+                        if p_key == cand_key:
+                            existing = p
+                            break
 
                 if existing:
                     # Increment existing

@@ -193,7 +193,11 @@ class Phase5Engine:
         return knowledge
 
     def _load_phase4_patterns(self, scope: str = None) -> list[dict]:
-        """Load Phase 4 candidate patterns, optionally filtered by scope."""
+        """Load Phase 4 candidate patterns, optionally filtered by scope.
+
+        Excludes 'confirmed' local patterns — those have been promoted to
+        knowledge artifacts and appear via _load_phase4_knowledge() instead.
+        """
         from evolution.knowledge_store import SQLiteKnowledgeStore
         db_path = self.phase4_path / "knowledge.db"
         if not db_path.exists():
@@ -201,7 +205,11 @@ class Phase5Engine:
         kb = SQLiteKnowledgeStore(db_path)
         patterns = kb.list_patterns(scope=scope)
         kb.close()
+        # Exclude promoted patterns (they're in knowledge now)
+        if scope == "local":
+            patterns = [p for p in patterns if p.get("confidence_tier") != "confirmed"]
         return patterns
+
 
     # ─────────────────── 1. Significance Filter ───────────────────
 
@@ -630,22 +638,22 @@ class Phase5Engine:
                 self._append_change_lines(lines, change, indent="")
                 lines.append("")
 
-        # Pattern matches (community-confirmed, top 5)
+        # Known patterns (from KB, top 5)
         if advisory.get("pattern_matches"):
             shown = _dedup_and_limit_patterns(advisory["pattern_matches"])
             total = len(advisory["pattern_matches"])
-            lines.append(f"COMMUNITY-CONFIRMED PATTERNS ({len(shown)} of {total})")
+            lines.append(f"KNOWN PATTERNS ({len(shown)} of {total})")
             lines.append("")
             for pm in shown:
                 desc = friendly_pattern(pm)
                 lines.append(f"  {desc}")
                 lines.append("")
 
-        # Candidate patterns (repo-specific, top 5)
+        # New patterns (discovered locally, top 5)
         if advisory.get("candidate_patterns"):
             shown = _dedup_and_limit_patterns(advisory["candidate_patterns"])
             total = len(advisory["candidate_patterns"])
-            lines.append(f"REPO-SPECIFIC PATTERNS ({len(shown)} of {total})")
+            lines.append(f"NEW PATTERNS ({len(shown)} of {total})")
             lines.append("")
             for cp in shown:
                 desc = friendly_pattern(cp)
@@ -989,6 +997,60 @@ class Phase5Engine:
         commits.sort(key=lambda x: x[0])
         return [sha for _, sha in commits]
 
+    # ─────────────────── Latest Deviation Enrichment ───────────────────
+
+    def _enrich_with_latest_deviation(self, changes: list[dict],
+                                       all_signals: list[dict],
+                                       all_events: dict) -> None:
+        """Annotate each change with the latest signal's deviation for that metric.
+
+        This lets downstream renderers distinguish transient historical triggers
+        (metric returned to normal) from persistent ones (metric still elevated).
+
+        Sets on each change:
+          - latest_deviation: deviation measure from the most recent signal
+          - latest_value: observed value from the most recent signal
+          - latest_event_ref: event_ref of the most recent signal
+          - is_latest_event: True if the change's trigger IS the latest event
+        """
+        for change in changes:
+            family = change.get("family", "")
+            metric = change.get("metric", "")
+
+            # Find all signals matching this family+metric
+            matching = [
+                s for s in all_signals
+                if s.get("engine_id") == family and s.get("metric") == metric
+            ]
+            if not matching:
+                continue
+
+            # Find the one with the latest event timestamp
+            latest_signal = None
+            latest_ts = ""
+            for s in matching:
+                ref = s.get("event_ref", "")
+                event = all_events.get(ref)
+                if not event:
+                    continue
+                ts = Phase4Engine._extract_event_timestamp(event) or ""
+                if ts > latest_ts:
+                    latest_ts = ts
+                    latest_signal = s
+
+            if latest_signal is None:
+                continue
+
+            dev = latest_signal.get("deviation", {}).get("measure")
+            if dev is None:
+                continue
+
+            latest_ref = latest_signal.get("event_ref", "")
+            change["latest_deviation"] = round(dev, 2)
+            change["latest_value"] = latest_signal.get("observed")
+            change["latest_event_ref"] = latest_ref
+            change["is_latest_event"] = (change.get("event_ref", "") == latest_ref)
+
     # ─────────────────── Main Execution ───────────────────
 
     def run(self, scope: str = "evolution-engine") -> dict:
@@ -1022,11 +1084,11 @@ class Phase5Engine:
         evidence = self._collect_evidence(significant, all_events)
 
         # Step 3: Pattern matching
-        # Community-confirmed: promoted knowledge + community patterns from registry
+        # Known: promoted knowledge + community patterns from registry/PyPI
         pattern_matches = self._match_patterns(significant, knowledge)
         community_matches = self._match_candidate_patterns(significant, community_patterns)
         pattern_matches.extend(community_matches)
-        # Repo-specific: only locally discovered patterns
+        # New: locally discovered patterns (shareable with community)
         candidate_patterns = self._match_candidate_patterns(significant, local_patterns)
 
         # Step 4: Compile advisory
@@ -1050,6 +1112,9 @@ class Phase5Engine:
             if key not in seen_changes or abs(c["deviation_stddev"]) > abs(seen_changes[key]["deviation_stddev"]):
                 seen_changes[key] = c
         changes = sorted(seen_changes.values(), key=lambda c: abs(c["deviation_stddev"]), reverse=True)
+
+        # Enrich with latest deviation for historical trigger trend detection
+        self._enrich_with_latest_deviation(changes, all_signals, all_events)
 
         # Filter out accepted deviations (scope-aware)
         commit_list = self._get_commit_list(all_events)

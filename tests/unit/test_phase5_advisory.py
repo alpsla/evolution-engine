@@ -223,3 +223,101 @@ class TestAdvisoryDiff:
         }
         diff = engine._diff_advisories(before, after)
         assert len(diff["new"]) == 1
+
+
+class TestEnrichWithLatestDeviation:
+    """Test _enrich_with_latest_deviation."""
+
+    def _make_signal(self, engine_id, metric, deviation, event_ref):
+        return {
+            "engine_id": engine_id,
+            "metric": metric,
+            "observed": 20,
+            "baseline": {"mean": 5, "stddev": 2, "median": 5, "mad": 1.5},
+            "deviation": {"measure": deviation, "unit": "modified_zscore", "degenerate": False},
+            "event_ref": event_ref,
+        }
+
+    def _make_event(self, event_id, timestamp):
+        return {
+            "event_id": event_id,
+            "source_type": "git",
+            "observed_at": timestamp,
+            "payload": {"commit_hash": f"abc{event_id}", "timestamp": timestamp},
+        }
+
+    def test_latest_event_is_trigger(self, evo_dir):
+        """When the trigger IS the latest event, is_latest_event=True."""
+        engine = Phase5Engine(evo_dir)
+        changes = [{
+            "family": "git", "metric": "files_touched",
+            "deviation_stddev": 3.0, "event_ref": "evt-002",
+        }]
+        signals = [
+            self._make_signal("git", "files_touched", 2.0, "evt-001"),
+            self._make_signal("git", "files_touched", 3.0, "evt-002"),
+        ]
+        events = {
+            "evt-001": self._make_event("evt-001", "2025-01-01T00:00:00Z"),
+            "evt-002": self._make_event("evt-002", "2025-01-02T00:00:00Z"),
+        }
+        engine._enrich_with_latest_deviation(changes, signals, events)
+        assert changes[0]["is_latest_event"] is True
+        assert changes[0]["latest_deviation"] == 3.0
+        assert changes[0]["latest_value"] == 20  # from _make_signal observed
+
+    def test_transient_historical(self, evo_dir):
+        """Latest signal deviation < 1.5 → transient (returned to normal)."""
+        engine = Phase5Engine(evo_dir)
+        changes = [{
+            "family": "git", "metric": "files_touched",
+            "deviation_stddev": 4.0, "event_ref": "evt-001",
+        }]
+        signals = [
+            self._make_signal("git", "files_touched", 4.0, "evt-001"),
+            self._make_signal("git", "files_touched", 0.5, "evt-002"),
+        ]
+        events = {
+            "evt-001": self._make_event("evt-001", "2025-01-01T00:00:00Z"),
+            "evt-002": self._make_event("evt-002", "2025-01-02T00:00:00Z"),
+        }
+        engine._enrich_with_latest_deviation(changes, signals, events)
+        assert changes[0]["is_latest_event"] is False
+        assert changes[0]["latest_deviation"] == 0.5
+        assert "latest_value" in changes[0]
+
+    def test_persistent_historical(self, evo_dir):
+        """Latest signal deviation >= 1.5 → persistent (still elevated)."""
+        engine = Phase5Engine(evo_dir)
+        changes = [{
+            "family": "git", "metric": "files_touched",
+            "deviation_stddev": 4.0, "event_ref": "evt-001",
+        }]
+        signals = [
+            self._make_signal("git", "files_touched", 4.0, "evt-001"),
+            self._make_signal("git", "files_touched", 2.5, "evt-002"),
+        ]
+        events = {
+            "evt-001": self._make_event("evt-001", "2025-01-01T00:00:00Z"),
+            "evt-002": self._make_event("evt-002", "2025-01-02T00:00:00Z"),
+        }
+        engine._enrich_with_latest_deviation(changes, signals, events)
+        assert changes[0]["is_latest_event"] is False
+        assert changes[0]["latest_deviation"] == 2.5
+
+    def test_no_matching_signals(self, evo_dir):
+        """No matching signals → fields not set."""
+        engine = Phase5Engine(evo_dir)
+        changes = [{
+            "family": "git", "metric": "files_touched",
+            "deviation_stddev": 3.0, "event_ref": "evt-001",
+        }]
+        signals = [
+            self._make_signal("ci", "run_duration", 2.0, "evt-002"),
+        ]
+        events = {
+            "evt-002": self._make_event("evt-002", "2025-01-02T00:00:00Z"),
+        }
+        engine._enrich_with_latest_deviation(changes, signals, events)
+        assert "latest_deviation" not in changes[0]
+        assert "is_latest_event" not in changes[0]

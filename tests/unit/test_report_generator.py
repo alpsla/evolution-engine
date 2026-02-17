@@ -189,7 +189,7 @@ class TestGenerateReport:
     def test_contains_pattern_section(self, advisory_dir):
         html = generate_report(advisory_dir)
         assert "Patterns" in html
-        assert "Community-Confirmed Pattern" in html
+        assert "Known Pattern" in html
 
     def test_contains_evidence(self, advisory_dir):
         html = generate_report(advisory_dir)
@@ -436,6 +436,149 @@ class TestReportPolish:
             {"sources": ["git"], "metrics": ["dispersion"], "correlation_strength": 0.5},
             {"sources": ["git"], "metrics": ["dispersion"], "correlation_strength": 0.4},
         ]
-        html = _build_grouped_pattern_card(patterns, "Community-Confirmed Pattern")
+        html = _build_grouped_pattern_card(patterns, "Known Pattern")
         assert "similar-severity patterns" in html
         assert "related patterns" not in html
+
+
+class TestVerificationBanner:
+    """Test _build_verification_banner historical trigger detection."""
+
+    def _persisting(self, **overrides):
+        """Build a persisting change dict with sensible defaults."""
+        base = {
+            "family": "git", "metric": "dispersion",
+            "was_deviation": 4.0, "now_deviation": 4.0,
+            "improved": False,
+            "current": 0.20, "was_value": 0.20,  # value near baseline = transient
+            "latest_value": 0.20,
+            "normal": {"median": 0.20, "mean": 0.20, "stddev": 0.5, "mad": 0.3},
+        }
+        base.update(overrides)
+        return base
+
+    def test_transient_historical_trigger(self):
+        """Unchanged deviation + latest value near baseline → 'returned to normal'."""
+        from evolution.report_generator import _build_verification_banner
+        verification = {
+            "resolved": [],
+            "persisting": [self._persisting(
+                latest_deviation=0.5, latest_value=0.22,  # near baseline 0.20
+            )],
+            "new": [],
+        }
+        html = _build_verification_banner(verification)
+        assert "returned to normal" in html
+        assert "Transient spike" in html
+        assert "Stabilized drift" not in html
+        assert "Active deviation" not in html
+
+    def test_persistent_historical_trigger(self):
+        """Unchanged deviation + high latest_deviation → 'still actively deviating'."""
+        from evolution.report_generator import _build_verification_banner
+        verification = {
+            "resolved": [],
+            "persisting": [self._persisting(latest_deviation=2.5)],
+            "new": [],
+        }
+        html = _build_verification_banner(verification)
+        assert "still actively deviating" in html
+        assert "verify-trend-warn" in html
+        assert "Active deviation" in html
+        assert "Transient spike" not in html
+
+    def test_stabilized_drift(self):
+        """Low latest deviation but value far from baseline → 'stabilized at new level'."""
+        from evolution.report_generator import _build_verification_banner
+        verification = {
+            "resolved": [],
+            "persisting": [self._persisting(
+                family="dependency", metric="dependency_count",
+                was_deviation=182.1, now_deviation=182.1,
+                current=1613, was_value=1613,
+                latest_value=1613,  # far from baseline 1478
+                normal={"median": 1478, "mean": 1478, "stddev": 10, "mad": 5},
+                latest_deviation=0.0,
+            )],
+            "new": [],
+        }
+        html = _build_verification_banner(verification)
+        assert "stabilized at new level" in html
+        assert "verify-trend-stabilized" in html
+        assert "Stabilized drift" in html
+        assert "Transient spike" not in html
+
+    def test_mixed_transient_and_persistent(self):
+        """Both transient and active deviation → both notes shown."""
+        from evolution.report_generator import _build_verification_banner
+        verification = {
+            "resolved": [],
+            "persisting": [
+                self._persisting(
+                    latest_deviation=0.3, latest_value=0.21,  # near baseline
+                ),
+                self._persisting(
+                    family="ci", metric="run_duration",
+                    was_deviation=3.0, now_deviation=3.0,
+                    current=120, was_value=120,
+                    latest_value=120,
+                    normal={"median": 45, "mean": 45, "stddev": 10, "mad": 5},
+                    latest_deviation=2.0,  # still actively deviating
+                ),
+            ],
+            "new": [],
+        }
+        html = _build_verification_banner(verification)
+        assert "Transient spike" in html
+        assert "Active deviation" in html
+
+    def test_improving_not_classified_as_historical(self):
+        """Improving metrics should not get historical trigger classification."""
+        from evolution.report_generator import _build_verification_banner
+        verification = {
+            "resolved": [],
+            "persisting": [self._persisting(
+                was_deviation=4.0, now_deviation=2.0, improved=True,
+                was_value=0.85, current=0.45,
+            )],
+            "new": [],
+        }
+        html = _build_verification_banner(verification)
+        assert "improving" in html
+        assert "Transient" not in html
+        assert "Stabilized" not in html
+        assert "Active deviation" not in html
+
+    def test_no_latest_deviation_defaults_transient(self):
+        """When latest_deviation is missing, treat as returned to normal."""
+        from evolution.report_generator import _build_verification_banner
+        p = self._persisting()
+        p.pop("latest_deviation", None)
+        verification = {
+            "resolved": [],
+            "persisting": [p],
+            "new": [],
+        }
+        html = _build_verification_banner(verification)
+        assert "returned to normal" in html
+        assert "Transient spike" in html
+
+    def test_shows_observed_values_not_sigma(self):
+        """Verify table shows actual values, not raw σ numbers."""
+        from evolution.report_generator import _build_verification_banner
+        verification = {
+            "resolved": [],
+            "persisting": [self._persisting(
+                family="dependency", metric="dependency_count",
+                was_deviation=182.1, now_deviation=182.1,
+                current=1613, was_value=1613,
+                latest_value=1613,
+                normal={"median": 1478, "mean": 1478, "stddev": 10, "mad": 5},
+                latest_deviation=0.0,
+            )],
+            "new": [],
+        }
+        html = _build_verification_banner(verification)
+        assert "1,613" in html  # formatted observed value
+        assert "1,478" in html  # baseline value
+        assert "182.1" not in html  # raw σ should NOT appear

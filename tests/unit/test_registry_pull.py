@@ -75,8 +75,8 @@ class TestImportRegistryPatterns:
         mock_urlopen.assert_called_once()
 
     @patch("urllib.request.urlopen")
-    def test_filters_by_detected_families(self, mock_urlopen, tmp_path):
-        """Only patterns matching detected families are imported."""
+    def test_imports_all_regardless_of_families(self, mock_urlopen, tmp_path):
+        """All community patterns are imported — Phase 5 handles relevance."""
         evo_dir = tmp_path / ".evo"
         phase4_dir = evo_dir / "phase4"
         phase4_dir.mkdir(parents=True)
@@ -87,7 +87,7 @@ class TestImportRegistryPatterns:
 
         orch = self._make_orchestrator(tmp_path)
 
-        # Pattern with sources=["ci", "git"] won't match family "deployment"
+        # Pattern with sources=["ci", "git"] is imported even for "deployment" family
         patterns = [_make_pattern()]
         response_data = json.dumps({"patterns": patterns}).encode("utf-8")
         mock_resp = MagicMock()
@@ -98,7 +98,7 @@ class TestImportRegistryPatterns:
 
         log = MagicMock()
         result = orch._import_registry_patterns(["deployment"], log)
-        assert result == 0
+        assert result >= 1
 
     @patch("urllib.request.urlopen")
     def test_respects_24h_cache(self, mock_urlopen, tmp_path):

@@ -21,6 +21,44 @@ from typing import Optional
 SNAPSHOT_VERSION = 1
 
 
+def _fmt_value(v) -> str:
+    """Format a metric value for human-readable display."""
+    if v is None:
+        return "—"
+    if isinstance(v, (int, float)) and float(v) == int(v) and abs(v) < 1e9:
+        return f"{int(v):,}"
+    if isinstance(v, float):
+        if abs(v) >= 100:
+            return f"{v:,.0f}"
+        return f"{v:.2f}"
+    return str(v)
+
+
+def _value_near_baseline(latest_value, normal_dict: dict,
+                         threshold: float = 1.5) -> bool:
+    """Check if the latest observed value is close to the global baseline.
+
+    Uses the same modified z-score approach as Phase 2 deviation detection.
+    Returns True if the latest value would NOT be flagged as unusual
+    against the original baseline (modified z-score < threshold).
+    """
+    if latest_value is None or not normal_dict:
+        return True  # fallback: assume returned
+    median = normal_dict.get("median")
+    if median is None:
+        return True
+    mad = normal_dict.get("mad", 0)
+    if mad and mad > 0:
+        modified_z = abs(0.6745 * (latest_value - median) / mad)
+        return modified_z < threshold
+    stddev = normal_dict.get("stddev", 0)
+    if stddev and stddev > 0:
+        z = abs((latest_value - median) / stddev)
+        return z < threshold
+    # Both zero: exact comparison
+    return latest_value == median
+
+
 def diff_advisories(before: dict, after: dict) -> dict:
     """
     Compare two advisories and classify each change.
@@ -58,6 +96,7 @@ def diff_advisories(before: dict, after: dict) -> dict:
                 **after_change,
                 "was_deviation": before_change["deviation_stddev"],
                 "now_deviation": after_change["deviation_stddev"],
+                "was_value": before_change.get("current"),
                 "improvement": round(improvement, 2),
                 "improved": improvement > 0,
             })
@@ -133,28 +172,46 @@ def format_diff_summary(before: dict, after: dict, diff: dict) -> str:
             if p["improved"]:
                 trend = "improving"
             elif abs(p.get("was_deviation", 0) - p.get("now_deviation", 0)) < 0.1:
-                trend = "historical trigger — consider accepting"
+                latest_dev = p.get("latest_deviation")
+                if latest_dev is not None and abs(latest_dev) >= 1.5:
+                    trend = "still actively deviating"
+                else:
+                    latest_val = p.get("latest_value")
+                    if _value_near_baseline(latest_val, p.get("normal", {})):
+                        trend = "returned to normal"
+                    else:
+                        trend = "stabilized at new level"
             else:
                 trend = "not improving"
+            before_val = _fmt_value(p.get("was_value"))
+            after_val = _fmt_value(p.get("current"))
+            normal = p.get("normal", {})
+            baseline = _fmt_value(normal.get("median", normal.get("mean")))
             lines.append(f"  {p['family']} / {p['metric']} — "
-                         f"deviation {p['was_deviation']:.1f} -> "
-                         f"{p['now_deviation']:.1f} ({trend})")
+                         f"{before_val} -> {after_val} "
+                         f"(baseline {baseline}, {trend})")
         lines.append("")
 
     # New
     if diff["new"]:
         lines.append("NEW OBSERVATIONS:")
         for n in diff["new"]:
+            val = _fmt_value(n.get("current"))
+            normal = n.get("normal", {})
+            baseline = _fmt_value(normal.get("median", normal.get("mean")))
             lines.append(f"  {n['family']} / {n['metric']} — "
-                         f"deviation {n['deviation_stddev']:.1f} (new)")
+                         f"{val} (baseline {baseline}, new)")
         lines.append("")
 
     # Regressions
     if diff["regressions"]:
         lines.append("REGRESSIONS:")
         for r in diff["regressions"]:
+            val = _fmt_value(r.get("current"))
+            normal = r.get("normal", {})
+            baseline = _fmt_value(normal.get("median", normal.get("mean")))
             lines.append(f"  {r['family']} / {r['metric']} — "
-                         f"deviation {r['deviation_stddev']:.1f} (was normal before)")
+                         f"{val} (baseline {baseline}, was normal before)")
         lines.append("")
 
     # Score

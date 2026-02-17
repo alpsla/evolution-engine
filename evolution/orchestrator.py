@@ -300,7 +300,10 @@ class Orchestrator:
             result["advisory"] = {
                 "significant_changes": advisory["summary"]["significant_changes"],
                 "families_affected": advisory["summary"]["families_affected"],
-                "patterns_matched": advisory["summary"]["known_patterns_matched"],
+                "patterns_matched": (
+                    advisory["summary"]["known_patterns_matched"]
+                    + advisory["summary"]["candidate_patterns_matched"]
+                ),
                 "status": advisory.get("status", {}),
             }
             result["formats"] = p5_result.get("formats", {})
@@ -335,11 +338,10 @@ class Orchestrator:
     # ─────────────────── Shareable Pattern Count ───────────────────
 
     def _count_shareable_patterns(self) -> int:
-        """Count local patterns eligible for community sharing.
+        """Count new local patterns eligible for community sharing.
 
-        A pattern is shareable if it has |correlation_strength| >= 0.3
-        and occurrence_count >= 3. This matches the quality gate in
-        kb_export.export_patterns().
+        Excludes confirmed patterns (already promoted to knowledge)
+        and community patterns (already shared).
         """
         db_path = self.evo_dir / "phase4" / "knowledge.db"
         if not db_path.exists():
@@ -347,17 +349,9 @@ class Orchestrator:
         try:
             from evolution.knowledge_store import SQLiteKnowledgeStore
             kb = SQLiteKnowledgeStore(db_path)
-            count = 0
-            for p in kb.list_patterns(scope="local", min_occurrences=3):
-                corr = p.get("correlation_strength")
-                if corr is not None and abs(corr) >= 0.3:
-                    count += 1
-            for ka in kb.list_knowledge(scope="local"):
-                corr = ka.get("correlation_strength")
-                if corr is not None and abs(corr) >= 0.3:
-                    count += 1
+            patterns = kb.list_patterns(scope="local")
             kb.close()
-            return count
+            return sum(1 for p in patterns if p.get("confidence_tier") != "confirmed")
         except Exception:
             return 0
 
@@ -442,13 +436,13 @@ class Orchestrator:
         """Auto-fetch and import patterns from PyPI pattern packages.
 
         Downloads pattern data directly from wheels (no pip install),
-        validates it, filters by locally-detected families, and imports.
+        imports ALL community patterns. Phase 5 handles relevance matching.
         """
         try:
-            from evolution.pattern_registry import fetch_available_patterns
+            from evolution.pattern_registry import fetch_all_patterns
             from evolution.kb_export import import_patterns
 
-            patterns = fetch_available_patterns(detected_families)
+            patterns = fetch_all_patterns()
             if not patterns:
                 return 0
 
@@ -456,8 +450,7 @@ class Orchestrator:
             if not db_path.exists():
                 return 0
 
-            # Downloaded from PyPI, validated by pattern_registry — skip quorum
-            result = import_patterns(db_path, patterns, min_attestations=0)
+            result = import_patterns(db_path, patterns)
             return result.get("imported", 0)
         except Exception as e:
             logger.debug("Pattern package import failed (non-fatal): %s", e)
@@ -500,25 +493,12 @@ class Orchestrator:
             if not patterns:
                 return 0
 
-            # Filter by detected families (map legacy source names)
-            _SOURCE_ALIASES = {"git": "version_control", "version_control": "git"}
-            families_set = set(detected_families)
-            for f in list(families_set):
-                if f in _SOURCE_ALIASES:
-                    families_set.add(_SOURCE_ALIASES[f])
-            filtered = [
-                p for p in patterns
-                if any(s in families_set for s in p.get("sources", []))
-            ]
-            if not filtered:
-                return 0
-
+            # Import ALL community patterns — Phase 5 handles relevance matching
             db_path = self.evo_dir / "phase4" / "knowledge.db"
             if not db_path.exists():
                 return 0
 
-            # Registry patterns are pre-validated server-side — skip quorum
-            result = import_patterns(db_path, filtered, min_attestations=0)
+            result = import_patterns(db_path, patterns)
             imported = result.get("imported", 0)
 
             # Update cache timestamp

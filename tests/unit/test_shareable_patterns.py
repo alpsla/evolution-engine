@@ -46,12 +46,12 @@ class TestCountShareablePatterns:
         assert orch._count_shareable_patterns() == 0
 
     def test_counts_strong_patterns(self, tmp_path, monkeypatch):
-        """Patterns with |corr| >= 0.3 and occurrences >= 3 are shareable."""
+        """All local patterns are shareable (Phase 4 already filtered)."""
         orch = self._make_orchestrator(tmp_path, monkeypatch)
         db_path = orch.evo_dir / "phase4" / "knowledge.db"
         kb = SQLiteKnowledgeStore(db_path)
 
-        # Strong pattern — shareable
+        # Strong pattern
         kb.create_pattern({
             "fingerprint": "strong111aaa",
             "scope": "local",
@@ -64,7 +64,7 @@ class TestCountShareablePatterns:
             "confidence_tier": "statistical",
         })
 
-        # Weak pattern — not shareable
+        # Weak correlation — still shareable (Phase 4 gate already applied)
         kb.create_pattern({
             "fingerprint": "weak222bbb",
             "scope": "local",
@@ -77,7 +77,7 @@ class TestCountShareablePatterns:
             "confidence_tier": "statistical",
         })
 
-        # Too few occurrences — not shareable
+        # Low occurrences — still shareable (Phase 4 gate already applied)
         kb.create_pattern({
             "fingerprint": "few333ccc",
             "scope": "local",
@@ -91,10 +91,10 @@ class TestCountShareablePatterns:
         })
         kb.close()
 
-        assert orch._count_shareable_patterns() == 1
+        assert orch._count_shareable_patterns() == 3
 
     def test_excludes_community_patterns(self, tmp_path, monkeypatch):
-        """Community patterns should not be counted as shareable."""
+        """Community patterns are NOT counted — they're already shared."""
         orch = self._make_orchestrator(tmp_path, monkeypatch)
         db_path = orch.evo_dir / "phase4" / "knowledge.db"
         kb = SQLiteKnowledgeStore(db_path)
@@ -108,6 +108,27 @@ class TestCountShareablePatterns:
             "metrics": ["files_touched", "run_duration"],
             "correlation_strength": 0.8,
             "occurrence_count": 20,
+            "confidence_tier": "confirmed",
+        })
+        kb.close()
+
+        assert orch._count_shareable_patterns() == 0
+
+    def test_excludes_confirmed_local_patterns(self, tmp_path, monkeypatch):
+        """Confirmed (promoted) local patterns are NOT counted — already in knowledge."""
+        orch = self._make_orchestrator(tmp_path, monkeypatch)
+        db_path = orch.evo_dir / "phase4" / "knowledge.db"
+        kb = SQLiteKnowledgeStore(db_path)
+
+        kb.create_pattern({
+            "fingerprint": "promoted111aaa",
+            "scope": "local",
+            "pattern_type": "co_occurrence",
+            "discovery_method": "statistical",
+            "sources": ["git", "ci"],
+            "metrics": ["files_touched", "run_duration"],
+            "correlation_strength": 0.7,
+            "occurrence_count": 50,
             "confidence_tier": "confirmed",
         })
         kb.close()

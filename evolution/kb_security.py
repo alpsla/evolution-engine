@@ -17,7 +17,7 @@ Threat model:
 Defense layers:
   - Pull-side: validate_pattern() sanitizes all fields
   - Push-side: HMAC signing proves pattern came from real EE instance
-  - Quorum: patterns require N+ unique instance attestations before trust
+  - Attestations: track which instances vouched for a pattern (audit trail)
 """
 
 import hashlib
@@ -292,9 +292,6 @@ def compute_import_digest(pattern: dict) -> str:
 # Max attestations per pattern (prevents bloat)
 MAX_ATTESTATIONS = 50
 
-# Default quorum: patterns need attestations from this many unique instances
-DEFAULT_QUORUM = 2
-
 
 def _evo_dir() -> Path:
     """Resolve the ~/.evo directory."""
@@ -464,11 +461,3 @@ def count_unique_attestations(attestations: list) -> int:
     return len(ids)
 
 
-def meets_quorum(pattern: dict, min_attestations: int = DEFAULT_QUORUM) -> bool:
-    """Check if a pattern has enough unique attestations to be trusted.
-
-    Patterns below quorum are stored as "unverified" and excluded
-    from advisories until more instances vouch for them.
-    """
-    attestations = pattern.get("attestations", [])
-    return count_unique_attestations(attestations) >= min_attestations

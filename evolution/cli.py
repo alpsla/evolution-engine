@@ -153,7 +153,7 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verb
         click.echo(f"\n{icon} {label}")
         click.echo(f"  {changes} significant change(s) across {', '.join(families) or 'no families'}")
         if patterns:
-            click.echo(f"  {patterns} known pattern(s) matched")
+            click.echo(f"  {patterns} pattern(s) matched")
         if status_info.get("level") in ("action_required", "needs_attention"):
             click.echo(f"\n  Run `evo investigate .` for AI-powered root cause analysis")
             click.echo(f"  Run `evo accept . <N>` to dismiss expected changes")
@@ -830,11 +830,8 @@ def patterns_import(file, path):
         sys.exit(1)
 
     result = import_patterns(db_path, data)
-    quarantined = result.get("quarantined", 0)
     click.echo(f"Imported: {result['imported']}, Skipped: {result['skipped']}, "
-               f"Rejected: {result['rejected']}, Quarantined: {quarantined}")
-    if quarantined:
-        click.echo(f"  {quarantined} pattern(s) stored as 'unverified' (need more attestations)")
+               f"Rejected: {result['rejected']}")
     for err in result.get("errors", []):
         click.echo(f"  Error: {err}")
 

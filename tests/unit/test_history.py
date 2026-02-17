@@ -27,11 +27,13 @@ def _make_advisory(changes=None, scope="test-repo", advisory_id="adv-001"):
 
 
 def _make_change(family="git", metric="files_touched", deviation=3.5,
-                 observed=20):
+                 observed=20, median=5):
     return {
         "family": family,
         "metric": metric,
         "deviation_stddev": deviation,
+        "current": observed,
+        "normal": {"median": median, "mean": median, "stddev": 1.0, "mad": 1.0},
         "observed": observed,
         "direction": "above" if deviation > 0 else "below",
     }
@@ -343,3 +345,85 @@ class TestFormatDiffSummary:
         diff = diff_advisories(before, after)
         summary = format_diff_summary(before, after, diff)
         assert "1 of 2" in summary
+
+    def test_historical_transient(self):
+        """Unchanged deviation + latest value near baseline → 'returned to normal'."""
+        change = _make_change(family="git", metric="dispersion", deviation=4.0,
+                              observed=0.85, median=0.20)
+        before = {"changes": [change]}
+        # After: same deviation but latest value returned to baseline
+        after_change = {**change, "latest_deviation": 0.5,
+                        "latest_value": 0.21, "is_latest_event": False}
+        after = {"changes": [after_change]}
+        diff = diff_advisories(before, after)
+        summary = format_diff_summary(before, after, diff)
+        assert "returned to normal" in summary
+        assert "0.85" in summary  # observed value shown
+        assert "baseline 0.20" in summary
+
+    def test_historical_persistent(self):
+        """Unchanged deviation + high latest_deviation → 'still actively deviating'."""
+        change = _make_change(family="git", metric="dispersion", deviation=4.0,
+                              observed=0.85, median=0.20)
+        before = {"changes": [change]}
+        after_change = {**change, "latest_deviation": 2.5, "is_latest_event": False}
+        after = {"changes": [after_change]}
+        diff = diff_advisories(before, after)
+        summary = format_diff_summary(before, after, diff)
+        assert "still actively deviating" in summary
+        assert "0.85" in summary  # observed value shown
+
+    def test_stabilized_drift(self):
+        """Low latest deviation but value far from baseline → 'stabilized at new level'."""
+        change = _make_change(family="dependency", metric="dependency_count",
+                              deviation=182.1, observed=1613, median=1478)
+        before = {"changes": [change]}
+        after_change = {**change, "latest_deviation": 0.0,
+                        "latest_value": 1613, "is_latest_event": False}
+        after = {"changes": [after_change]}
+        diff = diff_advisories(before, after)
+        summary = format_diff_summary(before, after, diff)
+        assert "stabilized at new level" in summary
+        assert "1,613" in summary
+        assert "baseline 1,478" in summary
+
+    def test_historical_no_latest_deviation(self):
+        """Unchanged deviation without latest_deviation → defaults to 'returned to normal'."""
+        change = _make_change(family="git", metric="dispersion", deviation=4.0,
+                              observed=0.85, median=0.20)
+        before = {"changes": [change]}
+        after = {"changes": [change]}
+        diff = diff_advisories(before, after)
+        summary = format_diff_summary(before, after, diff)
+        assert "returned to normal" in summary
+
+    def test_not_improving_when_deviation_changes(self):
+        """Deviation changed (not identical) but not improving → 'not improving'."""
+        before = {"changes": [_make_change(deviation=3.5, observed=20, median=5)]}
+        after = {"changes": [_make_change(deviation=3.8, observed=22, median=5)]}
+        diff = diff_advisories(before, after)
+        summary = format_diff_summary(before, after, diff)
+        assert "not improving" in summary
+        assert "20" in summary  # before value
+        assert "22" in summary  # after value
+
+    def test_shows_observed_values_not_sigma(self):
+        """Verify that format uses actual observed values, not raw σ numbers."""
+        change = _make_change(deviation=182.1, observed=1613, median=1478)
+        before = {"changes": [change]}
+        after_change = {**change, "latest_deviation": 0.0, "latest_value": 1613}
+        after = {"changes": [after_change]}
+        diff = diff_advisories(before, after)
+        summary = format_diff_summary(before, after, diff)
+        assert "1,613" in summary  # formatted observed value
+        assert "baseline 1,478" in summary
+        assert "182.1" not in summary  # raw σ should NOT appear
+
+    def test_was_value_preserved_in_diff(self):
+        """diff_advisories preserves the before observation as was_value."""
+        before = {"changes": [_make_change(deviation=5.0, observed=100, median=50)]}
+        after = {"changes": [_make_change(deviation=3.0, observed=80, median=50)]}
+        diff = diff_advisories(before, after)
+        p = diff["persisting"][0]
+        assert p["was_value"] == 100
+        assert p["current"] == 80

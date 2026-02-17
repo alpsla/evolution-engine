@@ -224,6 +224,23 @@ class SQLiteKnowledgeStore(KnowledgeStoreBase):
             "metrics": pattern["metrics"],
         })
 
+        # Check if this pattern_id exists as expired — un-expire it instead
+        existing = self._conn.execute(
+            "SELECT pattern_id, expired FROM patterns WHERE pattern_id = ?",
+            (pattern_id,),
+        ).fetchone()
+        if existing:
+            if existing["expired"]:
+                self._conn.execute(
+                    "UPDATE patterns SET expired = 0, last_seen = ?, updated_at = ? WHERE pattern_id = ?",
+                    (now, now, pattern_id),
+                )
+                self._log_history(pattern_id, "un-expired", {"reason": "rediscovered"})
+                self._conn.commit()
+                return pattern_id
+            # Already exists and not expired — just return it
+            return pattern_id
+
         self._conn.execute("""
             INSERT INTO patterns (
                 pattern_id, fingerprint, scope, discovery_method, pattern_type,

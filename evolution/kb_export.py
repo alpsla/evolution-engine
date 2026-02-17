@@ -22,8 +22,6 @@ from evolution.kb_security import (
     compute_import_digest,
     create_attestation,
     validate_attestations,
-    meets_quorum,
-    DEFAULT_QUORUM,
     PatternValidationError,
 )
 from evolution.knowledge_store import SQLiteKnowledgeStore
@@ -31,11 +29,8 @@ from evolution.knowledge_store import SQLiteKnowledgeStore
 
 def export_patterns(
     db_path: str | Path,
-    min_occurrences: int = 3,
-    min_correlation: float = 0.0,
     scope: str = None,
     evo_dir: str | Path = None,
-    stats: dict = None,
 ) -> list[dict]:
     """Export anonymized pattern digests from a knowledge base.
 
@@ -44,16 +39,17 @@ def export_patterns(
     - repo path, author info
     - raw timestamps (only keep relative age bucket)
 
+    All KB patterns already passed Phase 4 discovery thresholds
+    (min_support=5, min_correlation=0.4), so no additional filtering
+    is needed here.
+
     Each exported pattern includes an attestation from this EE instance,
     proving the pattern was computed by a real installation.
 
     Args:
         db_path: Path to knowledge.db
-        min_occurrences: Minimum occurrences to export (filters noise)
-        min_correlation: Minimum |correlation_strength| to export (filters weak patterns)
         scope: Filter patterns by scope (default: all non-expired)
         evo_dir: Path to .evo directory (for signing)
-        stats: Optional dict to receive export statistics (filtered count)
 
     Returns:
         List of anonymized pattern digests with attestations.
@@ -63,29 +59,19 @@ def export_patterns(
 
     kb = SQLiteKnowledgeStore(db_path)
 
-    # Export promoted knowledge artifacts + strong patterns
     digests = []
-    filtered_count = 0
 
     # Knowledge artifacts (promoted patterns)
     for ka in kb.list_knowledge(scope=scope):
-        corr = ka.get("correlation_strength")
-        if min_correlation > 0 and (corr is None or abs(corr) < min_correlation):
-            filtered_count += 1
-            continue
         digest = _anonymize_knowledge(ka)
         if digest:
             digest["attestations"] = [create_attestation(digest, evo_path)]
             digests.append(digest)
 
-    # Strong candidate patterns (not yet promoted but seen enough times)
-    for p in kb.list_patterns(scope=scope, min_occurrences=min_occurrences):
+    # Candidate patterns (not yet promoted)
+    for p in kb.list_patterns(scope=scope):
         if p.get("confidence_tier") == "confirmed":
             continue  # Already exported as knowledge artifact
-        corr = p.get("correlation_strength")
-        if min_correlation > 0 and (corr is None or abs(corr) < min_correlation):
-            filtered_count += 1
-            continue
         digest = _anonymize_pattern(p)
         if digest:
             digest["attestations"] = [create_attestation(digest, evo_path)]
@@ -93,16 +79,12 @@ def export_patterns(
 
     kb.close()
 
-    if stats is not None:
-        stats["filtered"] = filtered_count
-
     return digests
 
 
 def import_patterns(
     db_path: str | Path,
     patterns: list[dict],
-    min_attestations: int = DEFAULT_QUORUM,
 ) -> dict:
     """Import community patterns into a knowledge base.
 
@@ -113,27 +95,20 @@ def import_patterns(
       1. Field validation (sanitize all text, check types/ranges)
       2. Fingerprint integrity (hex format, minimum length)
       3. Attestation validation (strip malformed, deduplicate by instance)
-      4. Quorum check (require N+ unique instance attestations)
-      5. Duplicate check (skip if fingerprint already exists)
-
-    Patterns that pass validation but fail quorum are stored as "unverified"
-    and excluded from advisories until more instances attest them.
+      4. Duplicate check (skip if fingerprint already exists)
 
     Args:
         db_path: Path to knowledge.db
         patterns: List of pattern digests to import.
-        min_attestations: Minimum unique attestations required for full trust.
-            Patterns below this threshold are stored as "unverified".
 
     Returns:
-        Dict with counts: imported, skipped, rejected, quarantined.
+        Dict with counts: imported, skipped, rejected.
     """
     kb = SQLiteKnowledgeStore(db_path)
 
     imported = 0
     skipped = 0
     rejected = 0
-    quarantined = 0
     errors = []
 
     for raw_pattern in patterns:
@@ -169,37 +144,22 @@ def import_patterns(
                 skipped += 1
                 continue
 
-            # Local pattern exists — promote it instead of creating duplicate
-            has_quorum = meets_quorum(validated, min_attestations)
-            if has_quorum:
-                kb.update_pattern(existing["pattern_id"], {
-                    "confidence_status": "community_confirmed",
-                })
-                imported += 1
-            else:
-                skipped += 1
+            # Local pattern exists — promote it
+            kb.update_pattern(existing["pattern_id"], {
+                "confidence_status": "community_confirmed",
+            })
+            imported += 1
             continue
 
-        # Step 5: Quorum check (no existing pattern)
-        has_quorum = meets_quorum(validated, min_attestations)
-
-        # Step 6: Store as community pattern
+        # Step 5: Store as community pattern
         validated["scope"] = "community"
         validated.setdefault("occurrence_count", validated.get("occurrence_count", 1))
         validated.setdefault("confidence_tier", "statistical")
-
-        if has_quorum:
-            validated.setdefault("confidence_status", "imported")
-        else:
-            validated["confidence_status"] = "unverified"
+        validated.setdefault("confidence_status", "imported")
 
         try:
             kb.create_pattern(validated)
-
-            if has_quorum:
-                imported += 1
-            else:
-                quarantined += 1
+            imported += 1
         except Exception as e:
             rejected += 1
             errors.append(str(e))
@@ -210,7 +170,6 @@ def import_patterns(
         "imported": imported,
         "skipped": skipped,
         "rejected": rejected,
-        "quarantined": quarantined,
         "errors": errors[:20],  # Cap error messages
     }
 

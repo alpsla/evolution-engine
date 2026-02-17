@@ -23,8 +23,6 @@ from evolution.kb_security import (
     create_attestation,
     validate_attestations,
     count_unique_attestations,
-    meets_quorum,
-    DEFAULT_QUORUM,
 )
 
 
@@ -243,58 +241,12 @@ class TestValidateAttestations:
         assert len(result) == MAX_ATTESTATIONS
 
 
-# ─── Quorum ───
+# ─── Import Behavior ───
 
 
-class TestQuorum:
-    def test_empty_attestations_fails(self):
-        """Pattern with no attestations doesn't meet quorum."""
-        p = {**SAMPLE_PATTERN, "attestations": []}
-        assert not meets_quorum(p)
-
-    def test_one_attestation_fails_default_quorum(self):
-        """Single attestation fails default quorum of 2."""
-        p = {**SAMPLE_PATTERN, "attestations": [
-            {"instance_id": "a" * 16}
-        ]}
-        assert not meets_quorum(p)
-
-    def test_two_attestations_meets_default_quorum(self):
-        """Two unique attestations meets default quorum of 2."""
-        p = {**SAMPLE_PATTERN, "attestations": [
-            {"instance_id": "a" * 16},
-            {"instance_id": "b" * 16},
-        ]}
-        assert meets_quorum(p)
-
-    def test_custom_quorum(self):
-        """Custom quorum threshold is respected."""
-        p = {**SAMPLE_PATTERN, "attestations": [
-            {"instance_id": "a" * 16},
-        ]}
-        assert meets_quorum(p, min_attestations=1)
-        assert not meets_quorum(p, min_attestations=2)
-
-    def test_duplicate_ids_not_counted(self):
-        """Duplicate instance IDs count as one."""
-        p = {**SAMPLE_PATTERN, "attestations": [
-            {"instance_id": "a" * 16},
-            {"instance_id": "a" * 16},
-            {"instance_id": "a" * 16},
-        ]}
-        assert not meets_quorum(p, min_attestations=2)
-
-    def test_missing_attestations_key(self):
-        """Pattern without attestations key fails quorum."""
-        assert not meets_quorum(SAMPLE_PATTERN)
-
-
-# ─── Import with Quorum ───
-
-
-class TestImportQuorum:
-    def test_quarantined_without_quorum(self, tmp_path):
-        """Patterns without quorum are imported as 'unverified'."""
+class TestImportBehavior:
+    def test_imports_with_single_attestation(self, tmp_path):
+        """Patterns with any valid attestation are imported successfully."""
         from evolution.kb_export import import_patterns
         from evolution.knowledge_store import SQLiteKnowledgeStore
 
@@ -319,12 +271,12 @@ class TestImportQuorum:
             ],
         }]
 
-        result = import_patterns(db_path, patterns, min_attestations=2)
-        assert result["quarantined"] == 1
-        assert result["imported"] == 0
+        result = import_patterns(db_path, patterns)
+        assert result["imported"] == 1
+        assert "quarantined" not in result
 
-    def test_imported_with_quorum(self, tmp_path):
-        """Patterns meeting quorum are imported as trusted."""
+    def test_imports_with_multiple_attestations(self, tmp_path):
+        """Patterns with multiple attestations are imported."""
         from evolution.kb_export import import_patterns
         from evolution.knowledge_store import SQLiteKnowledgeStore
 
@@ -355,12 +307,11 @@ class TestImportQuorum:
             ],
         }]
 
-        result = import_patterns(db_path, patterns, min_attestations=2)
+        result = import_patterns(db_path, patterns)
         assert result["imported"] == 1
-        assert result["quarantined"] == 0
 
-    def test_forged_attestation_stripped(self, tmp_path):
-        """Malformed attestations are stripped before quorum check."""
+    def test_forged_attestations_stripped_but_still_imports(self, tmp_path):
+        """Malformed attestations are stripped; pattern still imports with 1 valid."""
         from evolution.kb_export import import_patterns
         from evolution.knowledge_store import SQLiteKnowledgeStore
 
@@ -368,7 +319,7 @@ class TestImportQuorum:
         kb = SQLiteKnowledgeStore(db_path)
         kb.close()
 
-        # 3 attestations, but 2 are malformed → only 1 valid → no quorum
+        # 3 attestations, but 2 are malformed → only 1 valid → still imports
         patterns = [{
             "fingerprint": "abcdef1234567890",
             "sources": ["ci"],
@@ -396,6 +347,5 @@ class TestImportQuorum:
             ],
         }]
 
-        result = import_patterns(db_path, patterns, min_attestations=2)
-        assert result["quarantined"] == 1
-        assert result["imported"] == 0
+        result = import_patterns(db_path, patterns)
+        assert result["imported"] == 1

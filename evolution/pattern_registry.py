@@ -34,6 +34,31 @@ USER_SOURCES_PATH = Path.home() / ".evo" / "pattern_sources.json"
 USER_BLOCKLIST_PATH = Path.home() / ".evo" / "pattern_blocklist.json"
 
 
+def fetch_all_patterns() -> list[dict]:
+    """Fetch ALL patterns from PyPI packages without family filtering.
+
+    Used for community import — all patterns go into the KB,
+    Phase 5 handles relevance matching at query time.
+    """
+    packages = _load_pattern_index()
+    blocklist = _load_blocklist()
+    packages = [p for p in packages if p not in blocklist]
+    if not packages:
+        return []
+
+    all_patterns = []
+    for pkg_name in packages:
+        try:
+            cached = _get_cached_or_fetch(pkg_name)
+            if not cached:
+                continue
+            all_patterns.extend(cached.get("patterns", []))
+        except Exception as e:
+            logger.debug(f"Failed to fetch patterns from {pkg_name}: {e}")
+
+    return all_patterns
+
+
 def fetch_available_patterns(detected_families: list[str]) -> list[dict]:
     """Main entry point. Returns validated, family-filtered patterns ready for import.
 
