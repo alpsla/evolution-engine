@@ -7,7 +7,7 @@
 >
 > The plan is intentionally conservative: each step validates an architectural assumption before expanding scope.
 >
-> **Last updated:** February 16, 2026 (Interactive report, determinism fix, verification loop; 1352 tests)
+> **Last updated:** February 17, 2026 (Historical trend detection, three-category classification; 1360 tests)
 
 ---
 
@@ -1550,7 +1550,7 @@ After deleting `knowledge.db` + `registry_cache.json` and re-running `evo analyz
 
 ## 14. Interactive Report & Determinism (February 16, 2026)
 
-> **Status: DONE — All changes implemented and tested. 1352 tests passing (6.10s).**
+> **Status: DONE — All changes implemented and tested. 1360 tests passing (6.22s).**
 
 ### 14.1 Interactive Report Server
 
@@ -1577,9 +1577,9 @@ Evidence Package section **removed** from HTML report — evidence embedded dire
 
 `evo analyze . --verify` — re-analyze + compare against previous snapshot in one command.
 
-- Verification banner in HTML report shows before/after per signal with trend arrows
-- "Historical trigger" label when before/after deviation identical (older commit, not recent drift)
-- `.verify-note` guidance explains what historical triggers mean
+- Verification banner in HTML report shows before/after per signal with observed values and baselines
+- Three-category historical trigger classification (see §14.7)
+- `.verify-note` guidance explains each category with actionable advice
 - `orchestrator.py` properly cleans `verification.json` on non-verify runs
 
 ### 14.4 Analysis Determinism Fix
@@ -1612,6 +1612,54 @@ Evidence Package section **removed** from HTML report — evidence embedded dire
 | `evolution/history.py` | Historical trigger label |
 | `tests/unit/test_report_generator.py` | Updated assertions for new structure |
 
+### 14.7 Historical Trend Detection & Three-Category Classification (February 17, 2026)
+
+When verification finds unchanged deviations (before ≈ after), a simple "historical trigger" label
+is insufficient. A one-time spike that returned to normal is safe to accept; a lasting state change
+where the metric is still elevated needs investigation. This change distinguishes three categories:
+
+**Phase 5 enrichment** — `_enrich_with_latest_deviation()` annotates each advisory change with:
+- `latest_deviation`: deviation measure from the most recent signal for that metric
+- `latest_value`: observed value from the most recent signal
+- `latest_event_ref`: event reference of the most recent signal
+- `is_latest_event`: True if the advisory's trigger commit IS the latest event
+
+**Three-category classification** — uses `latest_deviation` and MAD-based `_value_near_baseline()`:
+
+| Category | Condition | Guidance |
+|----------|-----------|----------|
+| **Returned to normal** | `latest_deviation < 1.5σ` AND `latest_value` near baseline | Safe to accept |
+| **Stabilized at new level** | `latest_deviation < 1.5σ` AND `latest_value` far from baseline | Statistical model absorbed the change; consider if intentional |
+| **Still actively deviating** | `latest_deviation ≥ 1.5σ` | Investigation recommended |
+
+**`_value_near_baseline()`** uses the same modified z-score as Phase 2 (`0.6745 × |value − median| / MAD`),
+falling back to stddev, then exact comparison. Threshold: 1.5.
+
+**Display improvements:**
+- Verification table shows observed metric values (not raw σ), with "After / Normal" column
+- Change cards show trend subtitles ("→ Still elevated" / "↘ Returned to baseline") for historical triggers
+- Three color-coded guidance notes: blue (transient), amber (stabilized), red (active deviation)
+- CLI comparison output shows observed values + baseline: `1,613 -> 1,613 (baseline 1,478, stabilized at new level)`
+
+**Pattern count fix** — `_count_shareable_patterns()` now counts all KB patterns (local + community),
+not just local scope.
+
+| File | Change |
+|------|--------|
+| `evolution/phase5_engine.py` | `_enrich_with_latest_deviation()` with `latest_value` field |
+| `evolution/report_generator.py` | Three-category banner, `_fmt_value()`, `_value_near_baseline()`, trend subtitles, CSS |
+| `evolution/history.py` | Three-category CLI output, `_fmt_value()`, `_value_near_baseline()`, `was_value` in diff |
+| `evolution/orchestrator.py` | Pattern count: all KB patterns (local + community) |
+| `tests/unit/test_phase5_advisory.py` | `latest_value` assertions |
+| `tests/unit/test_report_generator.py` | Three-category banner tests, observed values tests |
+| `tests/unit/test_history.py` | Three-category CLI tests, observed values tests |
+| `tests/unit/test_shareable_patterns.py` | Updated for inclusive pattern count |
+
+**Manually verified** on codequal repo — all 3 categories visible in a single `--verify` run:
+- `cochange_novelty_ratio`: still actively deviating (red)
+- `dependency_count`: stabilized at new level (amber)
+- `dispersion`: returned to normal (blue)
+
 ---
 
 ## 15. Plan Maintenance
@@ -1622,19 +1670,20 @@ Evidence Package section **removed** from HTML report — evidence embedded dire
 
 ---
 
-> **Summary (February 16, 2026):**
+> **Summary (February 17, 2026):**
 >
-> **All engine priorities complete. 1352 tests passing (6.10s).**
+> **All engine priorities complete. 1360 tests passing (6.22s).**
 >
 > All 5 engine phases, open-core infrastructure, AI agent integration, GitHub Action, source prescan,
 > cloud sync, Cython build, FP validation, inline suggestions, CI wheel builds, website, Stripe
 > integration, opt-in telemetry, run history, GitLab compatibility, accept deviations, pattern
-> pipeline, adapter ecosystem, UX overhaul (§13), pattern quality hardening (§13.4), and interactive
-> report with determinism fix (§14) are implemented and tested.
+> pipeline, adapter ecosystem, UX overhaul (§13), pattern quality hardening (§13.4), interactive
+> report with determinism fix (§14), and historical trend detection with three-category
+> classification (§14.7) are implemented and tested.
 >
 > **What's built:**
 > - `evo analyze .` — zero-config CLI with 30+ commands, deterministic results
-> - `evo analyze . --verify` — re-analyze + compare against previous snapshot
+> - `evo analyze . --verify` — re-analyze + compare with three-category trend classification
 > - Interactive HTML report with Accept buttons (local HTTP server), evidence in prompts
 > - `evo accept` + `evo accepted` — hide acknowledged deviations from future advisories
 > - PM-friendly output across all display layers (risk badges, relative comparisons, practical insights)
