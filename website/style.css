@@ -177,7 +177,13 @@ nav {
   font-size: 1.2rem;
   color: var(--text-muted);
   max-width: 560px;
+  margin: 0 auto 12px;
+}
+
+.hero p.hero-detail {
+  font-size: 1rem;
   margin: 0 auto 40px;
+  opacity: 0.8;
 }
 
 .hero-ctas { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }

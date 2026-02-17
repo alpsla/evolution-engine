@@ -380,8 +380,8 @@ class handler(BaseHTTPRequestHandler):
             })
 
             self._json({"patterns": patterns})
-        except Exception as e:
-            self._json({"error": str(e)}, 500)
+        except Exception:
+            self._json({"error": "Internal server error"}, 500)
 
     def do_POST(self):
         """Accept pattern push from CLI."""

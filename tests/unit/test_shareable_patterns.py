@@ -272,7 +272,7 @@ class TestSharePromptCLI:
         assert "pattern(s) ready to share" not in result.output
 
     def test_prompt_not_shown_when_already_sharing(self, tmp_path, monkeypatch):
-        """Sharing prompt does not appear when privacy_level already >= 2."""
+        """Sharing prompt does not appear when privacy_level already >= 1."""
         from click.testing import CliRunner
         from evolution.cli import analyze
 
@@ -304,7 +304,7 @@ class TestSharePromptCLI:
         mock_cfg = MagicMock()
         mock_cfg.get.side_effect = lambda key, default=None: {
             "sync.share_prompted": False,
-            "sync.privacy_level": 2,  # already sharing
+            "sync.privacy_level": 1,  # already sharing
         }.get(key, default)
 
         with patch("evolution.orchestrator.Orchestrator") as MockOrch, \

@@ -72,7 +72,7 @@ class TestIsApiKeyField:
 
     def test_normal_fields(self):
         assert _is_api_key_field("sync.privacy_level") is False
-        assert _is_api_key_field("llm.model") is False
+        assert _is_api_key_field("analyze.families") is False
 
 
 # ─── TestGenerateHtml ───
@@ -107,8 +107,8 @@ class TestGenerateHtml:
         ui = _make_ui(tmp_path)
         html = ui._generate_html()
 
-        # llm.enabled is a bool type
-        assert 'data-key="llm.enabled"' in html
+        # hooks.notify is a bool type
+        assert 'data-key="hooks.notify"' in html
         assert 'data-type="bool"' in html
         assert 'type="checkbox"' in html
 
@@ -127,8 +127,8 @@ class TestGenerateHtml:
         ui = _make_ui(tmp_path)
         html = ui._generate_html()
 
-        # llm.model is a str type
-        assert 'data-key="llm.model"' in html
+        # analyze.families is a str type
+        assert 'data-key="analyze.families"' in html
         assert 'data-type="str"' in html
         assert 'type="text"' in html
 
@@ -214,18 +214,18 @@ class TestGenerateHtml:
 
     def test_html_shows_current_values(self, tmp_path):
         cfg = EvoConfig(path=tmp_path / "config.toml")
-        cfg.set("llm.model", "gpt-4")
+        cfg.set("analyze.families", "git,ci")
         ui = SetupUI(port=0, config=cfg, timeout=0)
         html = ui._generate_html()
-        assert 'value="gpt-4"' in html
+        assert 'value="git,ci"' in html
 
     def test_html_choice_selected_value(self, tmp_path):
         cfg = EvoConfig(path=tmp_path / "config.toml")
-        cfg.set("report.theme", "light")
+        cfg.set("hooks.trigger", "pre-push")
         ui = SetupUI(port=0, config=cfg, timeout=0)
         html = ui._generate_html()
-        # "light" option should be selected
-        assert 'value="light" selected' in html
+        # "pre-push" option should be selected
+        assert 'value="pre-push" selected' in html
 
     def test_info_bar_rendered(self, tmp_path):
         """Info bar should render (even if badges are minimal)."""
@@ -253,13 +253,13 @@ class TestGenerateHtml:
 class TestHandlePost:
     def test_save_single_setting(self, tmp_path):
         ui = _make_ui(tmp_path)
-        body = json.dumps({"llm.enabled": True}).encode("utf-8")
+        body = json.dumps({"hooks.notify": False}).encode("utf-8")
         handler = _make_mock_handler(body, "/api/config")
 
         ui._handle_post(handler)
 
         handler.send_response.assert_called_with(200)
-        assert ui.config.get("llm.enabled") is True
+        assert ui.config.get("hooks.notify") is False
 
         # Check response body
         response_body = b"".join(handler._written)
@@ -270,18 +270,18 @@ class TestHandlePost:
     def test_save_multiple_settings(self, tmp_path):
         ui = _make_ui(tmp_path)
         changes = {
-            "llm.enabled": True,
-            "llm.model": "gpt-4",
-            "report.theme": "light",
+            "hooks.notify": False,
+            "analyze.families": "git,ci",
+            "hooks.trigger": "pre-push",
         }
         body = json.dumps(changes).encode("utf-8")
         handler = _make_mock_handler(body, "/api/config")
 
         ui._handle_post(handler)
 
-        assert ui.config.get("llm.enabled") is True
-        assert ui.config.get("llm.model") == "gpt-4"
-        assert ui.config.get("report.theme") == "light"
+        assert ui.config.get("hooks.notify") is False
+        assert ui.config.get("analyze.families") == "git,ci"
+        assert ui.config.get("hooks.trigger") == "pre-push"
 
         response_body = b"".join(handler._written)
         data = json.loads(response_body)
@@ -289,14 +289,14 @@ class TestHandlePost:
 
     def test_save_persists_to_disk(self, tmp_path):
         ui = _make_ui(tmp_path)
-        body = json.dumps({"sync.privacy_level": 2}).encode("utf-8")
+        body = json.dumps({"sync.privacy_level": 1}).encode("utf-8")
         handler = _make_mock_handler(body)
 
         ui._handle_post(handler)
 
         # Read back from disk
         cfg2 = EvoConfig(path=tmp_path / "config.toml")
-        assert cfg2.get("sync.privacy_level") == 2
+        assert cfg2.get("sync.privacy_level") == 1
 
     def test_invalid_json_returns_400(self, tmp_path):
         ui = _make_ui(tmp_path)
@@ -319,15 +319,15 @@ class TestHandlePost:
 
     def test_save_bool_false(self, tmp_path):
         ui = _make_ui(tmp_path)
-        # First set to True
-        ui.config.set("llm.enabled", True)
-        # Then save False via POST
-        body = json.dumps({"llm.enabled": False}).encode("utf-8")
+        # First set to non-default
+        ui.config.set("hooks.notify", False)
+        # Then save True via POST (back to default)
+        body = json.dumps({"hooks.notify": True}).encode("utf-8")
         handler = _make_mock_handler(body)
 
         ui._handle_post(handler)
 
-        assert ui.config.get("llm.enabled") is False
+        assert ui.config.get("hooks.notify") is True
 
     def test_save_numeric_value(self, tmp_path):
         ui = _make_ui(tmp_path)
@@ -365,21 +365,21 @@ class TestHandleStatus:
 
         assert "sync.privacy_level" in data
         assert data["sync.privacy_level"] == 0
-        assert "llm.enabled" in data
-        assert data["llm.enabled"] is False
+        assert "hooks.notify" in data
+        assert data["hooks.notify"] is True
 
     def test_reflects_user_overrides(self, tmp_path):
         ui = _make_ui(tmp_path)
-        ui.config.set("llm.enabled", True)
-        ui.config.set("llm.model", "custom-model")
+        ui.config.set("hooks.notify", False)
+        ui.config.set("analyze.families", "git,ci")
 
         handler = _make_mock_handler()
         ui._handle_status(handler)
 
         response_body = b"".join(handler._written)
         data = json.loads(response_body)
-        assert data["llm.enabled"] is True
-        assert data["llm.model"] == "custom-model"
+        assert data["hooks.notify"] is False
+        assert data["analyze.families"] == "git,ci"
 
     def test_contains_all_default_keys(self, tmp_path):
         ui = _make_ui(tmp_path)

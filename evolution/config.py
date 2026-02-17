@@ -21,16 +21,12 @@ from typing import Any, Optional
 # ─── Defaults ───
 
 _DEFAULTS = {
-    "sync.privacy_level": 0,          # 0=nothing, 1=metadata, 2=anonymized digests
+    "sync.privacy_level": 0,          # 0=nothing, 1=share anonymized patterns
     "sync.registry_url": "https://codequal.dev/api",
     "sync.auto_pull": False,           # auto-pull community patterns on analyze
     "sync.share_prompted": False,      # whether sharing prompt has been shown
-    "llm.enabled": False,
-    "llm.provider": "anthropic",
-    "llm.model": "claude-sonnet-4-5-20250929",
     "analyze.families": "",            # empty = auto-detect
     "analyze.json_output": False,
-    "report.theme": "dark",
     "telemetry.enabled": False,        # opt-in anonymous usage stats
     "telemetry.prompted": False,       # whether we've asked the user
     "adapter.check_blocklist": True,   # check blocklist during adapter detection
@@ -44,6 +40,9 @@ _DEFAULTS = {
     "hooks.background": True,
     "init.integration": "",
     "init.first_run_count": 0,
+    "stats.analyze_count": 0,           # lifetime analysis count (for activation metrics)
+    "stats.first_analyze_ts": "",       # ISO timestamp of first ever analysis
+    "stats.last_analyze_ts": "",        # ISO timestamp of most recent analysis
 }
 
 
@@ -54,12 +53,11 @@ _DEFAULTS = {
 _GROUPS = {
     "analyze": {"label": "Analysis", "order": 1, "description": "What to analyze and output format"},
     "hooks": {"label": "Hooks", "order": 2, "description": "Automatic background analysis on commit/push"},
-    "report": {"label": "Report", "order": 3, "description": "HTML report settings"},
-    "llm": {"label": "AI / LLM", "order": 4, "description": "AI investigation and fix settings (Pro)"},
-    "sync": {"label": "Patterns & Sync", "order": 5, "description": "Community pattern sharing"},
-    "adapter": {"label": "Adapters", "order": 6, "description": "Plugin and adapter management"},
-    "telemetry": {"label": "Telemetry", "order": 7, "description": "Anonymous usage statistics"},
-    "init": {"label": "Setup", "order": 8, "description": "Initial setup state (managed by evo init)"},
+    "sync": {"label": "Patterns & Sync", "order": 3, "description": "Community pattern sharing"},
+    "adapter": {"label": "Adapters", "order": 4, "description": "Plugin and adapter management"},
+    "telemetry": {"label": "Telemetry", "order": 5, "description": "Anonymous usage statistics"},
+    "init": {"label": "Setup", "order": 6, "description": "Initial setup state (managed by evo init)"},
+    "stats": {"label": "Usage Stats", "order": 7, "description": "Internal usage counters for telemetry"},
 }
 
 _METADATA = {
@@ -123,47 +121,17 @@ _METADATA = {
         "group": "hooks",
         "display": "Run analysis in background (non-blocking)?",
     },
-    # ── Report ──
-    "report.theme": {
-        "description": "HTML report color theme",
-        "type": "choice",
-        "allowed": ["dark", "light"],
-        "group": "report",
-        "display": "Report theme?",
-    },
-    # ── AI / LLM ──
-    "llm.enabled": {
-        "description": "LLM-enhanced explanations (Pro)",
-        "type": "bool",
-        "group": "llm",
-        "display": "Enable LLM-enhanced explanations?",
-        "pro": True,
-    },
-    "llm.provider": {
-        "description": "AI backend provider",
-        "type": "choice",
-        "allowed": ["anthropic", "openrouter"],
-        "group": "llm",
-        "display": "AI provider?",
-    },
-    "llm.model": {
-        "description": "AI model name",
-        "type": "str",
-        "group": "llm",
-        "display": "Model name?",
-    },
     # ── Patterns & Sync ──
     "sync.privacy_level": {
-        "description": "Community sharing level",
+        "description": "Share anonymized patterns with community",
         "type": "choice",
-        "allowed": [0, 1, 2],
+        "allowed": [0, 1],
         "allowed_labels": {
             0: "Nothing shared",
-            1: "Advisory metadata only",
-            2: "Anonymized pattern digests",
+            1: "Share anonymized patterns",
         },
         "group": "sync",
-        "display": "Community sharing level?",
+        "display": "Share anonymized patterns with community?",
         "pro": True,
     },
     "sync.registry_url": {
@@ -229,6 +197,25 @@ _METADATA = {
         "description": "Tracks runs for first-run hints",
         "type": "int",
         "group": "init",
+        "internal": True,
+    },
+    # ── Stats (internal, for telemetry metrics) ──
+    "stats.analyze_count": {
+        "description": "Lifetime analysis count",
+        "type": "int",
+        "group": "stats",
+        "internal": True,
+    },
+    "stats.first_analyze_ts": {
+        "description": "Timestamp of first analysis",
+        "type": "str",
+        "group": "stats",
+        "internal": True,
+    },
+    "stats.last_analyze_ts": {
+        "description": "Timestamp of most recent analysis",
+        "type": "str",
+        "group": "stats",
         "internal": True,
     },
 }

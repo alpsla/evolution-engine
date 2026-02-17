@@ -47,7 +47,7 @@ class handler(BaseHTTPRequestHandler):
 
         secret_key = os.environ.get("STRIPE_SECRET_KEY")
         webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
-        signing_key = "evo-license-v1-dev-key-replace-in-production"
+        signing_key = os.environ.get("EVO_LICENSE_SIGNING_KEY", "evo-license-v1-dev-key-replace-in-production")
 
         if not secret_key or not webhook_secret:
             return self._json({"error": "Not configured"}, 500)
@@ -94,13 +94,13 @@ class handler(BaseHTTPRequestHandler):
                     _handle_payment_failed(stripe, customer_id, attempt_count)
                     result["action"] = "payment_failed_flagged"
         except Exception as exc:
-            result["error"] = str(exc)
             _axiom_send({
                 "type": "webhook_error",
                 "event_type": event_type,
                 "error": str(exc),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             })
+            return self._json({"error": "Internal processing error"}, 500)
 
         self._json(result)
 

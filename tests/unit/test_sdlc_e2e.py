@@ -682,8 +682,8 @@ class TestPath5ConfigSetup:
         labels = list(groups.keys())
         # analyze (order=1) should come before hooks (order=2)
         assert labels.index("analyze") < labels.index("hooks")
-        # hooks (order=2) should come before llm (order=4)
-        assert labels.index("hooks") < labels.index("llm")
+        # hooks (order=2) should come before sync (order=3)
+        assert labels.index("hooks") < labels.index("sync")
 
     def test_config_keys_for_group_hooks(self):
         keys = config_keys_for_group("hooks")

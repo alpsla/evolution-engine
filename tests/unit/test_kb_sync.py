@@ -31,9 +31,9 @@ class TestKBSyncInit:
         assert sync.privacy_level == 0
 
     def test_custom_privacy_level(self, evo_dir, config):
-        config.set("sync.privacy_level", 2)
+        config.set("sync.privacy_level", 1)
         sync = KBSync(evo_dir=evo_dir, config=config)
-        assert sync.privacy_level == 2
+        assert sync.privacy_level == 1
 
     def test_registry_url_from_config(self, evo_dir, config):
         config.set("sync.registry_url", "https://custom.dev/v1")
@@ -116,44 +116,15 @@ class TestPush:
 
     def test_push_no_db(self, evo_dir, config):
         """Push fails when no KB exists."""
-        config.set("sync.privacy_level", 2)
+        config.set("sync.privacy_level", 1)
         sync = KBSync(evo_dir=evo_dir, config=config)
         result = sync.push()
         assert not result.success
         assert "No knowledge base" in result.error
 
-    def test_push_level_1_metadata(self, evo_dir, config):
-        """Level 1 push sends metadata only."""
+    def test_push_level_1_patterns(self, evo_dir, config):
+        """Level 1 push sends anonymized patterns."""
         config.set("sync.privacy_level", 1)
-        (evo_dir / "phase4" / "knowledge.db").touch()
-        advisory = {
-            "summary": {
-                "families_affected": ["git", "ci"],
-                "significant_changes": 3,
-                "known_patterns_matched": 1,
-            }
-        }
-        (evo_dir / "phase5" / "advisory.json").write_text(json.dumps(advisory))
-
-        sync = KBSync(evo_dir=evo_dir, config=config)
-
-        uploaded_payload = None
-        def capture_upload(payload):
-            nonlocal uploaded_payload
-            uploaded_payload = payload
-            return 0
-
-        with patch.object(sync, "_upload_patterns", side_effect=capture_upload):
-            result = sync.push()
-
-        assert result.success
-        assert uploaded_payload["level"] == 1
-        assert "metadata" in uploaded_payload
-        assert "patterns" not in uploaded_payload
-
-    def test_push_level_2_patterns(self, evo_dir, config):
-        """Level 2 push sends anonymized patterns."""
-        config.set("sync.privacy_level", 2)
         (evo_dir / "phase4" / "knowledge.db").touch()
 
         sync = KBSync(evo_dir=evo_dir, config=config)
@@ -171,13 +142,13 @@ class TestPush:
 
         assert result.success
         assert result.pushed == 5
-        assert uploaded_payload["level"] == 2
+        assert uploaded_payload["level"] == 1
         assert "patterns" in uploaded_payload
         assert "instance_id" in uploaded_payload
 
     def test_push_network_error(self, evo_dir, config):
         """Push handles network errors."""
-        config.set("sync.privacy_level", 2)
+        config.set("sync.privacy_level", 1)
         (evo_dir / "phase4" / "knowledge.db").touch()
 
         sync = KBSync(evo_dir=evo_dir, config=config)

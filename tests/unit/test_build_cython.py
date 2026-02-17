@@ -28,10 +28,11 @@ class TestBuildCythonModule:
         assert hasattr(build_mod, "check_cython")
 
     def test_cython_modules_list(self, build_mod):
-        assert len(build_mod.CYTHON_MODULES) == 5
+        assert len(build_mod.CYTHON_MODULES) == 6
         for mod in build_mod.CYTHON_MODULES:
-            assert mod.startswith("evolution/phase") or mod.startswith("evolution/knowledge")
+            assert mod.startswith("evolution/")
             assert mod.endswith(".py")
+        assert "evolution/license.py" in build_mod.CYTHON_MODULES
 
     def test_all_source_files_exist(self, build_mod):
         for mod_path in build_mod.CYTHON_MODULES:
@@ -39,7 +40,7 @@ class TestBuildCythonModule:
             assert full_path.exists(), f"Missing source: {mod_path}"
 
     def test_proprietary_modules_correct(self, build_mod):
-        """Verify only proprietary engines are compiled, not open-source."""
+        """Verify only proprietary engines + license are compiled, not open-source."""
         names = {Path(m).stem for m in build_mod.CYTHON_MODULES}
         # These should be compiled
         assert "phase2_engine" in names
@@ -47,6 +48,7 @@ class TestBuildCythonModule:
         assert "phase4_engine" in names
         assert "phase5_engine" in names
         assert "knowledge_store" in names
+        assert "license" in names  # signing key embedded in binary
         # These should NOT be compiled (open source)
         assert "cli" not in names
         assert "orchestrator" not in names

@@ -85,6 +85,7 @@ jobs:
           CIBW_BUILD: "cp311-*"
           CIBW_ARCHS: ${{ matrix.cibw_archs }}
           CIBW_BEFORE_BUILD: "pip install cython && python build_cython.py"
+          CIBW_ENVIRONMENT: "EVO_LICENSE_SIGNING_KEY=${{ secrets.EVO_LICENSE_SIGNING_KEY }}"
           CIBW_TEST_COMMAND: "evo --version"
           CIBW_TEST_REQUIRES: ""
           # Skip musllinux (low demand), PyPy (not supported)

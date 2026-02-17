@@ -27,10 +27,36 @@ CYTHON_MODULES = [
     "evolution/phase4_engine.py",
     "evolution/phase5_engine.py",
     "evolution/knowledge_store.py",
+    "evolution/license.py",
 ]
 
 BUILD_DIR = Path("build")
 DIST_DIR = Path("dist_compiled")
+
+
+def inject_signing_key():
+    """Inject production signing key into license.py before Cython compilation.
+
+    Reads EVO_LICENSE_SIGNING_KEY from environment. If set, replaces the dev
+    fallback key so the compiled binary embeds the production key. Users won't
+    need the env var — the key is baked into the .so/.pyd.
+    """
+    key = os.environ.get("EVO_LICENSE_SIGNING_KEY")
+    if not key:
+        print("  No EVO_LICENSE_SIGNING_KEY set — using dev key (test builds only)")
+        return False
+
+    license_py = Path("evolution/license.py")
+    content = license_py.read_text()
+    marker = '_DEV_SIGNING_KEY = b"evo-license-v1-dev-key-replace-in-production"'
+    if marker not in content:
+        print("  Warning: signing key marker not found in license.py", file=sys.stderr)
+        return False
+
+    content = content.replace(marker, f'_DEV_SIGNING_KEY = b"{key}"')
+    license_py.write_text(content)
+    print("  Injected production signing key into license.py")
+    return True
 
 
 def check_cython():
@@ -87,6 +113,9 @@ def build():
     if not check_cython():
         sys.exit(1)
 
+    # Inject production signing key before compilation (if available)
+    key_injected = inject_signing_key()
+
     from Cython.Build import cythonize
     from setuptools import Distribution, Extension
 
@@ -127,6 +156,12 @@ def build():
     cmd.ensure_finalized()
     cmd.run()
 
+    # Restore original license.py if we injected a key (don't leak to source)
+    if key_injected:
+        import subprocess
+        subprocess.run(["git", "checkout", "evolution/license.py"], capture_output=True)
+        print("  Restored original license.py (key is in compiled binary only)")
+
     # Verify output
     compiled = []
     for mod_path in CYTHON_MODULES:
@@ -163,7 +198,6 @@ def package(compiled_files: list[str]):
         "evolution/cli.py",
         "evolution/orchestrator.py",
         "evolution/registry.py",
-        "evolution/license.py",
         "evolution/config.py",
         "evolution/friendly.py",
         "evolution/prescan.py",

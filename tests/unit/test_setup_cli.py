@@ -125,9 +125,9 @@ class TestSmartWizardReset:
 
     def test_reset_clears_overrides(self, runner, tmp_path, isolated_config):
         cfg = EvoConfig(path=isolated_config)
-        cfg.set("llm.model", "gpt-4")
-        cfg.set("sync.privacy_level", 2)
-        cfg.set("report.theme", "light")
+        cfg.set("analyze.families", "git,ci")
+        cfg.set("sync.privacy_level", 1)
+        cfg.set("hooks.trigger", "pre-push")
 
         # 'y' to confirm reset, then Enter through wizard prompts
         result = runner.invoke(main, ["setup", str(tmp_path), "--reset"], input="y\n\n\n\n\n\n")
@@ -139,13 +139,13 @@ class TestSmartWizardReset:
 
     def test_reset_decline(self, runner, tmp_path, isolated_config):
         cfg = EvoConfig(path=isolated_config)
-        cfg.set("llm.model", "gpt-4")
+        cfg.set("analyze.families", "git,ci")
 
         result = runner.invoke(main, ["setup", str(tmp_path), "--reset"], input="n\n\n\n\n\n\n")
 
         assert result.exit_code == 0
         cfg2 = EvoConfig(path=isolated_config)
-        assert cfg2.get("llm.model") == "gpt-4"
+        assert cfg2.get("analyze.families") == "git,ci"
 
 
 # ─── CLI and UI share the same config ───
@@ -160,7 +160,7 @@ class TestSetupCLIAndUIShareConfig:
         cfg = EvoConfig(path=tmp_path / "config.toml")
         ui = SetupUI(port=0, config=cfg, timeout=0)
 
-        body = json.dumps({"llm.model": "claude-opus-4"}).encode("utf-8")
+        body = json.dumps({"analyze.families": "git,ci"}).encode("utf-8")
         handler = MagicMock()
         handler.headers = {"Content-Length": str(len(body))}
         handler.rfile = BytesIO(body)
@@ -170,15 +170,15 @@ class TestSetupCLIAndUIShareConfig:
 
         ui._handle_post(handler)
 
-        assert cfg.get("llm.model") == "claude-opus-4"
+        assert cfg.get("analyze.families") == "git,ci"
         cfg2 = EvoConfig(path=tmp_path / "config.toml")
-        assert cfg2.get("llm.model") == "claude-opus-4"
+        assert cfg2.get("analyze.families") == "git,ci"
 
     def test_cli_changes_visible_in_ui(self, tmp_path):
         from evolution.setup_ui import SetupUI
 
         cfg = EvoConfig(path=tmp_path / "config.toml")
-        cfg.set("report.theme", "light")
+        cfg.set("hooks.trigger", "pre-push")
 
         ui = SetupUI(port=0, config=cfg, timeout=0)
         handler = MagicMock()
@@ -189,16 +189,16 @@ class TestSetupCLIAndUIShareConfig:
 
         ui._handle_status(handler)
         response = json.loads(b"".join(written))
-        assert response["report.theme"] == "light"
+        assert response["hooks.trigger"] == "pre-push"
 
     def test_shared_config_object(self, tmp_path):
         from evolution.setup_ui import SetupUI
 
         cfg = EvoConfig(path=tmp_path / "config.toml")
-        cfg.set("sync.privacy_level", 2)
+        cfg.set("sync.privacy_level", 1)
 
         ui = SetupUI(port=0, config=cfg, timeout=0)
-        assert ui.config.get("sync.privacy_level") == 2
+        assert ui.config.get("sync.privacy_level") == 1
 
         ui.config.set("hooks.trigger", "pre-push")
         assert cfg.get("hooks.trigger") == "pre-push"
@@ -208,12 +208,12 @@ class TestSetupCLIAndUIShareConfig:
 
         cfg_path = tmp_path / "config.toml"
         cfg1 = EvoConfig(path=cfg_path)
-        cfg1.set("llm.enabled", True)
+        cfg1.set("hooks.notify", False)
 
         cfg2 = EvoConfig(path=cfg_path)
         ui = SetupUI(port=0, config=cfg2, timeout=0)
 
-        body = json.dumps({"report.theme": "light"}).encode("utf-8")
+        body = json.dumps({"hooks.trigger": "pre-push"}).encode("utf-8")
         handler = MagicMock()
         handler.headers = {"Content-Length": str(len(body))}
         handler.rfile = BytesIO(body)
@@ -223,5 +223,5 @@ class TestSetupCLIAndUIShareConfig:
         ui._handle_post(handler)
 
         cfg3 = EvoConfig(path=cfg_path)
-        assert cfg3.get("llm.enabled") is True
-        assert cfg3.get("report.theme") == "light"
+        assert cfg3.get("hooks.notify") is False
+        assert cfg3.get("hooks.trigger") == "pre-push"

@@ -62,7 +62,7 @@ class TestEvoConfig:
     def test_defaults_loaded(self, tmp_path):
         cfg = EvoConfig(path=tmp_path / "config.toml")
         assert cfg.get("sync.privacy_level") == 0
-        assert cfg.get("llm.enabled") is False
+        assert cfg.get("telemetry.enabled") is False
         assert cfg.get("sync.registry_url") == "https://codequal.dev/api"
 
     def test_get_unknown_key(self, tmp_path):
@@ -72,17 +72,17 @@ class TestEvoConfig:
 
     def test_set_and_get(self, tmp_path):
         cfg = EvoConfig(path=tmp_path / "config.toml")
-        cfg.set("sync.privacy_level", 2)
-        assert cfg.get("sync.privacy_level") == 2
+        cfg.set("sync.privacy_level", 1)
+        assert cfg.get("sync.privacy_level") == 1
 
     def test_persistence(self, tmp_path):
         path = tmp_path / "config.toml"
         cfg1 = EvoConfig(path=path)
-        cfg1.set("llm.enabled", True)
+        cfg1.set("hooks.notify", False)
 
         # New instance should read from disk
         cfg2 = EvoConfig(path=path)
-        assert cfg2.get("llm.enabled") is True
+        assert cfg2.get("hooks.notify") is False
 
     def test_delete(self, tmp_path):
         cfg = EvoConfig(path=tmp_path / "config.toml")
@@ -100,14 +100,14 @@ class TestEvoConfig:
         cfg.set("sync.privacy_level", 1)
         all_settings = cfg.all()
         assert all_settings["sync.privacy_level"] == 1
-        assert "llm.enabled" in all_settings  # default
+        assert "telemetry.enabled" in all_settings  # default
 
     def test_user_overrides_only_set_values(self, tmp_path):
         cfg = EvoConfig(path=tmp_path / "config.toml")
-        cfg.set("sync.privacy_level", 2)
+        cfg.set("sync.privacy_level", 1)
         overrides = cfg.user_overrides()
         assert "sync.privacy_level" in overrides
-        assert "llm.enabled" not in overrides
+        assert "telemetry.enabled" not in overrides
 
     def test_comments_preserved(self, tmp_path):
         path = tmp_path / "config.toml"

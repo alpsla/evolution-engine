@@ -320,11 +320,21 @@ The `evo investigate` and `evo fix` features use third-party AI (Claude/ChatGPT)
 - [ ] Translation validation (DE/ES) — blocked on lawyer review
 
 ### Week 1 (Feb 17-21) — Technical Readiness
+- [ ] **BLOCKER: Production license signing key** — do ALL of these before first real customer:
+  1. Generate key: `python3 -c "import secrets; print(secrets.token_urlsafe(32))"`
+  2. Save to password manager (this key is permanent — rotating it invalidates all paid licenses)
+  3. Set on Vercel: `EVO_LICENSE_SIGNING_KEY` env var (Production + Preview)
+  4. Set in GitHub Actions secrets: `EVO_LICENSE_SIGNING_KEY` (used by cibuildwheel to bake into Cython binaries)
+  5. Rebuild + publish wheels (key is embedded in compiled `license.so`, not readable as plaintext)
+  6. Verify: purchase with test Stripe → activate with `evo activate` → confirm Pro features work
+- [ ] Switch Stripe to live mode (only after signing key is deployed end-to-end)
 - [ ] PyPI TestPyPI upload + test install on clean machine
 - [ ] PyPI production upload
 - [ ] Add `allow_promotion_codes=True` to checkout handler
 - [ ] Create Stripe coupon (FOUNDING50, 50% off, 3 months, max 50)
 - [ ] Add AI transparency disclosure to CLI (`evo investigate`, `evo fix`)
+- [x] Add `run_number` + timestamps to telemetry (activation/retention metrics)
+- [ ] Set up Axiom dashboard + monitors (see Section 9.2 for spec)
 - [ ] Record terminal demo (asciinema, no face/voice — alias only)
 - [ ] README hero section with terminal demo embed
 
@@ -389,6 +399,40 @@ The `evo investigate` and `evo fix` features use third-party AI (Claude/ChatGPT)
 | Pro conversions | 10-25 ($190-475 MRR) | 30-50 ($570-950 MRR) |
 | Beta NPS | 30+ | 40+ |
 | FP rate (real repos) | <2% | <1.5% |
+
+### 9.1 Leading Indicators (Axiom Dashboard)
+
+These are the signals that predict retention and conversion. All derived from the `analyze_complete` telemetry event, which now includes `run_number` (lifetime analysis count per anonymous user).
+
+| Indicator | Formula | Target | Why It Matters |
+|-----------|---------|--------|----------------|
+| **Activation rate** | % of `anon_id`s with `run_number >= 2` in first 7 days | >40% | Users who run twice are retained |
+| **Time-to-second-run** | Median days between `run_number=1` and `run_number=2` | <3 days | Fast repeat = genuine interest |
+| **Weekly active users** | Distinct `anon_id`s with events in trailing 7 days | Growing | Core health metric |
+| **Retention (week 2)** | % of week-1 users still active in week 2 | >30% | Early churn signal |
+| **Retention (week 4)** | % of week-1 users still active in week 4 | >20% | Sticky product signal |
+| **Finding rate** | % of analyses with `signal_count >= 1` | >60% | Empty results = churn risk |
+| **Pro feature trigger** | `investigate` and `fix` command frequency | Growing | Upsell readiness |
+
+### 9.2 Axiom Dashboard & Monitors Setup
+
+**Dashboard — create before beta launch (Week 1):**
+
+1. **Overview panel**: total events/day, unique `anon_id`s/day, version distribution
+2. **Activation funnel**: run_number=1 → run_number=2 → run_number=5 (by cohort week)
+3. **Finding quality**: `signal_count` distribution, `pattern_count` distribution per analysis
+4. **Command mix**: breakdown of `analyze_complete` vs `investigate` vs `fix` vs `report`
+5. **Webhook health**: success/error rate for Stripe webhooks, license generation events
+6. **Error panel**: `webhook_error` events, pattern push failures
+
+**Monitors — alert to email (info@codequal.dev):**
+
+| Monitor | Condition | Priority |
+|---------|-----------|----------|
+| Webhook failures | >2 `webhook_error` events in 1 hour | Critical |
+| Zero telemetry | No `analyze_complete` events in 24 hours (after beta starts) | High |
+| Activation drop | Week-over-week activation rate drops >20% | Medium |
+| Error spike | >10 errors of any type in 1 hour | High |
 
 ---
 

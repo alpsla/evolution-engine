@@ -132,7 +132,7 @@ evo fix .                # Iterative AI fix loop (Pro)
 ### Path 2: Automated Local Hooks — Silent Until It Matters
 
 ```bash
-evo install-hooks .      # One-time setup, then forget about it
+evo hooks install .      # One-time setup, then forget about it
 # EE runs on every commit in the background
 # Silent when all clear — notifies only when threshold is met
 ```
@@ -166,7 +166,7 @@ For teams: every PR gets automatic analysis, AI investigation, inline fix sugges
 ```
 Day 1:   evo analyze . → "OK, this works. I see what it catches."
 Week 1:  evo analyze . → "The Critical findings are real. Medium is usually worth reviewing."
-Week 2:  evo install-hooks . → "Just tell me when it matters."
+Week 2:  evo hooks install . → "Just tell me when it matters."
 Week 3:  evo init --github-action → "Watch my team's PRs too."
 ```
 

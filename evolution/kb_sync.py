@@ -148,14 +148,13 @@ class KBSync:
     def push(self) -> SyncResult:
         """Share local patterns with the registry.
 
-        Requires privacy_level >= 2. At level 1, only metadata is sent.
-        At level 0, nothing is sent.
+        Requires privacy_level >= 1. At level 0, nothing is sent.
         """
         if self._privacy_level < 1:
             return SyncResult(
                 action="push", success=False,
                 error="Sharing disabled (privacy_level=0). "
-                      "Set sync.privacy_level=1 or 2 with `evo config set sync.privacy_level 2`",
+                      "Enable with `evo config set sync.privacy_level 1`",
                 registry_url=self._registry_url,
                 privacy_level=self._privacy_level,
             )
@@ -169,10 +168,7 @@ class KBSync:
             )
 
         try:
-            if self._privacy_level == 1:
-                payload = self._build_metadata_payload()
-            else:
-                payload = self._build_pattern_payload()
+            payload = self._build_pattern_payload()
         except Exception as e:
             log.warning("Failed to build push payload: %s", e)
             return SyncResult(
@@ -260,7 +256,7 @@ class KBSync:
         }
 
     def _build_pattern_payload(self) -> dict:
-        """Build level-2 pattern payload (anonymized digests).
+        """Build pattern payload (anonymized digests).
 
         Each pattern includes an HMAC attestation from this instance,
         proving it was computed by a real EE installation.
@@ -276,7 +272,7 @@ class KBSync:
         instance_id = get_instance_id(self._evo_dir)
 
         return {
-            "level": 2,
+            "level": 1,
             "instance_id": instance_id,
             "patterns": digests,
             "timestamp": datetime.now(timezone.utc).isoformat(),

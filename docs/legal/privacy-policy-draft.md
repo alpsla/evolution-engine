@@ -57,17 +57,17 @@ From Stripe, we receive and process:
 - **Stripe customer ID** (a pseudonymous identifier assigned by Stripe)
 - **Subscription status** (active, canceled, etc.)
 
-Your email address is embedded in the license key that is generated upon purchase.
+A truncated cryptographic hash of your email address is embedded in the license key that is generated upon purchase.
 
 ### 2.4 License Key
 
 Your license key contains:
 
 - **Subscription tier** (e.g., "pro")
-- **Email address** (the email associated with your Stripe purchase)
+- **Truncated email hash** (the first 16 characters of a SHA-256 hash of your email address — this is irreversible and cannot be used to recover your email)
 - **Issuance date**
 
-The license key is stored locally on your machine at `~/.evo/license.json` or in the `EVO_LICENSE_KEY` environment variable. The license key is base64-encoded and HMAC-signed, but it is not encrypted. The email address can be read by anyone with access to the key.
+The license key is stored locally on your machine at `~/.evo/license.json` or in the `EVO_LICENSE_KEY` environment variable. The license key is base64-encoded and HMAC-signed, but it is not encrypted. The email hash can be read by anyone with access to the key, but your actual email address cannot be derived from it.
 
 ### 2.5 Adapter Request Form
 

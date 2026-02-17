@@ -158,13 +158,27 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verb
             click.echo(f"\n  Run `evo investigate .` for AI-powered root cause analysis")
             click.echo(f"  Run `evo accept . <N>` to dismiss expected changes")
 
-    # Track analyze completion
+    # Track analyze completion + run counter for activation metrics
     if result["status"] == "complete":
+        from evolution.config import EvoConfig
+        from datetime import datetime, timezone
+        try:
+            cfg = EvoConfig()
+            run_number = cfg.get("stats.analyze_count", 0) + 1
+            now_ts = datetime.now(timezone.utc).isoformat()
+            cfg.set("stats.analyze_count", run_number)
+            if run_number == 1:
+                cfg.set("stats.first_analyze_ts", now_ts)
+            cfg.set("stats.last_analyze_ts", now_ts)
+        except Exception:
+            run_number = 0
+
         advisory = result.get("advisory", {})
         track_event("analyze_complete", {
             "families": advisory.get("families_affected", []),
             "signal_count": advisory.get("significant_changes", 0),
             "pattern_count": advisory.get("patterns_matched", 0),
+            "run_number": run_number,
         })
 
     if show_prompt and result["status"] == "complete":
@@ -251,12 +265,12 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verb
             cfg = EvoConfig()
             already_prompted = cfg.get("sync.share_prompted", False)
             privacy_level = cfg.get("sync.privacy_level", 0)
-            if not already_prompted and privacy_level < 2:
+            if not already_prompted and privacy_level < 1:
                 n = result["shareable_patterns"]
                 click.echo(f"\nFound {n} pattern(s) ready to share with the community.")
                 click.echo("Sharing sends anonymized statistics only (no code leaves your machine).")
                 if click.confirm("Share patterns with the community?", default=False):
-                    cfg.set("sync.privacy_level", 2)
+                    cfg.set("sync.privacy_level", 1)
                     from evolution.kb_sync import KBSync
                     evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
                     sync = KBSync(evo_dir=evo_path, config=cfg)
@@ -511,6 +525,7 @@ def investigate(path, evo_dir, show_prompt, agent_type, model):
         click.echo(report.text)
         return
 
+    click.echo("Note: This feature uses AI to analyze development patterns. No source code is sent.")
     agent = get_agent(prefer=agent_type, model=model) if agent_type else None
     report = inv.run(agent=agent)
 
@@ -568,6 +583,7 @@ def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes, 
 
     evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
 
+    click.echo("Note: This feature uses AI to analyze development patterns. No source code is sent.")
     fixer = Fixer(repo_path=path, evo_dir=evo_path)
 
     agent = None
@@ -935,13 +951,20 @@ def sources(path, token, what_if_adapters, json_output):
     # Detected but not connected
     click.echo()
     if unconnected:
+        # Separate token-gated (built-in) from third-party adapters
+        token_gated = [s for s in unconnected if s.family in ("ci", "deployment", "security")]
+        third_party = [s for s in unconnected if s.family not in ("ci", "deployment", "security")]
+
         click.echo("DETECTED (found in your repo — not yet connected):")
         for s in unconnected:
             evidence_str = "; ".join(s.evidence[:2])
-            hint = _install_hint(s)
             click.echo(f"  \U0001f50d {s.display_name:20s} {evidence_str}")
-            if hint:
-                click.echo(f"     {hint}")
+
+        # Single consolidated token hint for built-in adapters
+        if token_gated:
+            token_families = sorted(set(s.family for s in token_gated))
+            click.echo()
+            click.echo(f"  Set GITHUB_TOKEN to connect: {', '.join(token_families)}")
     else:
         if detected:
             click.echo("All detected tools are already connected.")
@@ -963,26 +986,6 @@ def sources(path, token, what_if_adapters, json_output):
                     f"({combos_total}x more patterns)" if combos_current > 0
                     else f"With all detected: {n_total} families "
                          f"→ {combos_total} combination(s)")
-
-    # Missing tokens hint
-    missing = registry.explain_missing(tokens)
-    if missing:
-        click.echo()
-        for msg in missing:
-            click.echo(f"  {msg}")
-
-
-def _install_hint(svc) -> str:
-    """Generate install hint for a detected service."""
-    # Built-in adapters that just need a token
-    builtin_token = {
-        "ci": "Set GITHUB_TOKEN to connect",
-        "deployment": "Set GITHUB_TOKEN to connect",
-        "security": "Set GITHUB_TOKEN to connect",
-    }
-    if svc.family in builtin_token:
-        return builtin_token[svc.family]
-    return f"Install: pip install {svc.adapter}"
 
 
 # ─────────────────── evo adapter ───────────────────
@@ -2132,6 +2135,7 @@ def config_list(flat):
     click.echo()
     click.echo("  (* = user override)")
     click.echo("  Run `evo config set <key> <value>` to change a setting.")
+    click.echo("  Run `evo setup --ui` to edit in browser.")
 
 
 @config.command("get")
@@ -2595,12 +2599,7 @@ def patterns_push(path):
     """Share anonymized patterns with the community registry.
 
     Requires sync.privacy_level >= 1. Configure with:
-        evo config set sync.privacy_level 2
-
-    Privacy levels:
-        0 = Nothing shared (default)
-        1 = Advisory metadata only
-        2 = Anonymized pattern digests
+        evo config set sync.privacy_level 1
     """
     from evolution.kb_sync import KBSync
 
@@ -2610,9 +2609,8 @@ def patterns_push(path):
     if sync.privacy_level < 1:
         click.echo("Sharing is disabled (privacy_level=0).")
         click.echo()
-        click.echo("To enable, set your privacy level:")
-        click.echo("  evo config set sync.privacy_level 1   # metadata only")
-        click.echo("  evo config set sync.privacy_level 2   # anonymized patterns")
+        click.echo("To enable:")
+        click.echo("  evo config set sync.privacy_level 1")
         sys.exit(1)
 
     click.echo(f"Pushing to {sync.registry_url} (level {sync.privacy_level})...")
