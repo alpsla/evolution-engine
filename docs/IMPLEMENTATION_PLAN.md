@@ -7,7 +7,7 @@
 >
 > The plan is intentionally conservative: each step validates an architectural assumption before expanding scope.
 >
-> **Last updated:** February 17, 2026 (Historical trend detection, three-category classification; 1360 tests)
+> **Last updated:** February 17, 2026 (Security hardening, config cleanup, signing key embedding; 1359 tests)
 
 ---
 
@@ -1743,7 +1743,94 @@ not just local scope.
 
 ---
 
-## 15. Plan Maintenance
+## 15. Pre-Launch Hardening (February 17, 2026)
+
+> **Status: IN PROGRESS — Security fixes done, signing key deployment 3/8 steps complete.**
+
+### 15.1 Security Hardening
+
+1. **Webhook signing key** (`website/api/webhook.py`): ✅ DONE
+   - Changed from hardcoded dev key to `EVO_LICENSE_SIGNING_KEY` env var
+   - Error handler now returns HTTP 500 (was falling through to 200, preventing Stripe retries)
+   - Internal error details no longer leaked in responses
+
+2. **API error sanitization** (`website/api/patterns.py`): ✅ DONE
+   - Internal exception messages replaced with generic "Internal server error"
+
+3. **Privacy policy corrections** (`docs/legal/privacy-policy-draft.md`): ✅ DONE
+   - Corrected "email address" to "truncated cryptographic hash of email address"
+   - Added explanation that hash is irreversible (matches actual `license.py` implementation)
+
+### 15.2 Config Cleanup (#47)
+
+Removed outdated configuration keys and simplified privacy model: ✅ DONE
+
+- **Removed**: `llm.enabled`, `llm.provider`, `llm.model` (LLM retired in Phase 3.1)
+- **Removed**: `report.theme` (never implemented)
+- **Simplified**: `sync.privacy_level` from 3-tier (0/1/2) to binary (0=nothing, 1=share patterns)
+- **Added**: `stats.analyze_count`, `stats.first_analyze_ts`, `stats.last_analyze_ts` for activation telemetry
+- Updated setup UI, setup CLI, kb_sync, and all related tests
+
+### 15.3 `evo sources` UX (#46)
+
+Consolidated redundant output and removed misleading hints: ✅ DONE
+
+- Removed per-service token hints (redundant with single `GITHUB_TOKEN` message)
+- Removed duplicate `explain_missing()` call
+- Removed `_install_hint()` function and fake `pip install evo-adapter-*` suggestions
+- Added single consolidated token hint at bottom of output
+
+### 15.4 AI Transparency (EU AI Act Article 50)
+
+Added one-line disclosure to AI-powered commands: ✅ DONE
+
+- `evo investigate`: "Note: This feature uses AI to analyze development patterns. No source code is sent."
+- `evo fix`: Same disclosure
+
+### 15.5 Activation Telemetry
+
+Added run-number tracking for retention metrics: ✅ DONE
+
+- `stats.analyze_count` incremented on each `evo analyze` run
+- `stats.first_analyze_ts` / `stats.last_analyze_ts` recorded
+- `run_number` included in telemetry events
+
+### 15.6 Production Signing Key Deployment
+
+Embed HMAC signing key in Cython-compiled binaries for license validation: IN PROGRESS
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Generate production signing key | ✅ Done |
+| 2 | Set `EVO_LICENSE_SIGNING_KEY` on Vercel | ✅ Done |
+| 3 | Set `EVO_LICENSE_SIGNING_KEY` as GitHub Actions secret | ✅ Done |
+| 4 | `build_cython.py` injects key into `license.py` before compilation | ✅ Code ready |
+| 5 | CI workflow passes secret via `CIBW_ENVIRONMENT` | ✅ Code ready |
+| 6 | Tag release → trigger wheel build → verify key embedded | Pending |
+| 7 | TestPyPI upload + install verification | Pending |
+| 8 | PyPI production upload | Pending |
+
+**Implementation details:**
+- `license.py` added to `CYTHON_MODULES` (compiled to `.so`/`.pyd`, key not readable)
+- `inject_signing_key()` replaces dev fallback key from `EVO_LICENSE_SIGNING_KEY` env var
+- Original `license.py` restored via `git checkout` after compilation (key only in binary)
+- Pure Python wheel still uses env var fallback (dev/test scenarios)
+
+### 15.7 Website & Positioning
+
+- Hero subtitle: "Not a linter. Not a scanner. A structural drift detector for teams using AI coding tools." ✅ DONE
+- Command name fix in VALUE_PROPOSITION.md (`install-hooks` → `hooks install`) ✅ DONE
+
+### 15.8 Lawyer Brief (4 items sent for review)
+
+1. MIT license vs proprietary Cython modules — need dual-license or BSL
+2. Privacy policy email vs email_hash mismatch — corrected in code
+3. ToS/Privacy unfilled placeholders — need real company entity + jurisdiction
+4. EU AI Act Article 50 transparency — disclosure added to CLI
+
+---
+
+## 16. Plan Maintenance
 
 - This document is updated **only** when a phase is completed or reordered.
 - Changes must reference Architecture Vision principles.
@@ -1753,14 +1840,14 @@ not just local scope.
 
 > **Summary (February 17, 2026):**
 >
-> **All engine priorities complete. 1360 tests passing (6.22s).**
+> **All engine priorities complete. 1359 tests passing (5.93s).**
 >
 > All 5 engine phases, open-core infrastructure, AI agent integration, GitHub Action, source prescan,
 > cloud sync, Cython build, FP validation, inline suggestions, CI wheel builds, website, Stripe
 > integration, opt-in telemetry, run history, GitLab compatibility, accept deviations, pattern
 > pipeline, adapter ecosystem, UX overhaul (§13), pattern quality hardening (§13.4), interactive
-> report with determinism fix (§14), and historical trend detection with three-category
-> classification (§14.7) are implemented and tested.
+> report with determinism fix (§14), historical trend detection (§14.7), and pre-launch hardening
+> with signing key embedding (§15) are implemented and tested.
 >
 > **What's built:**
 > - `evo analyze .` — zero-config CLI with 30+ commands, deterministic results
@@ -1769,33 +1856,37 @@ not just local scope.
 > - `evo accept` + `evo accepted` — hide acknowledged deviations from future advisories
 > - PM-friendly output across all display layers (risk badges, relative comparisons, practical insights)
 > - 3-tier adapter ecosystem (built-in, API, plugins) with scaffold, validation, security scanning
-> - License system (free/pro tiers, HMAC-signed keys, Stripe checkout)
-> - AI agent integration (`evo investigate`, `evo fix`) — RALF-style fix-verify loop
+> - License system (free/pro tiers, HMAC-signed keys, Stripe checkout, Cython-embedded signing key)
+> - AI agent integration (`evo investigate`, `evo fix`) — RALF-style fix-verify loop with AI transparency disclosure
 > - GitHub Action (`action/action.yml`) — PR comments with risk + investigation + verify + inline suggestions
 > - Run history (`evo history`) — snapshot, compare, clean advisory runs over time
-> - Cloud KB sync (`evo patterns pull/push`) — opt-in anonymous pattern sharing
+> - Cloud KB sync (`evo patterns pull/push`) — simplified binary privacy (0=off, 1=share)
 > - **27 universal patterns** from 43 repos across 8 languages (PyPI distribution)
 > - Website (`website/`) — codequal.dev on Vercel (landing, docs, privacy, success pages)
-> - Stripe integration — Pro subscription checkout, webhook license generation
+> - Stripe integration — Pro subscription checkout, webhook license generation (production-ready signing)
+> - Activation telemetry — run_number tracking, first/last analyze timestamps
 >
-> **Remaining before beta (3 SDLC paths + UX + infra):**
+> **Remaining before beta:**
 >
-> *SDLC Integration Testing:*
-> 1. ~~**Path 1: CLI** (#43)~~ ✅ — all commands tested on codequal (Feb 14–17)
-> 2. **Path 2: Git Hooks** (#44) — init → post-commit trigger → notification → background analysis → management
-> 3. **Path 3: GitHub Action** (#45) — init → workflow generation → PR comments → investigate → verify
-> 4. **GitLab manual testing** (#37) — 7 scenarios on real GitLab repo (LAUNCH_PLAN.md §12.2)
+> *Signing key deployment (§15.6):*
+> 1. ~~Steps 1–3~~ ✅ — key generated, set on Vercel + GitHub Actions
+> 2. **Steps 6–8** — tag release → wheel build → TestPyPI → PyPI
+>
+> *SDLC Integration Testing (post-deploy):*
+> 3. **Path 2: Git Hooks** (#44) — init → post-commit trigger → notification → background analysis
+> 4. **Path 3: GitHub Action** (#45) — init → workflow generation → PR comments → investigate
+> 5. **GitLab manual testing** (#37) — 7 scenarios on real GitLab repo
 >
 > *UX & Polish:*
-> 5. **`evo sources` fixes** (#46) — suppress irrelevant tools, redundant hints, unpublished adapter hints
-> 6. **Config cleanup** (#47) — remove outdated LLM/theme settings, simplify privacy, update setup UI
-> 7. **Adapter discovery UX** (#48) — friendlier guidance, explain value of connecting detected tools
+> 6. ~~**`evo sources` fixes** (#46)~~ ✅ — consolidated hints, removed fake pip suggestions
+> 7. ~~**Config cleanup** (#47)~~ ✅ — removed LLM/theme, simplified privacy, added stats
+> 8. **Adapter discovery UX** (#48) — friendlier guidance, explain value of connecting detected tools
 >
 > *External / Infrastructure:*
-> 8. **Lawyer review** (#36) — ToS + Privacy sign-off → corrected docs → translator
-> 9. **Stripe live-mode testing** (#38b) — repeat flows after going live (blocked by #36)
-> 10. **Axiom dashboard** (#49) — API health, alerts, usage metrics from existing ingest
-> 11. **Community beta launch** (#42) — begins once 36–49 verified
+> 9. **Lawyer review** (#36) — ToS + Privacy sign-off → corrected docs → translator
+> 10. **Stripe live-mode** (#38b) — repeat flows after going live (blocked by #36)
+> 11. **Axiom dashboard** (#49) — API health, alerts, usage metrics
+> 12. **Community beta launch** (#42) — begins once above items verified
 >
 > **Engagement flow:**
 > ```
