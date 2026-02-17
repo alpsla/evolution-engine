@@ -1308,6 +1308,27 @@ Docs page ✅                    Privacy page ✅
 - ✅ Adapter ecosystem — list, discover, validate, security-check, block/unblock, scaffold, request all tested
 - **Bugs fixed:** `config.py` stale registry URL, `git`↔`version_control` family name mismatch
 
+**Completed (39b–39d):**
+39b. ~~Interactive report~~ ✅ — report server, accept API, evidence in prompts, verification banner
+39c. ~~Analysis determinism~~ ✅ — payload timestamps, chronological sort, 3-run verification
+39d. ~~Historical trend detection~~ ✅ — three-category classification (returned to normal / stabilized / active), observed values display, manual verification on codequal
+
+**Pending (37–46):**
+37. **GitLab manual testing** — 7 scenarios (LAUNCH_PLAN.md §12.2)
+38b. **Stripe live-mode testing** — repeat flows with real dashboard (blocked by #36)
+39. **User review flow** — full analyze → accept → investigate → fix → verify cycle
+43. **CLI command testing** — remaining commands on codequal repo:
+    - `evo patterns list .` — verify pattern listing
+    - `evo patterns push .` — verify weak patterns filtered by quality gate
+    - `evo history .` — verify snapshot history
+    - `evo config list` — verify configuration display
+44. **Path 2: Git Hooks** — `evo init --path hooks`, trigger post-commit hook, verify notification fires
+45. **Path 3: GitHub Action** — `evo init --path action`, verify generated workflow, test PR comment output
+46. **`evo sources` UX fixes** — 3 issues from §13.3.1:
+    - Redundant token hints for already-connected families (suppress Tier 2 when Tier 1 active)
+    - Irrelevant tool suggestions (only suggest tokens for tools detected in repo)
+    - Adapter install hints for unpublished packages (suppress or "Coming soon")
+
 **Next — Testing & Beta Launch:**
 
 **See `docs/LAUNCH_PLAN.md`** for detailed beta program, launch timeline, and go-to-market strategy.
@@ -1332,10 +1353,15 @@ The remaining items before public beta:
 | 39 | **User review flow** — analyze → accept → investigate → fix → verify | Low | Yes — validate core UX |
 | 39b | ~~Interactive report~~ ✅ — report server, accept API, evidence in prompts, verification banner | Done | — |
 | 39c | ~~Analysis determinism~~ ✅ — payload timestamps, chronological sort, 3-run verification | Done | — |
+| 39d | ~~Historical trend detection~~ ✅ — three-category classification, observed values, manual verification | Done | — |
 | 40 | ~~PyPI publication~~ ✅ — `evolution-engine` + `evo-patterns-community` 2026.2.15 | Done | — |
 | 41 | ~~Custom domain~~ ✅ — codequal.dev configured for Vercel | Done | — |
-| 42 | **Community beta** — announce, gather feedback | Low | No — begins once 36-39 are verified |
+| 42 | **Community beta** — announce, gather feedback | Low | No — begins once 36-45 are verified |
 | 42b | ~~Pattern pipeline E2E~~ ✅ — Upstash Redis, registry handler, push/pull, PyPI auto-fetch | Done | — |
+| 43 | **CLI command testing** — `evo patterns list/push`, `evo history`, `evo config list` on codequal | Low | Yes — validate remaining CLI surface |
+| 44 | **Path 2: Git Hooks** — `evo init --path hooks`, trigger post-commit, verify notification | Low | Yes — validate SDLC integration |
+| 45 | **Path 3: GitHub Action** — `evo init --path action`, verify PR comment output | Low | Yes — validate CI integration |
+| 46 | **`evo sources` UX fixes** — 3 issues from §13.3.1 (redundant hints, irrelevant tools, unpublished adapters) | Medium | No — polish, not blocking |
 
 ### Manual Testing (Before Beta)
 
@@ -1698,11 +1724,15 @@ not just local scope.
 > - Stripe integration — Pro subscription checkout, webhook license generation
 >
 > **Remaining before beta:**
-> 1. **Lawyer review** — ToS + Privacy under review; corrected docs → translator verification
-> 2. **GitLab manual testing** — 7 scenarios (LAUNCH_PLAN.md §12.2)
-> 3. **Stripe live-mode testing** — repeat flows after going live
-> 4. **User review flow** — end-to-end: analyze → accept → investigate → fix → verify
-> 5. **Community beta launch** (see `docs/LAUNCH_PLAN.md` for full timeline)
+> 1. **Lawyer review** (#36) — ToS + Privacy under review; corrected docs → translator verification
+> 2. **GitLab manual testing** (#37) — 7 scenarios (LAUNCH_PLAN.md §12.2)
+> 3. **Stripe live-mode testing** (#38b) — repeat flows after going live (blocked by #36)
+> 4. **User review flow** (#39) — end-to-end: analyze → accept → investigate → fix → verify
+> 5. **CLI command testing** (#43) — patterns list/push, history, config on codequal
+> 6. **Path 2: Git Hooks** (#44) — init → post-commit hook → notification
+> 7. **Path 3: GitHub Action** (#45) — init → workflow generation → PR comments
+> 8. **`evo sources` UX fixes** (#46) — redundant hints, irrelevant tools, unpublished adapters
+> 9. **Community beta launch** (#42) (see `docs/LAUNCH_PLAN.md` for full timeline)
 >
 > **Engagement flow:**
 > ```
