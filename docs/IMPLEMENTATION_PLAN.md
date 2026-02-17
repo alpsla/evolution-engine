@@ -1314,19 +1314,19 @@ Docs page ✅                    Privacy page ✅
 39d. ~~Historical trend detection~~ ✅ — three-category classification (returned to normal / stabilized / active), observed values display, manual verification on codequal
 
 **Pending (37–46):**
-**Pending — SDLC Path Testing (3 integration paths):**
+**Completed — SDLC Path 1:**
 
-43. **Path 1: CLI (manual testing)** — remaining commands on codequal repo:
-    - `evo analyze .` — full pipeline ✅ (tested Feb 16–17)
-    - `evo analyze . --verify` — verification with trend classification ✅ (tested Feb 17)
-    - `evo accept . <N>` / `evo accepted .` — accept/list/remove ✅ (tested Feb 14)
-    - `evo patterns list .` — verify pattern listing
-    - `evo patterns push .` — verify weak patterns filtered by quality gate
-    - `evo history .` — verify snapshot list, show, diff, clean
-    - `evo config list` — verify display, link to `evo setup --ui`
-    - `evo sources .` — verify connected vs detected (fix §13.3.1 issues)
-    - `evo setup .` / `evo setup --ui` — verify setup wizard and browser UI
-    - `evo adapter list` / `evo adapter discover` — verify detection and guidance
+43. ~~**Path 1: CLI (manual testing)**~~ ✅ — all commands tested on codequal (Feb 14–17):
+    - `evo analyze .` — full pipeline ✅
+    - `evo analyze . --verify` — verification with three-category trend classification ✅
+    - `evo accept . <N>` / `evo accepted .` — accept/list/remove ✅
+    - `evo patterns list .` / `evo patterns push .` — listing and quality gate ✅
+    - `evo history .` — snapshot list, show, diff, clean ✅
+    - `evo config list` / `evo setup --ui` — config display and browser UI ✅
+    - `evo sources .` — connected vs detected ✅ (§13.3.1 issues documented, fix in #46)
+    - `evo adapter list` / `evo adapter discover` — detection and guidance ✅
+
+**Pending — SDLC Paths 2 & 3:**
 
 44. **Path 2: Git Hooks** — full lifecycle on test repo:
     - `evo init --path hooks` — verify hook installation
@@ -1406,7 +1406,7 @@ The remaining items before public beta:
 | 41 | ~~Custom domain~~ ✅ — codequal.dev configured for Vercel | Done | — |
 | 42 | **Community beta** — announce, gather feedback | Low | No — begins once 43-49 verified |
 | 42b | ~~Pattern pipeline E2E~~ ✅ — Upstash Redis, registry handler, push/pull, PyPI auto-fetch | Done | — |
-| **43** | **Path 1: CLI testing** — full command surface: analyze, verify, accept, patterns, history, config, sources, setup, adapters | Medium | Yes — validate core UX |
+| 43 | ~~Path 1: CLI testing~~ ✅ — analyze, verify, accept, patterns, history, config, sources, setup, adapters tested on codequal | Done | — |
 | **44** | **Path 2: Git Hooks** — init, post-commit trigger, notification, background analysis, severity threshold, management | Medium | Yes — validate SDLC |
 | **45** | **Path 3: GitHub/GitLab Action** — init, workflow generation, PR comments, investigate, verify, inline suggestions, 7 GitLab scenarios | Medium | Yes — validate CI |
 | **46** | **`evo sources` UX fixes** — §13.3.1: redundant hints, irrelevant tools, unpublished adapters | Medium | Yes — users hit this early |
