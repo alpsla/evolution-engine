@@ -257,8 +257,8 @@ class TestPath2Hooks:
             families="",
         )
 
-        assert "evo analyze" in script
-        assert "--json" in script
+        assert "analyze . --json" in script
+        assert "_EVO_CMD" in script
         assert "--quiet" in script
         assert "# evo-hook-start" in script
         assert "# evo-hook-end" in script

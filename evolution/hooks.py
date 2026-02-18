@@ -16,8 +16,10 @@ Usage:
 from __future__ import annotations
 
 import os
+import shutil
 import stat
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Optional
 
@@ -55,6 +57,26 @@ _STATUS_RANK = {
 
 # ─── Hook Script Template ───
 
+def _resolve_evo_path() -> str:
+    """Find the full path to the ``evo`` executable.
+
+    Checks (in order):
+    1. Same bin directory as the running Python (venv-aware)
+    2. ``shutil.which("evo")`` (system PATH)
+    3. Falls back to ``"evo"`` (bare command)
+    """
+    # Check alongside the current Python (handles venv installs)
+    bin_dir = Path(sys.executable).parent
+    candidate = bin_dir / "evo"
+    if candidate.exists():
+        return str(candidate)
+    # Fall back to PATH lookup
+    found = shutil.which("evo")
+    if found:
+        return found
+    return "evo"
+
+
 def _build_hook_script(
     *,
     background: bool,
@@ -62,19 +84,21 @@ def _build_hook_script(
     notify: bool,
     min_severity: str,
     families: str,
+    evo_path: str = "",
 ) -> str:
     """Return the shell snippet to embed inside a git hook file.
 
-    The snippet is self-contained: it checks for ``evo`` on ``$PATH``,
+    The snippet is self-contained: it uses the resolved path to ``evo``,
     runs analysis, and optionally triggers notifications or opens a
     report in the browser, depending on the configured threshold.
     """
+
+    evo_cmd = evo_path or _resolve_evo_path()
 
     min_level = _THRESHOLD_MAP.get(min_severity, "needs_attention")
     min_rank = _STATUS_RANK.get(min_level, 2)
 
     families_flag = f" --families {families}" if families else ""
-    open_flag = " --open" if auto_open else ""
 
     # Notification command differs per platform.
     if notify:
@@ -88,8 +112,9 @@ def _build_hook_script(
 # Evolution Engine — auto-analysis hook
 # Installed by: evo hooks install
 # Config: min_severity={min_severity}, background={background}
+_EVO_CMD="{evo_cmd}"
 _evo_hook_run() {{
-    _evo_out=$(evo analyze . --json --quiet{families_flag} 2>/dev/null)
+    _evo_out=$("$_EVO_CMD" analyze . --json --quiet{families_flag} 2>/dev/null)
     _evo_rc=$?
 
     if [ $_evo_rc -ne 0 ]; then
@@ -126,7 +151,7 @@ except Exception:
 {_indent(_open_block(auto_open, families_flag), 4)}
 }}
 
-if command -v evo >/dev/null 2>&1; then
+if [ -x "$_EVO_CMD" ] || command -v "$_EVO_CMD" >/dev/null 2>&1; then
     _evo_hook_run{bg_suffix}
 fi
 {_MARKER_END}
@@ -160,7 +185,7 @@ def _open_block(auto_open: bool, families_flag: str) -> str:
         return ""
     return """
 # Open report in browser
-evo report . --open""" + families_flag + " --quiet 2>/dev/null"
+"$_EVO_CMD" report . --open""" + families_flag + " --quiet 2>/dev/null"
 
 
 def _indent(text: str, spaces: int) -> str:
