@@ -171,9 +171,20 @@ if [ -z "$_evo_raw_level" ]; then
 else
     _evo_msg="EE: $_evo_resolution"
 fi
+# Generate report so click-to-open works
+"$_EVO_CMD" report . 2>/dev/null
+_evo_report="$(git rev-parse --show-toplevel 2>/dev/null)/.evo/report.html"
 # Desktop notification (macOS / Linux)
 if [ "$(uname)" = "Darwin" ]; then
-    osascript -e "display notification \\"$_evo_msg\\" with title \\"Evolution Engine\\"" 2>/dev/null
+    if command -v terminal-notifier >/dev/null 2>&1; then
+        if [ -f "$_evo_report" ]; then
+            terminal-notifier -title "Evolution Engine" -message "$_evo_msg" -sound default -open "file://$_evo_report" 2>/dev/null
+        else
+            terminal-notifier -title "Evolution Engine" -message "$_evo_msg" -sound default 2>/dev/null
+        fi
+    else
+        osascript -e "display notification \\"$_evo_msg\\" with title \\"Evolution Engine\\"" 2>/dev/null
+    fi
 elif command -v notify-send >/dev/null 2>&1; then
     notify-send "Evolution Engine" "$_evo_msg" 2>/dev/null
 fi"""
@@ -185,7 +196,7 @@ def _open_block(auto_open: bool, families_flag: str) -> str:
         return ""
     return """
 # Open report in browser
-"$_EVO_CMD" report . --open""" + families_flag + " --quiet 2>/dev/null"
+"$_EVO_CMD" report . --open""" + families_flag + " 2>/dev/null"
 
 
 def _indent(text: str, spaces: int) -> str:

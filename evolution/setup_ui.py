@@ -301,6 +301,27 @@ select:focus, input:focus {
 }
 
 .toast.show { opacity: 1; }
+
+.hint-box {
+  background: #f0f7f5;
+  border: 1px solid var(--color-secondary);
+  border-radius: 6px;
+  padding: 0.75em 1em;
+  margin-bottom: 0.75em;
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+
+.hint-box strong {
+  color: var(--color-primary);
+}
+
+.hint-box code {
+  background: #e8f0ee;
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
 """
 
 _JS = """
@@ -540,6 +561,8 @@ class SetupUI:
             meta = _METADATA.get(key, {})
             rows.append(self._render_setting(key, meta, all_settings.get(key)))
 
+        hint = self._render_group_hint(group_id)
+
         return (
             '<div class="group-card" id="group-{gid}">'
             '<div class="group-header" onclick="toggleGroup(this)">'
@@ -549,7 +572,7 @@ class SetupUI:
             "</div>"
             '<span class="group-chevron">&#9660;</span>'
             "</div>"
-            '<div class="group-body">{rows}</div>'
+            '<div class="group-body">{hint}{rows}</div>'
             '<div class="group-actions">'
             '<button class="btn btn-save" onclick="saveGroup(\'{gid}\')">Save</button>'
             "</div>"
@@ -558,8 +581,35 @@ class SetupUI:
             gid=_escape_html(group_id),
             label=_escape_html(group_info["label"]),
             desc=_escape_html(group_info.get("description", "")),
+            hint=hint,
             rows="\n".join(rows),
         )
+
+    def _render_group_hint(self, group_id: str) -> str:
+        """Return an optional hint banner for a config group."""
+        import sys
+        if group_id == "hooks" and sys.platform == "darwin":
+            import shutil
+            if shutil.which("terminal-notifier"):
+                return (
+                    '<div class="hint-box">'
+                    "<strong>macOS notification setup:</strong> "
+                    "Desktop notifications use <code>terminal-notifier</code>. "
+                    "Make sure notifications are enabled in "
+                    "<strong>System Settings &rarr; Notifications &rarr; terminal-notifier</strong>."
+                    "</div>"
+                )
+            else:
+                return (
+                    '<div class="hint-box">'
+                    "<strong>macOS notification setup:</strong> "
+                    "For desktop notifications, install terminal-notifier: "
+                    "<code>brew install terminal-notifier</code><br>"
+                    "Then enable notifications in "
+                    "<strong>System Settings &rarr; Notifications &rarr; terminal-notifier</strong>."
+                    "</div>"
+                )
+        return ""
 
     def _render_setting(self, key: str, meta: dict, current_value) -> str:
         """Render a single setting row."""
