@@ -81,19 +81,12 @@ jobs:
         with:
           platforms: arm64
 
-      - name: Install Cython
-        run: pip install cython setuptools wheel
-
-      - name: Verify Cython build script
-        run: python build_cython.py --check
-
       - name: Build wheels with cibuildwheel
         uses: pypa/cibuildwheel@v2.21
         env:
           CIBW_BUILD: "cp311-*"
           CIBW_ARCHS: ${{ matrix.cibw_archs }}
-          CIBW_BEFORE_BUILD: "pip install cython && python build_cython.py"
-          CIBW_ENVIRONMENT: "EVO_LICENSE_SIGNING_KEY=${{ secrets.EVO_LICENSE_SIGNING_KEY }}"
+          CIBW_ENVIRONMENT: "EVO_CYTHON_BUILD=1 EVO_LICENSE_SIGNING_KEY=${{ secrets.EVO_LICENSE_SIGNING_KEY }}"
           CIBW_TEST_COMMAND: "evo --version"
           CIBW_TEST_REQUIRES: ""
           # Skip musllinux (low demand), PyPy (not supported)
