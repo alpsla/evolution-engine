@@ -1745,7 +1745,7 @@ not just local scope.
 
 ## 15. Pre-Launch Hardening (February 17, 2026)
 
-> **Status: IN PROGRESS — Security fixes done, signing key deployment 3/8 steps complete.**
+> **Status: ✅ COMPLETE — Security fixes done, signing key deployed, v0.2.0 published to PyPI.**
 
 ### 15.1 Security Hardening
 
@@ -1797,24 +1797,24 @@ Added run-number tracking for retention metrics: ✅ DONE
 
 ### 15.6 Production Signing Key Deployment
 
-Embed HMAC signing key in Cython-compiled binaries for license validation: IN PROGRESS
+Embed HMAC signing key in Cython-compiled binaries for license validation: ✅ COMPLETE
 
 | Step | Description | Status |
 |------|-------------|--------|
 | 1 | Generate production signing key | ✅ Done |
 | 2 | Set `EVO_LICENSE_SIGNING_KEY` on Vercel | ✅ Done |
 | 3 | Set `EVO_LICENSE_SIGNING_KEY` as GitHub Actions secret | ✅ Done |
-| 4 | `build_cython.py` injects key into `license.py` before compilation | ✅ Code ready |
-| 5 | CI workflow passes secret via `CIBW_ENVIRONMENT` | ✅ Code ready |
-| 6 | Tag release → trigger wheel build → verify key embedded | Pending |
-| 7 | TestPyPI upload + install verification | Pending |
-| 8 | PyPI production upload | Pending |
+| 4 | `setup.py` injects key into `license.py` before compilation | ✅ Done |
+| 5 | CI workflow passes secret via `CIBW_ENVIRONMENT` | ✅ Done |
+| 6 | Tag release → trigger wheel build → verify key embedded | ✅ Done (v0.2.0) |
+| 7 | TestPyPI upload + install verification | ✅ Done |
+| 8 | PyPI production upload | ✅ Done |
 
-**Implementation details:**
-- `license.py` added to `CYTHON_MODULES` (compiled to `.so`/`.pyd`, key not readable)
-- `inject_signing_key()` replaces dev fallback key from `EVO_LICENSE_SIGNING_KEY` env var
-- Original `license.py` restored via `git checkout` after compilation (key only in binary)
-- Pure Python wheel still uses env var fallback (dev/test scenarios)
+**Published:** `evolution-engine` 0.2.0 on PyPI (February 18, 2026)
+- 6 artifacts: pure Python + 4 Cython wheels (macOS arm64, Linux x86_64/aarch64, Windows x64) + sdist
+- Signing key embedded in Cython-compiled `license.so`/`license.pyd`
+- `setup.py` handles conditional Cython build (`EVO_CYTHON_BUILD=1`) with in-memory key injection/restoration
+- Pure Python wheel uses env var fallback (dev/test scenarios)
 
 ### 15.7 Website & Positioning
 
@@ -1838,9 +1838,9 @@ Embed HMAC signing key in Cython-compiled binaries for license validation: IN PR
 
 ---
 
-> **Summary (February 17, 2026):**
+> **Summary (February 18, 2026):**
 >
-> **All engine priorities complete. 1359 tests passing (5.93s).**
+> **All engine priorities complete. 1359 tests passing (5.83s). Published to PyPI as v0.2.0.**
 >
 > All 5 engine phases, open-core infrastructure, AI agent integration, GitHub Action, source prescan,
 > cloud sync, Cython build, FP validation, inline suggestions, CI wheel builds, website, Stripe
@@ -1868,9 +1868,9 @@ Embed HMAC signing key in Cython-compiled binaries for license validation: IN PR
 >
 > **Remaining before beta:**
 >
-> *Signing key deployment (§15.6):*
+> *Signing key deployment (§15.6):* ✅ COMPLETE
 > 1. ~~Steps 1–3~~ ✅ — key generated, set on Vercel + GitHub Actions
-> 2. **Steps 6–8** — tag release → wheel build → TestPyPI → PyPI
+> 2. ~~Steps 6–8~~ ✅ — v0.2.0 tagged → wheels built → TestPyPI verified → PyPI published
 >
 > *SDLC Integration Testing (post-deploy):*
 > 3. **Path 2: Git Hooks** (#44) — init → post-commit trigger → notification → background analysis
