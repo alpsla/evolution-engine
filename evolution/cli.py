@@ -2330,6 +2330,18 @@ def hooks_install(path, trigger):
         click.echo()
         click.echo("EE will now analyze your code automatically.")
         click.echo("Configure with: evo config set hooks.<key> <value>")
+        # Notification setup hint (macOS needs terminal-notifier + permission)
+        if status["config"].get("notify") and sys.platform == "darwin":
+            import shutil
+            if not shutil.which("terminal-notifier"):
+                click.echo()
+                click.echo("Tip: For desktop notifications on macOS, install terminal-notifier:")
+                click.echo("  brew install terminal-notifier")
+                click.echo("  Then enable notifications in System Settings > Notifications.")
+            else:
+                click.echo()
+                click.echo("Tip: Ensure notifications are enabled for terminal-notifier")
+                click.echo("  in System Settings > Notifications.")
     else:
         click.echo(f"Error: {result.get('error', 'unknown')}")
         sys.exit(1)

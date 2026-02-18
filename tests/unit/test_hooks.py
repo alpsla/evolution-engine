@@ -118,7 +118,8 @@ class TestBuildHookScript:
             background=True, auto_open=False, notify=True,
             min_severity="concern", families="",
         )
-        # macOS notification
+        # macOS notification (terminal-notifier preferred, osascript fallback)
+        assert "terminal-notifier" in script
         assert "osascript" in script
         # Linux notification
         assert "notify-send" in script
@@ -128,6 +129,7 @@ class TestBuildHookScript:
             background=True, auto_open=False, notify=False,
             min_severity="concern", families="",
         )
+        assert "terminal-notifier" not in script
         assert "osascript" not in script
         assert "notify-send" not in script
 
@@ -479,6 +481,7 @@ class TestHookManagerInstall:
         assert "background=False" in content
         assert "min_severity=critical" in content
         # No notification block
+        assert "terminal-notifier" not in content
         assert "osascript" not in content
 
     def test_existing_hook_without_newline_at_end(self, tmp_path):
