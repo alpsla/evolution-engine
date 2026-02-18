@@ -104,15 +104,14 @@ class TestBuildHookScript:
             background=True, auto_open=True, notify=False,
             min_severity="concern", families="",
         )
-        assert "evo report" in script
-        assert "--open" in script
+        assert "report . --open" in script
 
     def test_auto_open_disabled_no_report(self):
         script = _build_hook_script(
             background=True, auto_open=False, notify=False,
             min_severity="concern", families="",
         )
-        assert "evo report" not in script
+        assert "report . --open" not in script
 
     def test_notify_includes_notification_block(self):
         script = _build_hook_script(
@@ -142,19 +141,29 @@ class TestBuildHookScript:
         assert str(expected_rank) in script
 
     def test_evo_check_before_run(self):
-        """Script should verify evo is on PATH before running."""
+        """Script should verify evo executable exists before running."""
         script = _build_hook_script(
             background=True, auto_open=False, notify=False,
             min_severity="concern", families="",
         )
-        assert "command -v evo" in script
+        assert "_EVO_CMD" in script
+        assert "command -v" in script
 
     def test_uses_evo_analyze_json_quiet(self):
         script = _build_hook_script(
             background=True, auto_open=False, notify=False,
             min_severity="concern", families="",
         )
-        assert "evo analyze . --json --quiet" in script
+        assert "analyze . --json --quiet" in script
+
+    def test_evo_path_embedded(self):
+        """Script should embed the resolved evo path."""
+        script = _build_hook_script(
+            background=True, auto_open=False, notify=False,
+            min_severity="concern", families="",
+            evo_path="/usr/local/bin/evo",
+        )
+        assert '_EVO_CMD="/usr/local/bin/evo"' in script
 
     def test_config_comment_present(self):
         script = _build_hook_script(
