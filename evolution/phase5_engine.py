@@ -193,10 +193,11 @@ class Phase5Engine:
         return knowledge
 
     def _load_phase4_patterns(self, scope: str = None) -> list[dict]:
-        """Load Phase 4 candidate patterns, optionally filtered by scope.
+        """Load Phase 4 patterns, optionally filtered by scope.
 
-        Excludes 'confirmed' local patterns — those have been promoted to
-        knowledge artifacts and appear via _load_phase4_knowledge() instead.
+        All non-expired patterns are returned regardless of confidence tier.
+        Both community and locally-discovered patterns are treated as known
+        once they pass validation and security scanning.
         """
         from evolution.knowledge_store import SQLiteKnowledgeStore
         db_path = self.phase4_path / "knowledge.db"
@@ -205,9 +206,6 @@ class Phase5Engine:
         kb = SQLiteKnowledgeStore(db_path)
         patterns = kb.list_patterns(scope=scope)
         kb.close()
-        # Exclude promoted patterns (they're in knowledge now)
-        if scope == "local":
-            patterns = [p for p in patterns if p.get("confidence_tier") != "confirmed"]
         return patterns
 
 
@@ -1070,6 +1068,8 @@ class Phase5Engine:
         knowledge = self._load_phase4_knowledge()
         community_patterns = self._load_phase4_patterns(scope="community")
         local_patterns = self._load_phase4_patterns(scope="local")
+        # Merge: all validated patterns (community + local) are "known"
+        all_known_patterns = community_patterns + local_patterns
 
         if not all_signals:
             return {"status": "no_signals", "advisory": None}
@@ -1084,12 +1084,12 @@ class Phase5Engine:
         evidence = self._collect_evidence(significant, all_events)
 
         # Step 3: Pattern matching
-        # Known: promoted knowledge + community patterns from registry/PyPI
+        # Known: promoted knowledge + all validated patterns (community + local)
         pattern_matches = self._match_patterns(significant, knowledge)
-        community_matches = self._match_candidate_patterns(significant, community_patterns)
-        pattern_matches.extend(community_matches)
-        # New: locally discovered patterns (shareable with community)
-        candidate_patterns = self._match_candidate_patterns(significant, local_patterns)
+        known_matches = self._match_candidate_patterns(significant, all_known_patterns)
+        pattern_matches.extend(known_matches)
+        # Candidate patterns: none — all validated patterns are now "known"
+        candidate_patterns = []
 
         # Step 4: Compile advisory
         # Build change list (with commit attribution)
