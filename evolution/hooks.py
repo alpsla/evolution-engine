@@ -171,8 +171,8 @@ if [ -z "$_evo_raw_level" ]; then
 else
     _evo_msg="EE: $_evo_resolution"
 fi
-# Generate report so click-to-open works
-"$_EVO_CMD" report . 2>/dev/null
+# Generate report with verification banner (compares last two runs)
+"$_EVO_CMD" report . --verify 2>/dev/null
 _evo_report="$(git rev-parse --show-toplevel 2>/dev/null)/.evo/report.html"
 # Desktop notification (macOS / Linux)
 if [ "$(uname)" = "Darwin" ]; then
@@ -195,8 +195,8 @@ def _open_block(auto_open: bool, families_flag: str) -> str:
     if not auto_open:
         return ""
     return """
-# Open report in browser
-"$_EVO_CMD" report . --open""" + families_flag + " 2>/dev/null"
+# Open report in browser (with verification banner)
+"$_EVO_CMD" report . --open --verify""" + families_flag + " 2>/dev/null"
 
 
 def _indent(text: str, spaces: int) -> str:

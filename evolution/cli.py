@@ -1981,7 +1981,8 @@ def license_activate(key):
 @click.option("--title", help="Custom report title")
 @click.option("--open", "open_browser", is_flag=True, help="Open in browser after generating")
 @click.option("--serve", is_flag=True, help="Start local server for interactive report (blocking)")
-def report(path, output, evo_dir, title, open_browser, serve):
+@click.option("--verify", is_flag=True, help="Include verification banner comparing last two runs")
+def report(path, output, evo_dir, title, open_browser, serve, verify):
     """Generate an HTML report from the latest advisory."""
     from evolution.report_generator import generate_report
 
@@ -1990,6 +1991,19 @@ def report(path, output, evo_dir, title, open_browser, serve):
     if not (evo_path / "phase5" / "advisory.json").exists():
         click.echo("No advisory found. Run `evo analyze` first.")
         sys.exit(1)
+
+    # --verify: compare last two runs and persist verification.json
+    if verify:
+        try:
+            from evolution.history import HistoryManager
+            hm = HistoryManager(evo_path)
+            runs = hm.list_runs(limit=2)
+            if len(runs) >= 2:
+                verify_diff = hm.compare(runs[1]["timestamp"], runs[0]["timestamp"])
+                verify_path = evo_path / "phase5" / "verification.json"
+                verify_path.write_text(json.dumps(verify_diff, default=str))
+        except Exception:
+            pass  # non-fatal — report renders without verification banner
 
     # Load calibration result if available
     cal = None
