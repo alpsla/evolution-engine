@@ -455,7 +455,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: evolution-engine/analyze@v1
+      - uses: alpsla/evolution-engine@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           # Comment risk summary on PR

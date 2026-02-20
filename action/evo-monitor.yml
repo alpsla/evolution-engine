@@ -22,7 +22,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  issues: write
 
 jobs:
   analyze:
@@ -32,7 +31,7 @@ jobs:
         with:
           fetch-depth: 0  # Full history needed for baseline computation
 
-      - uses: evolution-engine/analyze@v1
+      - uses: alpsla/evolution-engine@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           # Post risk summary as PR comment

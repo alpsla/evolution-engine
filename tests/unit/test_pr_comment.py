@@ -4,8 +4,11 @@ import pytest
 from evolution.pr_comment import (
     format_pr_comment,
     format_verification_comment,
+    format_accepted_comment,
     _count_risks,
     _fmt,
+    _format_sources_section,
+    _format_next_steps,
 )
 
 
@@ -36,6 +39,18 @@ def _make_advisory(changes=None, patterns=None, candidates=None,
         "changes": changes,
         "pattern_matches": patterns or [],
         "candidate_patterns": candidates or [],
+    }
+
+
+def _make_sources_info(connected=None, detected=None, families=None):
+    return {
+        "connected": connected or [
+            {"family": "git", "adapter": "builtin", "tier": 1},
+            {"family": "dependency", "adapter": "builtin", "tier": 1},
+        ],
+        "detected": detected or [],
+        "current_families": families or ["git", "dependency"],
+        "current_combinations": 1,
     }
 
 
@@ -199,6 +214,143 @@ class TestFormatPrComment:
         result = format_pr_comment(_make_advisory(changes=changes))
         assert "Medium" in result  # abs(3.5) >= 2.0
         assert "files_touched" in result
+
+
+# ─── Sources section ───
+
+
+class TestSourcesSection:
+    def test_sources_section_in_comment(self):
+        changes = [_make_change()]
+        sources = _make_sources_info()
+        result = format_pr_comment(_make_advisory(changes=changes), sources_info=sources)
+        assert "### What EE Can See" in result
+        assert "\u2705 Git history" in result
+
+    def test_sources_shows_connected_families(self):
+        sources = _make_sources_info(
+            connected=[
+                {"family": "git", "adapter": "builtin", "tier": 1},
+                {"family": "ci", "adapter": "builtin", "tier": 1},
+            ],
+            families=["git", "ci"],
+        )
+        changes = [_make_change()]
+        result = format_pr_comment(_make_advisory(changes=changes), sources_info=sources)
+        assert "\u2705 Git history" in result
+        assert "\u2705 Ci" in result
+
+    def test_sources_shows_missing_families(self):
+        sources = _make_sources_info(
+            connected=[{"family": "git", "adapter": "builtin", "tier": 1}],
+            families=["git"],
+        )
+        changes = [_make_change()]
+        result = format_pr_comment(_make_advisory(changes=changes), sources_info=sources)
+        assert "\u2b1c" in result  # unchecked box for missing
+        assert "CI builds" in result
+        assert "GITHUB_TOKEN" in result
+
+    def test_sources_shows_detected_services(self):
+        sources = _make_sources_info(
+            connected=[{"family": "git", "adapter": "builtin", "tier": 1}],
+            detected=[
+                {"service": "sentry", "display_name": "Sentry", "family": "monitoring",
+                 "adapter": "evo-adapter-sentry", "detection_layers": ["config"]},
+            ],
+            families=["git"],
+        )
+        changes = [_make_change()]
+        result = format_pr_comment(_make_advisory(changes=changes), sources_info=sources)
+        assert "Sentry" in result
+
+    def test_sources_none_graceful(self):
+        """No sources_info → no sources section at all."""
+        changes = [_make_change()]
+        result = format_pr_comment(_make_advisory(changes=changes), sources_info=None)
+        assert "What EE Can See" not in result
+
+    def test_sources_in_all_clear(self):
+        """Sources section still shown in all-clear comments."""
+        sources = _make_sources_info()
+        advisory = _make_advisory(significant_changes=0)
+        result = format_pr_comment(advisory, sources_info=sources)
+        assert "What EE Can See" in result
+        assert "All clear" in result
+
+
+# ─── Investigation prompt section ───
+
+
+class TestInvestigationPrompt:
+    def test_prompt_in_details_block(self):
+        changes = [_make_change()]
+        prompt = "Development pattern shift detected in my-repo.\nPlease investigate."
+        result = format_pr_comment(
+            _make_advisory(changes=changes),
+            investigation_prompt=prompt,
+        )
+        assert "Investigation Prompt" in result
+        assert "```text" in result
+        assert "Development pattern shift detected" in result
+        assert "Option A" in result
+        assert "Option B" in result
+        assert "Option C" in result
+
+    def test_prompt_none_shows_fallback(self):
+        changes = [_make_change()]
+        result = format_pr_comment(
+            _make_advisory(changes=changes),
+            investigation_prompt=None,
+        )
+        assert "What To Do Next" in result
+        assert "Option A" in result
+        assert "Investigate" in result  # fallback wording
+        assert "Investigation Prompt" not in result
+        assert "Option B" in result
+        assert "Option C" in result
+
+    def test_what_to_do_next_always_present(self):
+        changes = [_make_change()]
+        result = format_pr_comment(_make_advisory(changes=changes))
+        assert "### What To Do Next" in result
+        assert "/evo accept" in result
+
+    def test_three_options_present(self):
+        changes = [_make_change()]
+        prompt = "Investigate this drift."
+        result = format_pr_comment(
+            _make_advisory(changes=changes),
+            investigation_prompt=prompt,
+        )
+        assert "Option A — Fix the drift" in result
+        assert "Option B — Accept for this PR" in result
+        assert "Option C — Accept permanently" in result
+        assert "/evo accept permanent" in result
+
+    def test_three_options_without_prompt(self):
+        changes = [_make_change()]
+        result = format_pr_comment(_make_advisory(changes=changes))
+        assert "Option A — Investigate" in result
+        assert "Option B — Accept for this PR" in result
+        assert "Option C — Accept permanently" in result
+        assert "/evo accept permanent" in result
+
+    def test_report_url_in_next_steps(self):
+        changes = [_make_change()]
+        result = format_pr_comment(
+            _make_advisory(changes=changes),
+            report_url="https://example.com/report",
+        )
+        assert "[View Full Report](https://example.com/report)" in result
+
+    def test_report_url_none_no_link(self):
+        changes = [_make_change()]
+        result = format_pr_comment(
+            _make_advisory(changes=changes),
+            report_url=None,
+        )
+        assert "View Full Report" not in result
 
 
 # ─── format_verification_comment ───
@@ -382,6 +534,183 @@ class TestFormatVerificationComment:
         assert result.startswith("## Evolution Engine — Verification Update")
 
 
+# ─── Verification with residual prompt ───
+
+
+class TestVerificationResidualPrompt:
+    def test_residual_prompt_in_verification(self):
+        verification = {
+            "verification": {
+                "summary": {
+                    "resolved": 1,
+                    "persisting": 1,
+                    "new": 0,
+                    "regressions": 0,
+                    "total_before": 2,
+                    "resolution_rate": 0.5,
+                },
+                "resolved": [{"family": "git", "metric": "dispersion"}],
+                "persisting": [{"family": "git", "metric": "files_touched", "improved": True}],
+                "new": [],
+                "regressions": [],
+            }
+        }
+        residual = "ITERATION of fix loop...\nStill drifting: git/files_touched"
+        result = format_verification_comment(verification, residual_prompt=residual)
+        assert "### Continue Fixing" in result
+        assert "Residual Prompt" in result
+        assert "```text" in result
+        assert "ITERATION of fix loop" in result
+
+    def test_residual_prompt_not_shown_when_all_resolved(self):
+        verification = {
+            "verification": {
+                "summary": {
+                    "resolved": 2,
+                    "persisting": 0,
+                    "new": 0,
+                    "regressions": 0,
+                    "total_before": 2,
+                    "resolution_rate": 1.0,
+                },
+                "resolved": [
+                    {"family": "git", "metric": "files_touched"},
+                    {"family": "git", "metric": "dispersion"},
+                ],
+                "persisting": [],
+                "new": [],
+                "regressions": [],
+            }
+        }
+        residual = "Should not appear"
+        result = format_verification_comment(verification, residual_prompt=residual)
+        assert "Continue Fixing" not in result
+        assert "Should not appear" not in result
+
+    def test_residual_prompt_none_graceful(self):
+        verification = {
+            "verification": {
+                "summary": {
+                    "resolved": 0,
+                    "persisting": 1,
+                    "new": 0,
+                    "regressions": 0,
+                    "total_before": 1,
+                    "resolution_rate": 0,
+                },
+                "resolved": [],
+                "persisting": [{"family": "git", "metric": "files_touched", "improved": False}],
+                "new": [],
+                "regressions": [],
+            }
+        }
+        result = format_verification_comment(verification, residual_prompt=None)
+        assert "Continue Fixing" not in result
+
+    def test_report_url_in_verification(self):
+        verification = {
+            "verification": {
+                "summary": {
+                    "resolved": 1,
+                    "persisting": 0,
+                    "new": 0,
+                    "regressions": 0,
+                    "total_before": 1,
+                    "resolution_rate": 1.0,
+                },
+                "resolved": [{"family": "git", "metric": "files_touched"}],
+                "persisting": [],
+                "new": [],
+                "regressions": [],
+            }
+        }
+        result = format_verification_comment(
+            verification,
+            report_url="https://example.com/actions/runs/123",
+        )
+        assert "[View Full Report](https://example.com/actions/runs/123)" in result
+
+    def test_report_url_none_no_link(self):
+        verification = {
+            "verification": {
+                "summary": {
+                    "resolved": 1,
+                    "persisting": 0,
+                    "new": 0,
+                    "regressions": 0,
+                    "total_before": 1,
+                    "resolution_rate": 1.0,
+                },
+                "resolved": [{"family": "git", "metric": "files_touched"}],
+                "persisting": [],
+                "new": [],
+                "regressions": [],
+            }
+        }
+        result = format_verification_comment(verification, report_url=None)
+        assert "View Full Report" not in result
+
+
+# ─── format_accepted_comment ───
+
+
+class TestFormatAcceptedComment:
+    def test_accepted_basic(self):
+        changes = [_make_change()]
+        advisory = _make_advisory(changes=changes)
+        result = format_accepted_comment(advisory, accepted_by="alice")
+        assert "## Evolution Engine Analysis" in result
+        assert "Accepted for this PR" in result
+        assert "findings acknowledged as intentional" in result
+        assert "Accepted by @alice" in result
+
+    def test_accepted_scope_this_pr(self):
+        changes = [_make_change()]
+        advisory = _make_advisory(changes=changes)
+        result = format_accepted_comment(advisory, accepted_by="alice", scope="this-pr")
+        assert "Accepted for this PR" in result
+        assert "Accepted permanently" not in result
+
+    def test_accepted_scope_permanent(self):
+        changes = [_make_change()]
+        advisory = _make_advisory(changes=changes)
+        result = format_accepted_comment(advisory, accepted_by="alice", scope="permanent")
+        assert "Accepted permanently" in result
+        assert "Accepted for this PR" not in result
+
+    def test_accepted_contains_original_findings(self):
+        changes = [
+            _make_change(metric="files_touched", deviation=5.0),
+            _make_change(metric="dispersion", deviation=3.0, current=0.8, median=0.2),
+        ]
+        advisory = _make_advisory(changes=changes)
+        result = format_accepted_comment(advisory, accepted_by="bob")
+        assert "Original findings (2 changes)" in result
+        assert "files_touched" in result
+        assert "dispersion" in result
+        assert "<details>" in result
+
+    def test_accepted_single_change_grammar(self):
+        changes = [_make_change()]
+        advisory = _make_advisory(changes=changes, significant_changes=1)
+        result = format_accepted_comment(advisory, accepted_by="carol")
+        assert "1 change)" in result
+        assert "1 changes)" not in result
+
+    def test_accepted_no_changes(self):
+        advisory = _make_advisory(changes=[], significant_changes=0)
+        result = format_accepted_comment(advisory, accepted_by="dave")
+        assert "Accepted" in result
+        assert "<details>" not in result  # no findings to collapse
+
+    def test_accepted_table_format(self):
+        changes = [_make_change(deviation=7.0)]
+        advisory = _make_advisory(changes=changes)
+        result = format_accepted_comment(advisory, accepted_by="eve")
+        assert "| Risk | Family | Metric | Now | Usual | Change |" in result
+        assert "Critical" in result
+
+
 # ─── Helper functions ───
 
 
@@ -437,6 +766,74 @@ class TestFmt:
 
     def test_zero_float(self):
         assert _fmt(0.0) == "0.00"
+
+
+class TestFormatSourcesSection:
+    def test_basic_sources(self):
+        sources = _make_sources_info()
+        lines = _format_sources_section(sources)
+        text = "\n".join(lines)
+        assert "What EE Can See" in text
+        assert "\u2705 Git history" in text
+
+    def test_missing_ci_and_deploy_hinted(self):
+        sources = _make_sources_info(
+            connected=[{"family": "git", "adapter": "builtin", "tier": 1}],
+            families=["git"],
+        )
+        lines = _format_sources_section(sources)
+        text = "\n".join(lines)
+        assert "CI builds" in text
+        assert "Deployments" in text
+        assert "GITHUB_TOKEN" in text
+
+    def test_connected_ci_not_hinted(self):
+        sources = _make_sources_info(
+            connected=[
+                {"family": "git", "adapter": "builtin", "tier": 1},
+                {"family": "ci", "adapter": "builtin", "tier": 1},
+            ],
+            families=["git", "ci"],
+        )
+        lines = _format_sources_section(sources)
+        text = "\n".join(lines)
+        # CI connected, so no hint for CI
+        assert "\u2705 Ci" in text
+        # But deployment still hinted
+        assert "Deployments" in text
+
+
+class TestFormatNextSteps:
+    def test_with_prompt(self):
+        lines = _format_next_steps(investigation_prompt="Please investigate this drift.")
+        text = "\n".join(lines)
+        assert "Option A — Fix the drift" in text
+        assert "Investigation Prompt" in text
+        assert "Please investigate this drift." in text
+        assert "Option B — Accept for this PR" in text
+        assert "Option C — Accept permanently" in text
+        assert "/evo accept" in text
+        assert "/evo accept permanent" in text
+
+    def test_without_prompt(self):
+        lines = _format_next_steps(investigation_prompt=None)
+        text = "\n".join(lines)
+        assert "Option A — Investigate" in text
+        assert "Investigation Prompt" not in text
+        assert "Option B — Accept for this PR" in text
+        assert "Option C — Accept permanently" in text
+        assert "/evo accept" in text
+        assert "/evo accept permanent" in text
+
+    def test_with_report_url(self):
+        lines = _format_next_steps(report_url="https://example.com/report")
+        text = "\n".join(lines)
+        assert "[View Full Report](https://example.com/report)" in text
+
+    def test_without_report_url(self):
+        lines = _format_next_steps(report_url=None)
+        text = "\n".join(lines)
+        assert "View Full Report" not in text
 
 
 # ─── format_comment.py script ───
@@ -515,6 +912,149 @@ class TestFormatCommentScript:
         content = output_path.read_text()
         assert "Verification Update" in content
         assert "All clear" in content
+
+    def test_script_with_sources_and_prompt(self, tmp_path):
+        """Run format_comment.py with sources and prompt flags."""
+        import subprocess
+        import json
+
+        advisory = _make_advisory(
+            changes=[_make_change()],
+            families_affected=["git"],
+        )
+        advisory_path = tmp_path / "advisory.json"
+        advisory_path.write_text(json.dumps(advisory))
+
+        sources = _make_sources_info()
+        sources_path = tmp_path / "sources.json"
+        sources_path.write_text(json.dumps(sources))
+
+        prompt_path = tmp_path / "prompt.txt"
+        prompt_path.write_text("Investigate this drift in my-repo")
+
+        output_path = tmp_path / "comment.md"
+
+        script = Path(__file__).parent.parent.parent / "action" / "format_comment.py"
+        if not script.exists():
+            pytest.skip("action/format_comment.py not found")
+
+        result = subprocess.run(
+            [sys.executable, str(script),
+             "--advisory", str(advisory_path),
+             "--sources", str(sources_path),
+             "--prompt", str(prompt_path),
+             "--report-url", "https://example.com/report",
+             "--output", str(output_path)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        content = output_path.read_text()
+        assert "What EE Can See" in content
+        assert "Investigation Prompt" in content
+        assert "Investigate this drift" in content
+        assert "View Full Report" in content
+
+    def test_script_with_accepted_by(self, tmp_path):
+        """Run format_comment.py with --accepted-by flag."""
+        import subprocess
+        import json
+
+        advisory = _make_advisory(
+            changes=[_make_change()],
+            families_affected=["git"],
+        )
+        advisory_path = tmp_path / "advisory.json"
+        advisory_path.write_text(json.dumps(advisory))
+        output_path = tmp_path / "comment.md"
+
+        script = Path(__file__).parent.parent.parent / "action" / "format_comment.py"
+        if not script.exists():
+            pytest.skip("action/format_comment.py not found")
+
+        result = subprocess.run(
+            [sys.executable, str(script),
+             "--advisory", str(advisory_path),
+             "--accepted-by", "testuser",
+             "--output", str(output_path)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        content = output_path.read_text()
+        assert "Accepted for this PR" in content
+        assert "Accepted by @testuser" in content
+
+    def test_script_with_accepted_by_permanent(self, tmp_path):
+        """Run format_comment.py with --accepted-by and --scope permanent."""
+        import subprocess
+        import json
+
+        advisory = _make_advisory(
+            changes=[_make_change()],
+            families_affected=["git"],
+        )
+        advisory_path = tmp_path / "advisory.json"
+        advisory_path.write_text(json.dumps(advisory))
+        output_path = tmp_path / "comment.md"
+
+        script = Path(__file__).parent.parent.parent / "action" / "format_comment.py"
+        if not script.exists():
+            pytest.skip("action/format_comment.py not found")
+
+        result = subprocess.run(
+            [sys.executable, str(script),
+             "--advisory", str(advisory_path),
+             "--accepted-by", "testuser",
+             "--scope", "permanent",
+             "--output", str(output_path)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        content = output_path.read_text()
+        assert "Accepted permanently" in content
+        assert "Accepted by @testuser" in content
+
+    def test_script_with_residual_prompt(self, tmp_path):
+        """Run format_comment.py with --residual-prompt flag for verification."""
+        import subprocess
+        import json
+
+        verification = {
+            "verification": {
+                "summary": {
+                    "resolved": 1, "persisting": 1, "new": 0,
+                    "regressions": 0, "total_before": 2, "resolution_rate": 0.5,
+                },
+                "resolved": [{"family": "git", "metric": "dispersion"}],
+                "persisting": [{"family": "git", "metric": "files_touched", "improved": True}],
+                "new": [], "regressions": [],
+            }
+        }
+        verification_path = tmp_path / "verification.json"
+        verification_path.write_text(json.dumps(verification))
+
+        residual_path = tmp_path / "residual.txt"
+        residual_path.write_text("Continue fixing: git/files_touched still drifting")
+
+        output_path = tmp_path / "comment.md"
+
+        script = Path(__file__).parent.parent.parent / "action" / "format_comment.py"
+        if not script.exists():
+            pytest.skip("action/format_comment.py not found")
+
+        result = subprocess.run(
+            [sys.executable, str(script),
+             "--verification", str(verification_path),
+             "--residual-prompt", str(residual_path),
+             "--report-url", "https://example.com/runs/456",
+             "--output", str(output_path)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        content = output_path.read_text()
+        assert "Continue Fixing" in content
+        assert "Residual Prompt" in content
+        assert "git/files_touched still drifting" in content
+        assert "View Full Report" in content
 
 
 import sys

@@ -1,0 +1,42 @@
+# Self-test: runs the composite action from this repo against itself.
+# Uses ./action (local reference) so no separate action repo is needed.
+
+name: Test Action
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  test-action:
+    runs-on: ubuntu-latest
+    # Run on PR events, or on issue_comment if it's /evo accept on a PR
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '/evo accept'))
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Install from local source instead of PyPI so we test unreleased changes
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install from source
+        run: pip install -e .
+
+      - uses: ./action
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          comment: true
+          skip-install: true

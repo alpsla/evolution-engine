@@ -87,7 +87,7 @@ class TestDetectEnvironment:
         wf_dir = git_repo / ".github" / "workflows"
         wf_dir.mkdir(parents=True)
         (wf_dir / "ci.yml").write_text(
-            "name: CI\nuses: codequal/evolution-engine-action@v1\n"
+            "name: CI\nuses: alpsla/evolution-engine@v1\n"
         )
         pi = ProjectInit(repo_path=git_repo, config=config)
         env = pi.detect_environment()
@@ -241,7 +241,7 @@ class TestGenerateWorkflow:
         assert "pull_request:" in yaml
         assert "push:" in yaml
         assert "branches: [main]" in yaml
-        assert "codequal/evolution-engine-action@v1" in yaml
+        assert "alpsla/evolution-engine@v1" in yaml
         assert "GITHUB_TOKEN" in yaml
         assert "actions/checkout@v4" in yaml
 

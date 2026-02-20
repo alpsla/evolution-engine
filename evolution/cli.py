@@ -2041,7 +2041,8 @@ def report(path, output, evo_dir, title, open_browser, serve, verify):
 @click.argument("previous", type=click.Path(exists=True))
 @click.option("--path", default=".", type=click.Path(exists=True), help="Repository path")
 @click.option("--scope", "-s", help="Scope identifier")
-def verify(previous, path, scope):
+@click.option("--quiet", "-q", is_flag=True, help="Suppress output, write verification JSON only")
+def verify(previous, path, scope, quiet):
     """Compare current state against a previous advisory."""
     from evolution.phase5_engine import Phase5Engine
 
@@ -2050,6 +2051,20 @@ def verify(previous, path, scope):
 
     phase5 = Phase5Engine(evo_dir)
     result = phase5.verify(scope=scope, previous_advisory_path=previous)
+
+    # Save verification JSON (always, for CI consumption)
+    verification_path = Path(evo_dir) / "phase5" / "verification.json"
+    verification_path.parent.mkdir(parents=True, exist_ok=True)
+    verification_path.write_text(
+        json.dumps(result.get("verification", {}), indent=2), encoding="utf-8"
+    )
+
+    if quiet:
+        # Exit with code 0 if all resolved, 1 if issues remain
+        v = result.get("verification", {})
+        summary = v.get("summary", {})
+        remaining = summary.get("persisting", 0) + summary.get("new", 0)
+        sys.exit(1 if remaining > 0 else 0)
 
     if result["status"] == "verified":
         click.echo(result["verification_text"])

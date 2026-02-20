@@ -150,14 +150,14 @@ Add Evolution Engine to your pull request workflow. Every PR gets an automated a
 evo init . --path action
 
 # Commit and push to activate
-git add .github/workflows/evo-monitor.yml
+git add .github/workflows/evolution.yml
 git commit -m "ci: add Evolution Engine analysis"
 git push
 ```
 
 ### Manual workflow setup
 
-Add to `.github/workflows/evo-monitor.yml`:
+Add to `.github/workflows/evolution.yml`:
 
 ```yaml
 name: Evolution Engine
@@ -174,7 +174,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: evolution-engine/analyze@v1
+      - uses: alpsla/evolution-engine@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment: true
