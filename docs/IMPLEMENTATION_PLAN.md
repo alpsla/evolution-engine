@@ -907,7 +907,7 @@ doesn't repeat failed fixes. The loop terminates when:
 
 **Phase 3 — GitHub Action (continuous loop on every PR):**
 ```yaml
-- uses: evolution-engine/analyze@v1
+- uses: alpsla/evolution-engine@v1
   with:
     comment: true           # Risk summary on PR
     investigate: true       # AI investigation on High/Critical
@@ -1411,8 +1411,9 @@ The remaining items before public beta:
 | 42 | **Community beta** — announce, gather feedback | Low | No — begins once 43-49 verified |
 | 42b | ~~Pattern pipeline E2E~~ ✅ — Upstash Redis, registry handler, push/pull, PyPI auto-fetch | Done | — |
 | 43 | ~~Path 1: CLI testing~~ ✅ — analyze, verify, accept, patterns, history, config, sources, setup, adapters tested on codequal | Done | — |
-| **44** | **Path 2: Git Hooks** — init, post-commit trigger, notification, background analysis, severity threshold, management | Medium | Yes — validate SDLC |
-| **45** | **Path 3: GitHub/GitLab Action** — init, workflow generation, PR comments, investigate, verify, inline suggestions, 7 GitLab scenarios | Medium | Yes — validate CI |
+| 44 | ~~Path 2: Git Hooks~~ ✅ — init, post-commit trigger, notification, background analysis, severity threshold, management tested | Done | — |
+| 45 | ~~Path 3: GitHub Action~~ ✅ — fixed `--quiet` on verify, inline suggestions sys.path, action reference standardized to `alpsla/evolution-engine@v1`, comment ID via REST API, advisory caching via actions/cache, self-test workflow | Done | — |
+| 45b | **Acceptance persistence** — 3-option PR comment, `/evo accept permanent` webhook, acceptance persists to accepted.json (§16) | Low | **Testing** — webhook + action flow |
 | **46** | **`evo sources` UX fixes** — §13.3.1: redundant hints, irrelevant tools, unpublished adapters | Medium | Yes — users hit this early |
 | **47** | **Config cleanup** — remove outdated LLM/theme settings, simplify privacy, update setup UI | Medium | Yes — config is first impression |
 | **48** | **Adapter discovery UX** — friendlier guidance, explain value, suppress irrelevant suggestions | Medium | No — polish |
@@ -1568,8 +1569,8 @@ Round 5 — Future:
 - [ ] `evo config list`
 
 **Remaining SDLC paths:**
-- [ ] Path 2: Git Hooks — `evo init --path hooks`, post-commit trigger, auto-analyze
-- [ ] Path 3: GitHub Action — `evo init --path action`, PR comments, CI integration
+- [x] Path 2: Git Hooks — `evo init --path hooks`, post-commit trigger, auto-analyze ✅
+- [x] Path 3: GitHub Action — `evo init --path action`, PR comments, CI integration ✅
 
 ### 13.3.1 `evo sources` Issues (February 16, 2026, codequal repo)
 
@@ -1840,7 +1841,7 @@ Embed HMAC signing key in Cython-compiled binaries for license validation: ✅ C
 
 > **Summary (February 18, 2026):**
 >
-> **All engine priorities complete. 1359 tests passing (5.83s). Published to PyPI as v0.2.0.**
+> **All engine priorities complete. 1435 tests passing (6.52s). Published to PyPI as v0.2.0.**
 >
 > All 5 engine phases, open-core infrastructure, AI agent integration, GitHub Action, source prescan,
 > cloud sync, Cython build, FP validation, inline suggestions, CI wheel builds, website, Stripe
@@ -1873,8 +1874,9 @@ Embed HMAC signing key in Cython-compiled binaries for license validation: ✅ C
 > 2. ~~Steps 6–8~~ ✅ — v0.2.0 tagged → wheels built → TestPyPI verified → PyPI published
 >
 > *SDLC Integration Testing (post-deploy):*
-> 3. **Path 2: Git Hooks** (#44) — init → post-commit trigger → notification → background analysis
-> 4. **Path 3: GitHub Action** (#45) — init → workflow generation → PR comments → investigate
+> 3. ~~**Path 2: Git Hooks** (#44)~~ ✅ — tested
+> 4. ~~**Path 3: GitHub Action** (#45)~~ ✅ — tested
+> 4b. **Acceptance persistence** (#45b) — webhook deploy + action flow manual testing (§16)
 > 5. **GitLab manual testing** (#37) — 7 scenarios on real GitLab repo
 >
 > *UX & Polish:*
@@ -1900,3 +1902,89 @@ Embed HMAC signing key in Cython-compiled binaries for license validation: ✅ C
 > **Product philosophy:** EE is a drift detector for AI-assisted development. "Fix" means
 > course-correct from the breakpoint commit, not patch a bug. The advisory is a drift alarm,
 > not a bug report.
+
+---
+
+## 16. Acceptance Gaps: 3 Options + Webhook Persistence (February 19, 2026)
+
+> **Status: IMPLEMENTED — pending manual testing of webhook and GitHub Action flow**
+>
+> 1435 tests passing (6.52s).
+
+### 16.1 Problem
+
+The previous `/evo accept` implementation was visual-only — it updated the PR comment text but
+never persisted acceptances to `.evo/accepted.json`. Findings reappeared on the next push.
+Additionally, `actions/cache` is ephemeral (~7 days), so even cached acceptances would not
+survive beyond PR merge.
+
+### 16.2 The 3 User Options
+
+| Option | PR Comment Command | Scope | Persistence |
+|--------|-------------------|-------|-------------|
+| **A — Fix the drift** | Push fixes | N/A | EE re-analyzes automatically |
+| **B — Accept for this PR** | `/evo accept` | `permanent` in PR-scoped cache | actions/cache (dies when PR merges) |
+| **C — Accept permanently** | `/evo accept permanent` | `permanent` | Webhook → Redis (survives forever) + local cache |
+
+### 16.3 Changes Made
+
+**`evolution/pr_comment.py`:**
+- `_format_next_steps()` — 3 options (A: Fix/Investigate, B: Accept for this PR, C: Accept permanently)
+- `format_accepted_comment()` — new `scope` param: shows "Accepted for this PR" vs "Accepted permanently"
+
+**`action/format_comment.py`:**
+- Added `--scope` flag (values: `this-pr`, `permanent`) passed to `format_accepted_comment()`
+
+**`action/action.yml`:**
+- New input: `accept-secret` — shared secret for permanent acceptance webhook
+- Scope parsing: `/evo accept permanent` → `scope=permanent`, `/evo accept` → `scope=this-pr`
+- New step: Persist acceptance — writes all advisory findings to `.evo/accepted.json` via `AcceptedDeviations.add()`
+- New step: Cache accepted.json per PR (`evo-accepted-{PR_NUMBER}`)
+- New step: Push permanent acceptances to `codequal.dev/api/accept` webhook (when `scope=permanent`)
+- New step: Pull permanent acceptances from webhook before analysis + merge into local accepted.json
+- New step: Restore cached acceptances before analysis
+- `--scope` flag passed to `format_comment.py` in accept handler
+
+**`website/api/accept.py`** — New Vercel serverless endpoint:
+- `POST /api/accept` — store acceptances per repo in Upstash Redis
+- `GET /api/accept?repo=owner/repo` — retrieve stored acceptances
+- HMAC-SHA256 auth via `EVO_ACCEPT_SECRET` env var
+- Rate limit: 20/hour per repo (in-memory, resets on cold start)
+- Safe text validation, Axiom observability logging
+
+**`website/vercel.json`** — Added build entry for `api/accept.py`
+
+**Tests:**
+- Updated `tests/unit/test_pr_comment.py` — 3-option layout, scope param, `--scope` flag in script tests
+- New `tests/unit/test_accept_webhook.py` — 35 tests: validation, HMAC, rate limiting, merge logic, safe text, key format
+
+### 16.4 Manual Testing Plan
+
+**Webhook endpoint (codequal.dev/api/accept):**
+
+1. Deploy to Vercel: `git push` (auto-deploys from main)
+2. Set `EVO_ACCEPT_SECRET` env var on Vercel project
+3. Test POST:
+   ```bash
+   SECRET="<value>"
+   REPO="alpsla/evolution-engine"
+   SIG=$(echo -n "$REPO" | openssl dgst -sha256 -hmac "$SECRET" | awk '{print $2}')
+   curl -X POST https://codequal.dev/api/accept \
+     -H "Content-Type: application/json" \
+     -d "{\"repo\":\"$REPO\",\"signature\":\"$SIG\",\"entries\":[{\"key\":\"git:dispersion\",\"family\":\"git\",\"metric\":\"dispersion\",\"reason\":\"Test\",\"accepted_by\":\"manual\"}]}"
+   ```
+4. Test GET:
+   ```bash
+   curl "https://codequal.dev/api/accept?repo=alpsla/evolution-engine"
+   ```
+5. Verify Redis storage via Upstash console
+
+**GitHub Action flow:**
+
+1. Set `EVO_ACCEPT_SECRET` as repository secret on test repo
+2. Open a PR that triggers EE findings
+3. Verify PR comment shows 3 options (A/B/C)
+4. Comment `/evo accept` → verify comment updates to "Accepted for this PR"
+5. Push again → verify findings reappear (PR-scoped, not permanent)
+6. Comment `/evo accept permanent` → verify comment updates to "Accepted permanently"
+7. Open new PR → verify permanently accepted findings are suppressed (pulled from webhook)
