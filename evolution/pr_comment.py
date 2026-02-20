@@ -27,11 +27,17 @@ _RISK_BADGES = {
     "Normal": "\u26aa",        # white circle
 }
 
+# Families that EE can detect from git alone (no token needed)
+_BUILTIN_FAMILIES = {"git", "dependency"}
+
 
 def format_pr_comment(
     advisory: dict,
     investigation: Optional[dict] = None,
     repo_name: str = None,
+    sources_info: Optional[dict] = None,
+    investigation_prompt: Optional[str] = None,
+    report_url: Optional[str] = None,
 ) -> str:
     """Format a Phase 5 advisory as a GitHub PR comment.
 
@@ -39,6 +45,9 @@ def format_pr_comment(
         advisory: Phase 5 advisory dict (from advisory.json).
         investigation: Optional investigation report dict.
         repo_name: Repository name for the header.
+        sources_info: Optional dict from `evo sources --json` with connected/detected info.
+        investigation_prompt: Optional copyable prompt for AI investigation.
+        report_url: Optional URL to the HTML report artifact.
 
     Returns:
         Markdown string suitable for `gh pr comment`.
@@ -52,11 +61,15 @@ def format_pr_comment(
     significant = summary.get("significant_changes", len(changes))
 
     if significant == 0:
-        return (
-            "## Evolution Engine Analysis\n\n"
-            "\u2705 **All clear** — no significant deviations detected.\n\n"
+        lines = ["## Evolution Engine Analysis", ""]
+        if sources_info:
+            lines.extend(_format_sources_section(sources_info))
+        lines.append("\u2705 **All clear** — no significant deviations detected.")
+        lines.append("")
+        lines.append(
             "<sub>Powered by [Evolution Engine](https://github.com/evolution-engine/evolution-engine)</sub>"
         )
+        return "\n".join(lines)
 
     # Header with summary
     risk_counts = _count_risks(changes)
@@ -67,9 +80,17 @@ def format_pr_comment(
     lines = [
         "## Evolution Engine Analysis",
         "",
-        f"**{significant} unusual change(s) detected** [{risk_summary}]",
-        "",
     ]
+
+    # Sources section (What EE Can See)
+    if sources_info:
+        lines.extend(_format_sources_section(sources_info))
+
+    # Findings header
+    lines.append("### Findings")
+    lines.append("")
+    lines.append(f"**{significant} unusual change(s) detected** [{risk_summary}]")
+    lines.append("")
 
     # Changes table
     lines.append("| Risk | Family | Metric | Now | Usual | Change |")
@@ -129,6 +150,11 @@ def format_pr_comment(
         lines.append("</details>")
         lines.append("")
 
+    # "What To Do Next" section
+    lines.append("---")
+    lines.append("")
+    lines.extend(_format_next_steps(investigation_prompt, report_url))
+
     # Footer
     families = summary.get("families_affected", [])
     lines.append(
@@ -142,12 +168,16 @@ def format_pr_comment(
 def format_verification_comment(
     verification: dict,
     previous_changes: int = 0,
+    residual_prompt: Optional[str] = None,
+    report_url: Optional[str] = None,
 ) -> str:
     """Format a verification result as a PR comment update.
 
     Args:
         verification: Verification dict from Phase 5 verify().
         previous_changes: Number of changes in the original advisory.
+        residual_prompt: Optional prompt for continuing fixes on remaining issues.
+        report_url: Optional URL to the HTML report artifact.
 
     Returns:
         Markdown string for updating the PR comment.
@@ -212,12 +242,199 @@ def format_verification_comment(
             lines.append(f"- \U0001f534 {item.get('family', '?')} / {item.get('metric', '?')} — was normal before")
         lines.append("")
 
+    # Continue Fixing section (if there are persisting/new issues and a residual prompt)
+    if residual_prompt and (persisting > 0 or new_issues > 0 or regressions > 0):
+        lines.append("### Continue Fixing")
+        lines.append("")
+        lines.append("<details>")
+        lines.append("<summary>\U0001f4cb Residual Prompt</summary>")
+        lines.append("")
+        lines.append("```text")
+        lines.append(residual_prompt)
+        lines.append("```")
+        lines.append("")
+        lines.append("</details>")
+        lines.append("")
+
+    # Report link
+    if report_url:
+        lines.append(f"\U0001f4ca [View Full Report]({report_url})")
+        lines.append("")
+
     lines.append(
         f"<sub>Resolution rate: {rate:.0%} | "
         f"Powered by [Evolution Engine](https://github.com/evolution-engine/evolution-engine)</sub>"
     )
 
     return "\n".join(lines)
+
+
+def format_accepted_comment(
+    advisory: dict,
+    accepted_by: str,
+    scope: str = "this-pr",
+) -> str:
+    """Format an accepted-state PR comment.
+
+    Shows that findings were acknowledged as intentional, with original
+    findings collapsed in a details section.
+
+    Args:
+        advisory: Original Phase 5 advisory dict.
+        accepted_by: GitHub username who accepted the findings.
+        scope: Acceptance scope — "this-pr" or "permanent".
+
+    Returns:
+        Markdown string for the accepted comment.
+    """
+    changes = advisory.get("changes", [])
+    summary = advisory.get("summary", {})
+    significant = summary.get("significant_changes", len(changes))
+
+    if scope == "permanent":
+        scope_label = "Accepted permanently"
+    else:
+        scope_label = "Accepted for this PR"
+
+    lines = [
+        "## Evolution Engine Analysis",
+        "",
+        f"\u2705 **{scope_label}** — findings acknowledged as intentional.",
+        "",
+    ]
+
+    # Collapsed original findings
+    if changes:
+        lines.append(f"<details>")
+        lines.append(f"<summary>Original findings ({significant} change{'s' if significant != 1 else ''})</summary>")
+        lines.append("")
+        lines.append("| Risk | Family | Metric | Now | Usual | Change |")
+        lines.append("|:----:|--------|--------|----:|------:|--------|")
+
+        for c in sorted(changes, key=lambda x: abs(x.get("deviation_stddev", 0)), reverse=True):
+            risk = risk_level(c.get("deviation_stddev", 0))
+            badge = _RISK_BADGES.get(risk["label"], "\u26aa")
+            family = c.get("family", "?")
+            metric = c.get("metric", "?")
+            current = _fmt(c.get("current", 0))
+            normal = _fmt(c.get("normal", {}).get("median", c.get("normal", {}).get("mean", 0)))
+            desc = c.get("description", "")
+            if len(desc) > 60:
+                desc = desc[:57] + "..."
+            lines.append(
+                f"| {badge} {risk['label']} | {family} | {metric} | {current} | {normal} | {desc} |"
+            )
+
+        lines.append("")
+        lines.append("</details>")
+        lines.append("")
+
+    lines.append(f"<sub>Accepted by @{accepted_by}</sub>")
+
+    return "\n".join(lines)
+
+
+# ─── Internal helpers ───
+
+
+def _format_sources_section(sources_info: dict) -> list[str]:
+    """Format the 'What EE Can See' section from sources info.
+
+    Args:
+        sources_info: Dict from `evo sources --json` with connected/detected keys.
+
+    Returns:
+        List of markdown lines.
+    """
+    lines = ["### What EE Can See", ""]
+
+    connected = sources_info.get("connected", [])
+    detected = sources_info.get("detected", [])
+    connected_families = set(sources_info.get("current_families", []))
+
+    # Always show git (built-in)
+    if "git" in connected_families:
+        # Find git adapter info for baseline count
+        lines.append("\u2705 Git history")
+
+    # Show connected non-git families
+    for c in connected:
+        if c.get("family") == "git":
+            continue
+        family = c.get("family", "?")
+        lines.append(f"\u2705 {family.capitalize()}")
+
+    # Show detected-but-not-connected as available to enable
+    seen_families = set()
+    for d in detected:
+        family = d.get("family", "")
+        if family in connected_families or family in seen_families:
+            continue
+        seen_families.add(family)
+        hint = ""
+        display = d.get("display_name", family.capitalize())
+        if family in ("ci", "deployment"):
+            hint = " — add `GITHUB_TOKEN` secret to enable"
+        lines.append(f"\u2b1c {display}{hint}")
+
+    # Always hint at CI/deploy if not connected and not detected
+    for family, label, hint in [
+        ("ci", "CI builds", " — add `GITHUB_TOKEN` secret to enable"),
+        ("deployment", "Deployments", " — add `GITHUB_TOKEN` secret to enable"),
+    ]:
+        if family not in connected_families and family not in seen_families:
+            lines.append(f"\u2b1c {label}{hint}")
+
+    lines.append("")
+    return lines
+
+
+def _format_next_steps(
+    investigation_prompt: Optional[str] = None,
+    report_url: Optional[str] = None,
+) -> list[str]:
+    """Format the 'What To Do Next' section.
+
+    Args:
+        investigation_prompt: Optional copyable prompt for AI tools.
+        report_url: Optional URL to the HTML report artifact.
+
+    Returns:
+        List of markdown lines.
+    """
+    lines = ["### What To Do Next", ""]
+
+    if investigation_prompt:
+        lines.append("**Option A — Fix the drift:**")
+        lines.append("Copy this prompt to your AI coding tool, then push your fixes.")
+        lines.append("EE will automatically re-analyze and show resolution progress.")
+        lines.append("")
+        lines.append("<details>")
+        lines.append("<summary>\U0001f4cb Investigation Prompt</summary>")
+        lines.append("")
+        lines.append("```text")
+        lines.append(investigation_prompt)
+        lines.append("```")
+        lines.append("")
+        lines.append("</details>")
+        lines.append("")
+    else:
+        lines.append("**Option A — Investigate:**")
+        lines.append("Run `evo investigate .` locally or enable `investigate: true` in the action.")
+        lines.append("")
+
+    lines.append("**Option B — Accept for this PR:**")
+    lines.append("If these changes are intentional for this PR, comment `/evo accept` — findings won't reappear on this PR.")
+    lines.append("")
+    lines.append("**Option C — Accept permanently:**")
+    lines.append("Comment `/evo accept permanent` to suppress these findings across all future PRs.")
+    lines.append("")
+
+    if report_url:
+        lines.append(f"\U0001f4ca [View Full Report]({report_url})")
+        lines.append("")
+
+    return lines
 
 
 def _count_risks(changes: list) -> dict:

@@ -358,7 +358,7 @@ class TestPath3GitHubAction:
 
         assert "on:" in content
         assert "pull_request:" in content
-        assert "uses: codequal/evolution-engine-action@v1" in content
+        assert "uses: alpsla/evolution-engine@v1" in content
         assert "actions/checkout@v4" in content
         assert "permissions:" in content
 
@@ -370,7 +370,7 @@ class TestPath3GitHubAction:
         yaml = pi.generate_workflow()
 
         assert "families:" not in yaml
-        assert "codequal/evolution-engine-action@v1" in yaml
+        assert "alpsla/evolution-engine@v1" in yaml
 
     def test_generate_workflow_with_families(self, tmp_path):
         repo = _make_git_repo(tmp_path)

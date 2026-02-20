@@ -58,19 +58,19 @@ jobs:
           fetch-depth: 0
 
       - name: Evolution Engine Analyze
-        uses: codequal/evolution-engine-action@v1
+        uses: alpsla/evolution-engine@v1
         with:
           github-token: ${{{{ secrets.GITHUB_TOKEN }}}}
 {families_line}{license_line}
       # ── Pro Features (uncomment to enable) ──
       # - name: AI Investigation
-      #   uses: codequal/evolution-engine-action@v1
+      #   uses: alpsla/evolution-engine@v1
       #   with:
       #     investigate: "true"
       #     anthropic-api-key: ${{{{ secrets.ANTHROPIC_API_KEY }}}}
       #
       # - name: Inline Fix Suggestions
-      #   uses: codequal/evolution-engine-action@v1
+      #   uses: alpsla/evolution-engine@v1
       #   with:
       #     suggest-fixes: "true"
       #     investigate: "true"

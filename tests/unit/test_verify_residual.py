@@ -588,6 +588,123 @@ class TestResidualPromptMessages:
             assert "no_current_data" in result.output
 
 
+class TestVerifyQuietFlag:
+    """Test --quiet flag suppresses output and writes verification JSON."""
+
+    def test_quiet_no_output_all_resolved(self, repo_dir, previous_advisory_file):
+        """--quiet should produce no output when all issues resolved."""
+        verify_result = {
+            "status": "verified",
+            "verification_text": "ALL ISSUES RESOLVED.",
+            "advisory": _make_advisory(changes=[], advisory_id="curr-clear"),
+            "verification": {
+                "summary": {
+                    "total_before": 2,
+                    "resolved": 2,
+                    "persisting": 0,
+                    "new": 0,
+                    "regressions": 0,
+                },
+                "resolved": [],
+                "persisting": [],
+                "new": [],
+                "regressions": [],
+            },
+            "formats": {},
+        }
+
+        runner = CliRunner()
+        with patch("evolution.phase5_engine.Phase5Engine") as mock_p5:
+            mock_engine = MagicMock()
+            mock_engine.verify.return_value = verify_result
+            mock_p5.return_value = mock_engine
+
+            result = runner.invoke(
+                main,
+                ["verify", str(previous_advisory_file), "--path", str(repo_dir), "--quiet"],
+            )
+
+            assert result.exit_code == 0
+            assert result.output == ""
+
+    def test_quiet_exit_code_1_when_issues_persist(self, repo_dir, previous_advisory_file):
+        """--quiet should exit with code 1 when issues still persist."""
+        verify_result = {
+            "status": "verified",
+            "verification_text": "Report",
+            "advisory": _make_advisory(
+                changes=[_make_change("git", "files_touched", 10.0)],
+            ),
+            "verification": {
+                "summary": {
+                    "total_before": 2,
+                    "resolved": 1,
+                    "persisting": 1,
+                    "new": 0,
+                    "regressions": 0,
+                },
+                "resolved": [],
+                "persisting": [{"family": "git", "metric": "files_touched"}],
+                "new": [],
+                "regressions": [],
+            },
+            "formats": {},
+        }
+
+        runner = CliRunner()
+        with patch("evolution.phase5_engine.Phase5Engine") as mock_p5:
+            mock_engine = MagicMock()
+            mock_engine.verify.return_value = verify_result
+            mock_p5.return_value = mock_engine
+
+            result = runner.invoke(
+                main,
+                ["verify", str(previous_advisory_file), "--path", str(repo_dir), "--quiet"],
+            )
+
+            assert result.exit_code == 1
+            assert result.output == ""
+
+    def test_quiet_writes_verification_json(self, repo_dir, previous_advisory_file):
+        """--quiet should still write verification.json to disk."""
+        verification_data = {
+            "summary": {
+                "total_before": 1,
+                "resolved": 1,
+                "persisting": 0,
+                "new": 0,
+                "regressions": 0,
+            },
+            "resolved": [],
+            "persisting": [],
+            "new": [],
+            "regressions": [],
+        }
+        verify_result = {
+            "status": "verified",
+            "verification_text": "ALL CLEAR",
+            "advisory": _make_advisory(changes=[]),
+            "verification": verification_data,
+            "formats": {},
+        }
+
+        runner = CliRunner()
+        with patch("evolution.phase5_engine.Phase5Engine") as mock_p5:
+            mock_engine = MagicMock()
+            mock_engine.verify.return_value = verify_result
+            mock_p5.return_value = mock_engine
+
+            runner.invoke(
+                main,
+                ["verify", str(previous_advisory_file), "--path", str(repo_dir), "--quiet"],
+            )
+
+            vf_path = repo_dir / ".evo" / "phase5" / "verification.json"
+            assert vf_path.exists()
+            data = json.loads(vf_path.read_text())
+            assert data["summary"]["resolved"] == 1
+
+
 class TestLoadInvestigationText:
     """Test the _load_investigation_text helper."""
 
