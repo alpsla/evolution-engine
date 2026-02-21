@@ -48,6 +48,16 @@ def _detect_remote_url(repo_dir: Path) -> str:
     except Exception:
         return ""
 
+
+def _commit_url(remote_url: str, sha: str) -> str:
+    """Build a commit URL that works for both GitHub and GitLab.
+
+    GitLab uses /-/commit/{sha}, GitHub and most others use /commit/{sha}.
+    """
+    if "gitlab" in remote_url.lower():
+        return f"{remote_url}/-/commit/{sha}"
+    return f"{remote_url}/commit/{sha}"
+
 FAMILY_LABELS = {
     "git": "Version Control",
     "version_control": "Version Control",
@@ -726,7 +736,7 @@ def _build_change_card(c, index=0, remote_url="", commits_by_sha=None,
         sha_display = full_sha[:8]
         msg_display = _esc(c.get("commit_message", "").split("\n")[0][:60])
         if remote_url:
-            commit_link = f'{remote_url}/commit/{_esc(full_sha)}'
+            commit_link = _commit_url(remote_url, _esc(full_sha))
             sha_html = f'<a href="{commit_link}" target="_blank" class="commit-link"><code>{sha_display}</code></a>'
         else:
             sha_html = f'<code>{sha_display}</code>'

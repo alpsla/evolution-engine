@@ -42,11 +42,17 @@ LOCKFILES = {
     "pnpm-lock.yaml": "text_line",
     "requirements.txt": "text_line",
     "Pipfile.lock": "json_key",
+    "pyproject.toml": "text_line",
     "go.sum": "text_line",
     "go.mod": "text_line",
     "Cargo.lock": "text_field",
     "Gemfile.lock": "text_line",
     "composer.lock": "json_key",
+    "build.gradle": "text_line",
+    "build.gradle.kts": "text_line",
+    "pom.xml": "text_line",
+    "Package.resolved": "json_key",
+    "CMakeLists.txt": "text_line",
 }
 
 # Source file extensions to search for import patterns

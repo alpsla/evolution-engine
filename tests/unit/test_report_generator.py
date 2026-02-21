@@ -7,7 +7,7 @@ import pytest
 
 from evolution.report_generator import (
     generate_report, _esc, _fmt_num, _format_date, _detect_remote_url,
-    _render_html,
+    _commit_url, _render_html,
 )
 
 
@@ -428,6 +428,26 @@ class TestReportPolish:
     def test_detect_remote_url_no_repo(self, tmp_path):
         """Non-git directory should return empty string."""
         assert _detect_remote_url(tmp_path) == ""
+
+    def test_commit_url_github(self):
+        """GitHub commit URLs use /commit/ path."""
+        url = _commit_url("https://github.com/owner/repo", "abc123")
+        assert url == "https://github.com/owner/repo/commit/abc123"
+
+    def test_commit_url_gitlab(self):
+        """GitLab commit URLs use /-/commit/ path."""
+        url = _commit_url("https://gitlab.com/owner/repo", "abc123")
+        assert url == "https://gitlab.com/owner/repo/-/commit/abc123"
+
+    def test_commit_url_self_hosted_gitlab(self):
+        """Self-hosted GitLab also uses /-/commit/ path."""
+        url = _commit_url("https://gitlab.mycompany.com/team/project", "def456")
+        assert url == "https://gitlab.mycompany.com/team/project/-/commit/def456"
+
+    def test_commit_url_other_hosts(self):
+        """Non-GitLab hosts default to /commit/ path."""
+        url = _commit_url("https://gitea.example.com/owner/repo", "abc123")
+        assert url == "https://gitea.example.com/owner/repo/commit/abc123"
 
     def test_similar_severity_patterns_label(self, advisory_dir):
         """Pattern groups should use 'similar-severity patterns' not 'related patterns'."""

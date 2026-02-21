@@ -228,7 +228,8 @@ def check_adapter_discovery(state: dict, repo_path: str | Path = None):
                     TYPE_ADAPTER_AVAILABLE,
                     f"coming:{adapter_pkg}",
                     f"Detected {svc.display_name} in repo — "
-                    f"adapter coming soon. Request: evo adapter request {svc.family}",
+                    f"community adapter in development. "
+                    f"Scaffold your own: evo adapter new {svc.service} --family {svc.family}",
                 )
     except Exception as e:
         log.debug("Adapter discovery check failed: %s", e)
