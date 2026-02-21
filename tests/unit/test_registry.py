@@ -110,6 +110,35 @@ class TestTier1Detection:
         docker = [c for c in configs if c.adapter_name == "docker"]
         assert len(docker) == 1
 
+    def test_junit_xml_detection(self, tmp_path):
+        """JUnit XML test reports are detected as testing family."""
+        (tmp_path / ".git").mkdir()
+        (tmp_path / "junit.xml").write_text("<testsuite/>")
+        registry = AdapterRegistry(tmp_path)
+        configs = registry.detect()
+        junit = [c for c in configs if c.family == "testing" and c.tier == 1]
+        assert len(junit) == 1
+        assert junit[0].adapter_name == "junit_xml"
+
+    def test_junit_xml_surefire_detection(self, tmp_path):
+        """Surefire reports directory is detected as testing family."""
+        (tmp_path / ".git").mkdir()
+        (tmp_path / "surefire-reports").mkdir()
+        registry = AdapterRegistry(tmp_path)
+        configs = registry.detect()
+        junit = [c for c in configs if c.family == "testing" and c.tier == 1]
+        assert len(junit) == 1
+
+    def test_coverage_xml_detection(self, tmp_path):
+        """Cobertura coverage.xml is detected as coverage family."""
+        (tmp_path / ".git").mkdir()
+        (tmp_path / "coverage.xml").write_text("<coverage/>")
+        registry = AdapterRegistry(tmp_path)
+        configs = registry.detect()
+        cov = [c for c in configs if c.family == "coverage" and c.tier == 1]
+        assert len(cov) == 1
+        assert cov[0].adapter_name == "coverage_xml"
+
 
 class TestTier2Detection:
     def test_github_token_unlocks_tier2(self, mock_repo, monkeypatch):
@@ -149,6 +178,7 @@ class TestExplainMissing:
     def test_no_messages_when_all_tokens_present(self, mock_repo, monkeypatch):
         monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
         monkeypatch.setenv("GITLAB_TOKEN", "glpat_test")
+        monkeypatch.setenv("CIRCLECI_TOKEN", "cci_test")
         monkeypatch.setenv("JENKINS_URL", "http://jenkins")
         registry = AdapterRegistry(mock_repo)
         messages = registry.explain_missing()

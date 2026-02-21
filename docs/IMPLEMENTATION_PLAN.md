@@ -1,6 +1,6 @@
 # Evolution Engine — Implementation Plan
 
-> **Last updated:** February 19, 2026 | 1435 tests passing (6.52s) | v0.2.0 on PyPI
+> **Last updated:** February 20, 2026 | 1563 tests passing | v0.2.0 on PyPI | 42 universal patterns | 6 signal families
 >
 > This document tracks remaining work before public beta.
 > For completed implementation history, see `IMPLEMENTATION_PLAN_v1.md`.
@@ -14,6 +14,7 @@ All core engine work is done. Summary of shipped features:
 | Area | Status | Key Files |
 |------|--------|-----------|
 | 5-phase pipeline (events → signals → explanations → patterns → advisory) | ✅ | `evolution/phase*.py` |
+| 6 signal families (git, ci, deployment, dependency, testing, coverage) | ✅ | `evolution/adapters/`, `phase2_engine.py` |
 | CLI with 30+ commands (`evo analyze`, `verify`, `accept`, `investigate`, `fix`, etc.) | ✅ | `evolution/cli.py` |
 | 3-tier adapter ecosystem (built-in, API, plugins) with scaffold/validate/security | ✅ | `evolution/adapter_*.py` |
 | Source prescan (`evo sources`, `--what-if`) | ✅ | `evolution/prescan.py` |
@@ -23,15 +24,15 @@ All core engine work is done. Summary of shipped features:
 | Accept deviations — scoped (permanent, commits, dates, this-run) | ✅ | `evolution/accepted.py` |
 | Run history — snapshot, compare, clean | ✅ | `evolution/history.py` |
 | Pattern distribution — PyPI auto-fetch, KB sync, registry | ✅ | `evolution/pattern_registry.py`, `kb_sync.py` |
-| 27 universal patterns from 43 repos | ✅ | `evolution/data/universal_patterns.json` |
+| 42 universal patterns from 90+ repos | ✅ | `evolution/data/universal_patterns.json` |
 | License system — free/pro tiers, HMAC-signed keys, Stripe checkout | ✅ | `evolution/license.py` |
 | Cython compilation + CI wheels (Linux/macOS/Windows) | ✅ | `build_cython.py`, `.github/workflows/build-wheels.yml` |
 | Website — codequal.dev on Vercel (landing, docs, privacy, Stripe, pattern registry) | ✅ | `website/` |
 | SDLC integration — init wizard, git hooks, watcher daemon, setup UI | ✅ | `evolution/init.py`, `hooks.py`, `watcher.py`, `setup_ui.py` |
 | PR acceptance flow — 3 options, scope, webhook persistence | ✅ | `evolution/pr_comment.py`, `website/api/accept.py` |
-| GitLab compatibility | ✅ | Tested on gitlab-org/gitlab-styles |
+| GitLab CI integration — `.gitlab-ci.yml` template, MR comments, platform-aware accept | ✅ | `evolution/init.py`, `evolution/format_comment.py` |
 | FP validation — 1.6% rate | ✅ | `evolution/fp_validation.py` |
-| UX overhaul — 15 fixes (§13 of v1 plan) | ✅ | Multiple files |
+| UX overhaul — 15 fixes (§13 of v1 plan) + sources/config/adapter UX (#46-48) | ✅ | Multiple files |
 | Historical trend detection — three-category classification | ✅ | `evolution/phase5_engine.py` |
 | Pre-launch hardening — security fixes, signing key deployment | ✅ | Multiple files |
 
@@ -39,13 +40,15 @@ All core engine work is done. Summary of shipped features:
 
 ## Remaining Work
 
-### Testing & CI Gaps (In Progress)
+### Pre-Deployment Manual Testing (Blockers)
 
-| # | Task | Effort | Blocker? | Status |
-|---|------|--------|----------|--------|
-| 45b | **Acceptance persistence manual testing** — deploy webhook, test `/evo accept` + `/evo accept permanent` on real PR | Low | No | **Manual** — needs human |
-| 50 | **GitLab CI integration** — `.gitlab-ci.yml` template, MR comments, `/evo accept` on MRs | Medium | Yes — parity gap | **Next session** |
-| 37 | **GitLab manual testing** — 7 CLI scenarios on real GitLab repo (see v1 plan §12.2) | Low | Yes — verify before launch | Pending |
+| # | Task | Platform | Effort | Status |
+|---|------|----------|--------|--------|
+| 45b | **Acceptance persistence** — deploy webhook, test `/evo accept` + `/evo accept permanent` on real PR | GitHub | Low | Pending |
+| GH-WF | **GitHub Action workflow** — trigger on real PR, verify PR comment, inline suggestions, accept flow, verify flow | GitHub | Low | Pending |
+| 37 | **GitLab CLI manual testing** — 7 CLI scenarios on real GitLab repo (see v1 plan §12.2) | GitLab | Low | Pending |
+| GL-WF | **GitLab CI workflow** — trigger on real MR, verify MR comment, accept flow, verify flow | GitLab | Low | Pending |
+| 50 | **GitLab CI integration** — `.gitlab-ci.yml` template, MR comments, platform-aware accept | GitLab | Medium | **Complete** ✅ |
 
 #### 45b — Acceptance Persistence Testing Plan
 
@@ -78,77 +81,197 @@ All core engine work is done. Summary of shipped features:
 6. Comment `/evo accept permanent` → verify comment updates to "Accepted permanently"
 7. Open new PR → verify permanently accepted findings are suppressed (pulled from webhook)
 
-#### 50 — GitLab CI Integration
+#### 50 — GitLab CI Integration (Complete)
 
-**The gap:** The entire CI integration layer is GitHub-only. GitLab has zero equivalent.
+**Implemented:** Full GitLab CI parity with GitHub Action.
 
 | Component | GitHub | GitLab |
 |-----------|--------|--------|
-| CI workflow template | ✅ `action/action.yml` | **Missing** |
-| PR/MR comment posting | ✅ `gh api` | **Missing** — needs GitLab API |
-| `/evo accept` on MR | ✅ `issue_comment` trigger | **Missing** — needs note webhook |
+| CI workflow template | ✅ `action/action.yml` | ✅ `.gitlab-ci.yml` (generated by `evo init`) |
+| PR/MR comment posting | ✅ `gh api` | ✅ GitLab API v4 `/notes` |
+| Accept on MR | ✅ `/evo accept` comment | ✅ `evo accept` locally + commit + push |
+| Verification flow | ✅ re-analyze on push | ✅ re-analyze on push |
+| Sources section | ✅ GITHUB_TOKEN hints | ✅ GITLAB_TOKEN hints |
 | Webhook (accept.py) | ✅ | ✅ (repo-agnostic) |
-| CLI (`evo analyze`) | ✅ | ✅ |
 
-**What to build:**
+**Key files:**
+- `evolution/init.py` — detection (`has_gitlab`, `ci_provider`), `_GITLAB_CI_TEMPLATE`, `generate_gitlab_ci()`, `_write_gitlab_ci()`
+- `evolution/format_comment.py` — canonical CLI module (`python -m evolution.format_comment`)
+- `evolution/pr_comment.py` — `ci_provider` param on all format functions
+- 30 new tests across `test_init.py` and `test_pr_comment.py`
 
-1. **`.gitlab-ci.yml` template** — generated by `evo init --path action` when GitLab detected
-   - Stages: setup → analyze → comment → verify
-   - Uses `GITLAB_TOKEN` for MR comment API (`/api/v4/projects/:id/merge_requests/:iid/notes`)
-   - Cache `.evo/` between pipeline runs
-
-2. **`action/format_comment_gitlab.py`** (or reuse `format_comment.py`) — same markdown, different posting API
-
-3. **MR comment posting** — `curl` to GitLab API instead of `gh api`
-   - Find existing EE note: `GET /api/v4/projects/:id/merge_requests/:iid/notes`
-   - Create/update note: `POST` / `PUT` to same endpoint
-
-4. **`/evo accept` on MR** — GitLab pipeline trigger on MR note
-   - `rules: - if: $CI_PIPELINE_SOURCE == "merge_request_event"` with note body check
-   - Parse `/evo accept` vs `/evo accept permanent` from note body
-   - Same persistence logic (accepted.json + webhook)
-
-5. **`evo init` update** — detect `.gitlab-ci.yml` → generate GitLab template instead of GitHub
-
-**Files to create/modify:**
-- `action/gitlab-ci-template.yml` — new template
-- `evolution/init.py` — add GitLab path detection + template generation
-- `action/action.yml` patterns reused but adapted for GitLab API
-- Tests for GitLab template generation
-
-**Existing code to reuse:**
-- `evolution/pr_comment.py` — markdown formatting (platform-agnostic)
-- `action/format_comment.py` — advisory → markdown (already works)
-- `website/api/accept.py` — webhook is already repo-agnostic
+**Design decision:** GitLab has no `issue_comment` event trigger, so acceptance uses local `evo accept` + commit + push instead of MR comment commands.
 
 ---
 
 ### UX & Polish
 
-| # | Task | Effort | Blocker? |
-|---|------|--------|----------|
-| 46 | **`evo sources` UX fixes** — redundant token hints, irrelevant tool suggestions, unpublished adapter hints | Medium | Yes — users hit this early |
-| 47 | **Config cleanup** — remove outdated LLM/theme settings, simplify privacy to binary, update setup UI | Medium | Yes — config is first impression |
-| 48 | **Adapter discovery UX** — friendlier guidance, explain value of connecting detected tools, suppress irrelevant suggestions | Medium | No — polish |
+| # | Task | Effort | Blocker? | Status |
+|---|------|--------|----------|--------|
+| 46 | **`evo sources` UX fixes** — dynamic token hints, PyPI availability, scaffold hints | Medium | Yes — users hit this early | **Complete** ✅ |
+| 47 | **Config cleanup** — fix `report.auto_open` → `hooks.auto_open` bug, binary privacy fallback | Medium | Yes — config is first impression | **Complete** ✅ |
+| 48 | **Adapter discovery UX** — friendlier messages, `evo sources` hint in setup wizard | Medium | No — polish | **Complete** ✅ |
 
-**Details:**
+**What was done:**
 
 **#46 — `evo sources` fixes:**
-- Suppress Tier 2 hints when Tier 1 already active for same family
-- Only suggest tokens for tools actually detected in repo
-- Suppress adapter install hints for unpublished packages (or "Coming soon")
+- Dynamic token hints from `TIER2_DETECTORS` — only shows tokens not already set in env
+- Per-service PyPI availability check — shows `pip install` for published adapters, scaffold hint for unpublished
+- Removed hardcoded `GITHUB_TOKEN` hint
 
 **#47 — Config cleanup:**
-- Remove `llm.enabled/provider/model` — detect `ANTHROPIC_API_KEY` env var directly
-- Remove `report.theme` — single theme
-- Simplify `sync.privacy_level` — binary opt-in (share / don't share)
-- Update setup UI (`setup_ui.py`) to match
-- Add footer to `evo config list`: "Run `evo setup --ui` to edit in browser"
+- Fixed `report.auto_open` → `hooks.auto_open` (was reading/writing phantom key)
+- Fixed privacy fallback from `[0, 1, 2]` → `[0, 1]` (binary, matches `_METADATA`)
 
 **#48 — Adapter discovery UX:**
-- Reword when adapters not on PyPI ("Community adapters coming — or build your own")
-- Explain what connecting each tool would unlock (e.g., "Sentry → error tracking signals")
-- Suppress hints for tools not present in project
+- "Not yet on PyPI" → "Community adapters — request or build your own"
+- Notification message: "coming soon" → "community adapter in development. Scaffold your own: evo adapter new"
+- Added "Run 'evo sources' to see how connecting these tools enriches analysis" hint in setup wizard
+
+**Tests:** 11 new tests in `test_setup_cli.py`, `test_sources_cli.py` (new), `test_notifications.py`
+
+---
+
+### Adapter Expansion (New Families & Metrics)
+
+Calibration across 90+ repos showed pattern discovery has saturated with the current 4 families (git, ci, deployment, dependency). Adding new adapters unlocks new cross-family pattern combinations.
+
+**Sorted by priority (severity of impact on pattern discovery):**
+
+| # | Task | Effort | Unlocks | Priority |
+|---|------|--------|---------|----------|
+| 55 | **Missing walker parsers** — pnpm-lock.yaml, pyproject.toml, composer.lock | **Low** | dependency for repos already cloned but missed | **Complete** ✅ |
+| 51 | **Gradle/Maven lockfile support** — `build.gradle`, `build.gradle.kts`, `pom.xml` | Medium | dependency for Java ecosystem (5+ repos) | **Complete** ✅ |
+| 52 | **GitLab CI API adapter** — pipelines + releases API | Medium | ci + deployment for all GitLab repos | **Complete** ✅ |
+| 56 | **CircleCI API adapter** — mirror GitHub Actions adapter | Medium | ci for CircleCI repos (4 repos in calibration set) | **Complete** ✅ |
+| 53 | **Test results parsing** — JUnit XML → testing family | Medium | Entirely new testing family | **Complete** ✅ |
+| 57 | **CMake dependency extraction** — parse `CMakeLists.txt` for find_package/FetchContent | Low | dependency for C/C++ (5 repos) | **Complete** ✅ |
+| 54 | **Code coverage metric** — Cobertura XML → coverage family | Low | New coverage family: line_rate, branch_rate | **Complete** ✅ |
+| 58 | **Swift Package Manager** — `Package.resolved` | Low | dependency for Swift/iOS | **Complete** ✅ |
+
+#### 55 — Missing Walker Parsers (Critical — Quick Win)
+
+**Problem:** The prescan detects pnpm-lock.yaml and composer.lock, but the `GitHistoryWalker` has NO parser for them. pyproject.toml is detected but not walked. This means 21+ repos in our calibration set silently lost dependency signals.
+
+| File | In prescan? | In walker? | Repos affected |
+|------|------------|------------|----------------|
+| `pnpm-lock.yaml` | ✅ | ❌ | **13 repos** |
+| `pyproject.toml` | ✅ | ❌ | **8 repos** |
+| `composer.lock` | ✅ | ❌ | unknown |
+
+**Files to modify:**
+- `evolution/adapters/git/git_history_walker.py`:
+  - Add `pnpm-lock.yaml` to `dependency_parsers` + `_parse_pnpm_lock_content()` — YAML format, count packages
+  - Add `pyproject.toml` to `dependency_parsers` + `_parse_pyproject_content()` — TOML, count `[project.dependencies]` + `[project.optional-dependencies]`
+  - Add `composer.lock` to `dependency_parsers` + `_parse_composer_lock_content()` — JSON, count `packages` array
+- Tests for each parser
+
+**This is the highest-ROI task** — fixing 3 parsers immediately gives dependency signals to 21+ repos that are already cloned and calibrated. Re-running calibration after this fix should yield new patterns.
+
+#### 51 — Gradle/Maven Lockfile Support
+
+**Problem:** Java repos (kafka, elasticsearch, spring-boot, fdroidclient) get git-only signals. 5 repos in calibration have `build.gradle`, 1 has `pom.xml`.
+
+**Files to modify:**
+- `evolution/adapters/git/git_history_walker.py` — add parsers:
+  - `_parse_gradle_content()` — regex for `implementation`, `api`, `compile` declarations
+  - `_parse_pom_content()` — XML parse `<dependency>` blocks, count artifacts
+  - Add `build.gradle`, `build.gradle.kts`, `pom.xml` to walker file lists
+- `evolution/prescan.py` — add `build.gradle`, `pom.xml` to config file detection
+- Tests for each parser
+
+**Test repos:** apache/kafka, elastic/elasticsearch, spring-projects/spring-boot, fdroid/fdroidclient (GitLab)
+
+#### 52 — GitLab CI API Adapter
+
+**Problem:** GitLab repos get no CI or deployment signals. Need API adapters mirroring the GitHub ones.
+
+**Files to create:**
+- `evolution/adapters/gitlab_client.py` — API client
+  - Uses `$CI_API_V4_URL` (works on self-hosted) or defaults to `https://gitlab.com/api/v4`
+  - Rate limit: 300 req/min (authenticated), auto-backoff
+  - Auth: `GITLAB_TOKEN` env var
+- `evolution/adapters/ci/gitlab_ci_adapter.py` — pipelines + jobs
+  - `GET /projects/:id/pipelines` → list pipeline runs
+  - `GET /projects/:id/pipelines/:id/jobs` → job details, timing
+  - Same event format as GitHub Actions adapter: `run_duration`, `run_failed`
+- `evolution/adapters/deployment/gitlab_releases_adapter.py` — releases
+  - `GET /projects/:id/releases` → release metadata
+  - Same metrics: `release_cadence_hours`, `is_prerelease`, `asset_count`
+- `evolution/prescan.py` — route to GitLab adapters when `.gitlab-ci.yml` detected or remote is gitlab
+- `evolution/orchestrator.py` — integrate GitLab adapters into pipeline
+
+**Test repos:** gitlab-org/gitlab-runner, inkscape/inkscape, gnome/gnome-shell
+
+#### 56 — CircleCI API Adapter
+
+**Problem:** 4 repos in calibration set use CircleCI. No CI signals for them.
+
+**Files to create:**
+- `evolution/adapters/ci/circleci_adapter.py`
+  - CircleCI API v2: `GET /project/{vcs}/{org}/{repo}/pipeline` → pipelines
+  - `GET /pipeline/{id}/workflow` → workflows + jobs
+  - Same metrics: `run_duration`, `run_failed`
+  - Auth: `CIRCLECI_TOKEN` env var
+- `evolution/prescan.py` — detect `.circleci/config.yml`
+
+#### 53 — Test Results Parsing (Complete ✅)
+
+**Implemented:** JUnit XML → testing family. Full pipeline wiring: detection → walker → Phase 1-5.
+
+| Component | What was done |
+|-----------|--------------|
+| `evolution/registry.py` | 4 JUnit XML patterns in TIER1_DETECTORS |
+| `evolution/adapters/git/git_history_walker.py` | `_parse_junit_xml_content()`, testing blocks in both commit processors |
+| `evolution/orchestrator.py` | `testing` in walker_families routing |
+| Phase 2-5 | Already existed — just needed wiring |
+| Tests | 8 new tests (parser, walker integration, Phase 2 signals) + 2 registry tests |
+
+**Phase 2 metrics:** `total_tests`, `failure_rate`, `skip_rate`, `suite_duration`
+
+#### 57 — CMake Dependency Extraction
+
+**Problem:** 5 repos in calibration use CMake. C/C++ projects get no dependency signals.
+
+**Files to modify:**
+- `evolution/adapters/git/git_history_walker.py`:
+  - `_parse_cmake_content()` — extract `find_package()`, `FetchContent_Declare()`, `target_link_libraries()`
+  - Count unique external dependencies per commit
+  - Add `CMakeLists.txt` to walker file lists
+- `evolution/prescan.py` — add CMake detection
+
+#### 54 — Code Coverage Metric (Complete ✅)
+
+**Implemented:** Cobertura XML → coverage family. New 6th signal family with own Phase 2 engine, signal file, and Phase 5 labels.
+
+| Component | What was done |
+|-----------|--------------|
+| `evolution/registry.py` | 3 Cobertura XML patterns in TIER1_DETECTORS |
+| `evolution/adapters/testing/coverage_adapter.py` | **NEW** — `CoberturaAdapter` class |
+| `evolution/adapters/git/git_history_walker.py` | `_parse_cobertura_xml_content()`, coverage blocks |
+| `evolution/phase2_engine.py` | `run_coverage()` method, wired into `run_all()` + `run_all_parallel()` |
+| `evolution/phase3_engine.py` | `coverage_signals.json` mapping |
+| `evolution/phase5_engine.py` | `coverage_signals.json`, "Code Coverage" label, metric labels |
+| `evolution/orchestrator.py` | `coverage` in walker_families routing |
+| Tests | 9 new tests + 1 registry test |
+
+**Phase 2 metrics:** `line_rate`, `branch_rate`
+
+#### 58 — Swift Package Manager
+
+**Files to modify:**
+- `evolution/adapters/git/git_history_walker.py` — `_parse_package_resolved_content()`
+  - JSON format, count `pins` array
+- Add `Package.resolved` to walker + prescan
+
+#### Post-Adapter Calibration Plan
+
+All adapter expansion tasks (#51-58) are now **complete**. EE has 6 signal families: git, ci, deployment, dependency, testing, coverage.
+
+**Next calibration (v3) should:**
+1. Re-calibrate all 90+ repos with testing + coverage families enabled
+2. Expected: new testing×git, testing×ci, coverage×git pattern fingerprints
+3. Run after manual testing of GitHub Action and GitLab CI workflows (pre-deployment verification)
 
 ---
 
@@ -173,6 +296,13 @@ All core engine work is done. Summary of shipped features:
 
 ---
 
+### Pre-Launch Calibration & Testing
+
+| # | Task | Effort | Blocker? | Status |
+|---|------|--------|----------|--------|
+| CAL3 | **Calibration v3** — re-run on 90+ repos with 6 families (testing + coverage) | Medium | Yes — validates new families | Pending |
+| FULL | **Full automated test suite** — final pass before deployment | Low | Yes | Pending |
+
 ### Launch
 
 | # | Task | Effort | Blocker? |
@@ -185,8 +315,10 @@ See `docs/LAUNCH_PLAN.md` for detailed beta program, launch timeline, and go-to-
 
 ## Future Enhancements (Post-Beta)
 
+- **Sentry adapter** (#51) — error tracking family, new cross-family patterns (error×git, error×deployment)
+- **Datadog adapter** (#52) — monitoring family, high effort, deferred to post-deployment
 - PostgreSQL + pgvector migration (multi-tenant, when SaaS tier exists)
-- Additional vendor adapters (Jenkins, npm, Cargo, etc.)
+- Vendor adapters requiring external services (PagerDuty, New Relic — needs partner access)
 - Real-time event streaming (webhooks vs batch polling)
 - IDE extensions (VS Code, JetBrains) — surfaces advisories where code is written
 - Trend dashboard — multi-run advisory comparison over time

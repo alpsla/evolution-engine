@@ -20,6 +20,7 @@ SIGNAL_FILES = {
     "git": "git_signals.json",
     "ci": "ci_signals.json",
     "testing": "testing_signals.json",
+    "coverage": "coverage_signals.json",
     "dependency": "dependency_signals.json",
     "schema": "schema_signals.json",
     "deployment": "deployment_signals.json",

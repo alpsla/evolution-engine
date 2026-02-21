@@ -15,6 +15,8 @@ from git import Repo
 from evolution.adapters.dependency.pip_adapter import PipDependencyAdapter
 from evolution.adapters.schema.openapi_adapter import OpenAPIAdapter
 from evolution.adapters.config.terraform_adapter import TerraformAdapter
+from evolution.adapters.testing.junit_adapter import JUnitXMLAdapter
+from evolution.adapters.testing.coverage_adapter import CoberturaAdapter
 
 
 class GitHistoryWalker:
@@ -32,20 +34,33 @@ class GitHistoryWalker:
         """
         self.repo_path = Path(repo_path).resolve()
         self.repo = Repo(self.repo_path)
-        self.target_families = target_families or ['dependency', 'schema', 'config']
+        self.target_families = target_families or ['dependency', 'schema', 'config', 'testing', 'coverage']
         
         # File extraction patterns for each family
         # Ordered by preference: lockfiles before manifests
         self.extraction_patterns = {
             'dependency': [
                 'go.sum', 'go.mod',
-                'package-lock.json', 'yarn.lock',
+                'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
                 'Cargo.lock',
                 'Gemfile.lock',
-                'requirements.txt', 'Pipfile.lock',
+                'requirements.txt', 'Pipfile.lock', 'pyproject.toml',
+                'composer.lock',
+                'build.gradle', 'build.gradle.kts', 'pom.xml',
+                'Package.resolved',
+                'CMakeLists.txt',
             ],
             'schema': ['openapi.yaml', 'openapi.yml', 'openapi.json', 'swagger.yaml'],
             'config': ['*.tf'],  # Terraform files
+            'testing': [
+                'junit.xml', 'test-results.xml',
+                'TEST-*.xml',  # surefire-style
+            ],
+            'coverage': [
+                'coverage.xml',
+                'coverage/cobertura.xml',
+                'coverage/coverage.xml',
+            ],
         }
 
         # Maps file pattern to parser method name
@@ -54,10 +69,18 @@ class GitHistoryWalker:
             'go.mod': '_parse_gomod_content',
             'package-lock.json': '_parse_package_lock_content',
             'yarn.lock': '_parse_yarn_lock_content',
+            'pnpm-lock.yaml': '_parse_pnpm_lock_content',
             'Cargo.lock': '_parse_cargo_lock_content',
             'Gemfile.lock': '_parse_gemfile_lock_content',
             'requirements.txt': '_parse_requirements_content',
             'Pipfile.lock': '_parse_requirements_content',
+            'pyproject.toml': '_parse_pyproject_content',
+            'composer.lock': '_parse_composer_lock_content',
+            'build.gradle': '_parse_gradle_content',
+            'build.gradle.kts': '_parse_gradle_content',
+            'pom.xml': '_parse_pom_content',
+            'Package.resolved': '_parse_swift_package_resolved_content',
+            'CMakeLists.txt': '_parse_cmake_content_deps',
         }
     
     def _hash(self, data: str) -> str:
@@ -295,6 +318,342 @@ class GitHistoryWalker:
             "dependencies": [],
         }
 
+    def _parse_pnpm_lock_content(self, content: str, commit_sha: str,
+                                  manifest_file: str = "pnpm-lock.yaml") -> dict:
+        """Parse pnpm-lock.yaml — count package entries under packages: section."""
+        package_count = 0
+        in_packages = False
+
+        for line in content.splitlines():
+            # Detect top-level packages: key (no leading whitespace)
+            if line.rstrip() == 'packages:':
+                in_packages = True
+                continue
+            if in_packages:
+                # A new top-level key ends the packages section
+                if line and not line[0].isspace():
+                    break
+                # Package entries are at 2-space indentation only.
+                # Deeper indentation (resolution:, dependencies:, dev:) is skipped.
+                if not line.startswith('  ') or line.startswith('    '):
+                    continue
+                stripped = line.strip()
+                if stripped and stripped.endswith(':') and not stripped.startswith('#'):
+                    # pnpm v6: "/express/4.18.1:" or "/@scope/name/1.0.0:"
+                    # pnpm v9: "express@4.18.1:" or "@scope/name@1.0.0:"
+                    if stripped[0] in ('/', '@') or stripped[0].isalnum():
+                        package_count += 1
+
+        return {
+            "ecosystem": "npm",
+            "manifest_file": manifest_file,
+            "trigger": {"commit_sha": commit_sha},
+            "snapshot": {
+                "direct_count": 0,
+                "transitive_count": package_count,
+                "total_count": package_count,
+                "max_depth": 2,
+            },
+            "dependencies": [],
+        }
+
+    def _parse_pyproject_content(self, content: str, commit_sha: str,
+                                  manifest_file: str = "pyproject.toml") -> dict:
+        """Parse pyproject.toml dependencies (PEP 621 and Poetry formats)."""
+        deps = []
+
+        # PEP 621: dependencies = ["requests>=2.28", ...]
+        # Use greedy match up to ] at start of line or ] followed by newline/EOF
+        pep621_match = re.search(
+            r'^\s*dependencies\s*=\s*\[(.*?)\n\s*\]',
+            content, re.MULTILINE | re.DOTALL
+        )
+        if pep621_match:
+            for m in re.finditer(r'"([^"]+)"', pep621_match.group(1)):
+                raw = m.group(1).strip()
+                # Extract package name (before any version specifier or extras)
+                name_match = re.match(r'^([A-Za-z0-9_.-]+)', raw)
+                if name_match:
+                    deps.append({
+                        "name": name_match.group(1).lower(),
+                        "version": "unspecified",
+                        "direct": True,
+                        "depth": 1,
+                    })
+
+        # Poetry: [tool.poetry.dependencies] section
+        poetry_match = re.search(
+            r'^\[tool\.poetry\.dependencies\]\s*\n(.*?)(?=^\[|\Z)',
+            content, re.MULTILINE | re.DOTALL
+        )
+        if poetry_match and not deps:
+            for line in poetry_match.group(1).splitlines():
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                match = re.match(r'^([A-Za-z0-9_.-]+)\s*=', line)
+                if match:
+                    name = match.group(1).lower()
+                    if name != 'python':
+                        deps.append({
+                            "name": name,
+                            "version": "unspecified",
+                            "direct": True,
+                            "depth": 1,
+                        })
+
+        if not deps:
+            return self._empty_dependency_snapshot("pip", manifest_file, commit_sha)
+
+        return {
+            "ecosystem": "pip",
+            "manifest_file": manifest_file,
+            "trigger": {"commit_sha": commit_sha},
+            "snapshot": {
+                "direct_count": len(deps),
+                "transitive_count": 0,
+                "total_count": len(deps),
+                "max_depth": 1,
+            },
+            "dependencies": deps,
+        }
+
+    def _parse_composer_lock_content(self, content: str, commit_sha: str,
+                                      manifest_file: str = "composer.lock") -> dict:
+        """Parse composer.lock (PHP) — count packages and packages-dev arrays."""
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            return self._empty_dependency_snapshot("composer", manifest_file, commit_sha)
+
+        direct_count = len(data.get("packages", []))
+        dev_count = len(data.get("packages-dev", []))
+        total_count = direct_count + dev_count
+
+        return {
+            "ecosystem": "composer",
+            "manifest_file": manifest_file,
+            "trigger": {"commit_sha": commit_sha},
+            "snapshot": {
+                "direct_count": direct_count,
+                "transitive_count": dev_count,
+                "total_count": total_count,
+                "max_depth": 1,
+            },
+            "dependencies": [],
+        }
+
+    def _parse_gradle_content(self, content: str, commit_sha: str,
+                               manifest_file: str = "build.gradle") -> dict:
+        """Parse build.gradle / build.gradle.kts dependency declarations."""
+        # Match both Groovy and Kotlin DSL dependency declarations
+        # Groovy: implementation 'group:artifact:version'
+        # Kotlin: implementation("group:artifact:version")
+        dep_pattern = re.compile(
+            r'^\s*(?:implementation|api|compileOnly|runtimeOnly'
+            r'|testImplementation|testRuntimeOnly|testCompileOnly'
+            r'|compile|testCompile|runtime|provided'
+            r'|annotationProcessor|kapt)'
+            r'''[\s(]+['"]([^'"]+:[^'"]+)['"]''',
+            re.MULTILINE
+        )
+
+        deps = dep_pattern.findall(content)
+
+        # Separate test vs production
+        test_pattern = re.compile(
+            r'^\s*(?:testImplementation|testRuntimeOnly|testCompileOnly|testCompile)'
+            r'''[\s(]+['"]([^'"]+:[^'"]+)['"]''',
+            re.MULTILINE
+        )
+        test_deps = test_pattern.findall(content)
+        prod_count = len(deps) - len(test_deps)
+
+        if not deps:
+            return self._empty_dependency_snapshot("gradle", manifest_file, commit_sha)
+
+        return {
+            "ecosystem": "gradle",
+            "manifest_file": manifest_file,
+            "trigger": {"commit_sha": commit_sha},
+            "snapshot": {
+                "direct_count": prod_count,
+                "transitive_count": len(test_deps),
+                "total_count": len(deps),
+                "max_depth": 1,
+            },
+            "dependencies": [],
+        }
+
+    def _parse_pom_content(self, content: str, commit_sha: str,
+                            manifest_file: str = "pom.xml") -> dict:
+        """Parse pom.xml — count <dependency> elements."""
+        # Count all <dependency> blocks
+        dep_blocks = re.findall(
+            r'<dependency>\s*.*?</dependency>', content, re.DOTALL
+        )
+        total_count = len(dep_blocks)
+
+        # Count test-scope dependencies
+        test_count = sum(
+            1 for b in dep_blocks if '<scope>test</scope>' in b
+        )
+        prod_count = total_count - test_count
+
+        if total_count == 0:
+            return self._empty_dependency_snapshot("maven", manifest_file, commit_sha)
+
+        return {
+            "ecosystem": "maven",
+            "manifest_file": manifest_file,
+            "trigger": {"commit_sha": commit_sha},
+            "snapshot": {
+                "direct_count": prod_count,
+                "transitive_count": test_count,
+                "total_count": total_count,
+                "max_depth": 1,
+            },
+            "dependencies": [],
+        }
+
+    def _parse_swift_package_resolved_content(self, content: str, commit_sha: str,
+                                               manifest_file: str = "Package.resolved") -> dict:
+        """Parse Swift Package.resolved — count pins array."""
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            return self._empty_dependency_snapshot("swift", manifest_file, commit_sha)
+
+        # v2 format (Xcode 13.3+): {"pins": [...], "version": 2}
+        # v1 format: {"object": {"pins": [...]}, "version": 1}
+        if data.get("version", 0) >= 2:
+            pins = data.get("pins", [])
+        else:
+            pins = data.get("object", {}).get("pins", [])
+
+        total_count = len(pins)
+        return {
+            "ecosystem": "swift",
+            "manifest_file": manifest_file,
+            "trigger": {"commit_sha": commit_sha},
+            "snapshot": {
+                "direct_count": total_count,
+                "transitive_count": 0,
+                "total_count": total_count,
+                "max_depth": 1,
+            },
+            "dependencies": [],
+        }
+
+    def _parse_cmake_content_deps(self, content: str, commit_sha: str,
+                                   manifest_file: str = "CMakeLists.txt") -> dict:
+        """Parse CMakeLists.txt — count find_package() and FetchContent_Declare() calls."""
+        # find_package(Boost REQUIRED) or find_package(OpenSSL 1.1)
+        find_packages = set(re.findall(
+            r'find_package\s*\(\s*(\w+)', content
+        ))
+
+        # FetchContent_Declare(googletest ...) or FetchContent_Declare(fmt ...)
+        fetch_content = set(re.findall(
+            r'FetchContent_Declare\s*\(\s*(\w+)', content
+        ))
+
+        all_deps = find_packages | fetch_content
+        total_count = len(all_deps)
+
+        if total_count == 0:
+            return self._empty_dependency_snapshot("cmake", manifest_file, commit_sha)
+
+        return {
+            "ecosystem": "cmake",
+            "manifest_file": manifest_file,
+            "trigger": {"commit_sha": commit_sha},
+            "snapshot": {
+                "direct_count": total_count,
+                "transitive_count": 0,
+                "total_count": total_count,
+                "max_depth": 1,
+            },
+            "dependencies": [],
+        }
+
+    def _parse_junit_xml_content(self, content: str, commit_sha: str,
+                                  manifest_file: str = "junit.xml") -> dict:
+        """Parse JUnit XML content into a test run dict."""
+        import xml.etree.ElementTree as ET
+        try:
+            root = ET.fromstring(content)
+        except ET.ParseError:
+            return None
+
+        # Handle both <testsuites> and <testsuite> root elements
+        if root.tag == "testsuites":
+            suites = list(root)
+        else:
+            suites = [root]
+
+        total = passed = failed = skipped = errored = 0
+        total_time = 0.0
+
+        for suite in suites:
+            for tc in suite.findall("testcase"):
+                duration = float(tc.get("time", "0"))
+                total_time += duration
+
+                if tc.find("failure") is not None:
+                    failed += 1
+                elif tc.find("error") is not None:
+                    errored += 1
+                elif tc.find("skipped") is not None:
+                    skipped += 1
+                else:
+                    passed += 1
+                total += 1
+
+        suite_name = suites[0].get("name", "unknown") if suites else "unknown"
+
+        return {
+            "suite_name": suite_name,
+            "trigger": {"commit_sha": commit_sha},
+            "execution": {
+                "duration_seconds": round(total_time, 3),
+            },
+            "summary": {
+                "total": total,
+                "passed": passed,
+                "failed": failed,
+                "skipped": skipped,
+                "errored": errored,
+            },
+        }
+
+    def _parse_cobertura_xml_content(self, content: str, commit_sha: str) -> dict:
+        """Parse Cobertura XML content into a coverage dict."""
+        import xml.etree.ElementTree as ET
+        try:
+            root = ET.fromstring(content)
+        except ET.ParseError:
+            return None
+
+        line_rate = float(root.get("line-rate", "0"))
+        branch_rate = float(root.get("branch-rate", "0"))
+        lines_valid = int(root.get("lines-valid", "0"))
+        lines_covered = int(root.get("lines-covered", "0"))
+        branches_valid = int(root.get("branches-valid", "0"))
+        branches_covered = int(root.get("branches-covered", "0"))
+        packages = root.findall(".//package")
+
+        return {
+            "trigger": {"commit_sha": commit_sha},
+            "line_rate": round(line_rate, 4),
+            "branch_rate": round(branch_rate, 4),
+            "lines_covered": lines_covered,
+            "lines_missing": lines_valid - lines_covered,
+            "branches_covered": branches_covered,
+            "branches_missing": branches_valid - branches_covered,
+            "packages_covered": len(packages),
+        }
+
     def _empty_dependency_snapshot(self, ecosystem: str, manifest_file: str,
                                    commit_sha: str) -> dict:
         """Return an empty dependency snapshot for error/fallback cases."""
@@ -446,6 +805,43 @@ class GitHistoryWalker:
                 )
                 results.append(('config', adapter, committed_at))
 
+        # Testing
+        if 'testing' in self.target_families:
+            for pattern in self.extraction_patterns['testing']:
+                file_data = self._extract_file_at_commit(commit, pattern)
+                if file_data:
+                    # Handle glob results (list) vs single file (dict)
+                    files = file_data if isinstance(file_data, list) else [file_data]
+                    for f in files:
+                        run = self._parse_junit_xml_content(
+                            f['content'], commit_sha, f['path']
+                        )
+                        if run:
+                            adapter = JUnitXMLAdapter(
+                                runs=[run],
+                                source_id=f"junit_xml:{self.repo_path}"
+                            )
+                            results.append(('testing', adapter, committed_at))
+                    break  # first matching pattern wins
+
+        # Coverage
+        if 'coverage' in self.target_families:
+            for pattern in self.extraction_patterns['coverage']:
+                file_data = self._extract_file_at_commit(commit, pattern)
+                if file_data:
+                    files = file_data if isinstance(file_data, list) else [file_data]
+                    for f in files:
+                        report = self._parse_cobertura_xml_content(
+                            f['content'], commit_sha
+                        )
+                        if report:
+                            adapter = CoberturaAdapter(
+                                reports=[report],
+                                source_id=f"coverage_xml:{self.repo_path}"
+                            )
+                            results.append(('coverage', adapter, committed_at))
+                    break  # first matching pattern wins
+
         return results
 
     def iter_commit_events(self):
@@ -553,6 +949,55 @@ class GitHistoryWalker:
                         source_id=f"terraform:{self.repo_path}"
                     )
                     results.append(('config', adapter, committed_at))
+
+        # Testing
+        if 'testing' in self.target_families:
+            for pattern in self.extraction_patterns['testing']:
+                if '*' in pattern:
+                    paths = self._git_ls_tree(commit_sha, pattern)
+                    if paths:
+                        for fpath in paths:
+                            content = self._git_show(commit_sha, fpath)
+                            if content:
+                                run = self._parse_junit_xml_content(
+                                    content, commit_sha, fpath
+                                )
+                                if run:
+                                    adapter = JUnitXMLAdapter(
+                                        runs=[run],
+                                        source_id=f"junit_xml:{self.repo_path}"
+                                    )
+                                    results.append(('testing', adapter, committed_at))
+                        break  # first matching pattern wins
+                else:
+                    content = self._git_show(commit_sha, pattern)
+                    if content:
+                        run = self._parse_junit_xml_content(
+                            content, commit_sha, pattern
+                        )
+                        if run:
+                            adapter = JUnitXMLAdapter(
+                                runs=[run],
+                                source_id=f"junit_xml:{self.repo_path}"
+                            )
+                            results.append(('testing', adapter, committed_at))
+                        break  # first matching pattern wins
+
+        # Coverage (no glob patterns — all exact filenames)
+        if 'coverage' in self.target_families:
+            for pattern in self.extraction_patterns['coverage']:
+                content = self._git_show(commit_sha, pattern)
+                if content:
+                    report = self._parse_cobertura_xml_content(
+                        content, commit_sha
+                    )
+                    if report:
+                        adapter = CoberturaAdapter(
+                            reports=[report],
+                            source_id=f"coverage_xml:{self.repo_path}"
+                        )
+                        results.append(('coverage', adapter, committed_at))
+                    break  # first matching pattern wins
 
         return results
 

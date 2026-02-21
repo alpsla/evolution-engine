@@ -343,6 +343,30 @@ class Phase2Engine:
             json.dump(signals, f, indent=2)
         return signals
 
+    # =============== Coverage ===============
+
+    def run_coverage(self):
+        events = self._load_events(source_family="coverage")
+        if not events:
+            return []
+
+        def metric_fn(e):
+            payload = e["payload"]
+            return {
+                "line_rate": payload.get("line_rate", 0.0),
+                "branch_rate": payload.get("branch_rate", 0.0),
+            }
+
+        def window_fn(e, m):
+            return None
+
+        signals = self._emit_signals(events, "coverage", "coverage_xml", metric_fn, window_fn)
+
+        out_file = self.output_path / "coverage_signals.json"
+        with open(out_file, "w", encoding="utf-8") as f:
+            json.dump(signals, f, indent=2)
+        return signals
+
     # =============== Dependency ===============
 
     def run_dependency(self):
@@ -505,6 +529,7 @@ class Phase2Engine:
         results["git"] = self.run_git()
         results["ci"] = self.run_ci()
         results["testing"] = self.run_testing()
+        results["coverage"] = self.run_coverage()
         results["dependency"] = self.run_dependency()
         results["schema"] = self.run_schema()
         results["deployment"] = self.run_deployment()
@@ -524,6 +549,7 @@ class Phase2Engine:
             "git": self.run_git,
             "ci": self.run_ci,
             "testing": self.run_testing,
+            "coverage": self.run_coverage,
             "dependency": self.run_dependency,
             "schema": self.run_schema,
             "deployment": self.run_deployment,

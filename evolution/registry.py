@@ -105,6 +105,17 @@ TIER1_DETECTORS: list[tuple[str, str, str]] = [
     (".gitlab-ci.yml",            "gitlab_ci_local",      "ci"),
     ("Jenkinsfile",               "jenkins_local",        "ci"),
     (".circleci/config.yml",      "circleci_local",       "ci"),
+
+    # Testing — committed test reports (JUnit XML)
+    ("junit.xml",                 "junit_xml",    "testing"),
+    ("test-results.xml",          "junit_xml",    "testing"),
+    ("surefire-reports/",         "junit_xml",    "testing"),
+    ("TEST-*.xml",                "junit_xml",    "testing"),
+
+    # Coverage — committed coverage reports (Cobertura XML)
+    ("coverage.xml",              "coverage_xml", "coverage"),
+    ("coverage/cobertura.xml",    "coverage_xml", "coverage"),
+    ("coverage/coverage.xml",     "coverage_xml", "coverage"),
 ]
 
 # ─────────────────── Tier 2: API-enriched Detectors ───────────────────
@@ -119,6 +130,9 @@ TIER2_DETECTORS: dict[str, list[tuple[str, str]]] = {
     "gitlab_token": [
         ("gitlab_pipelines", "ci"),
         ("gitlab_releases",  "deployment"),
+    ],
+    "circleci_token": [
+        ("circleci",         "ci"),
     ],
     "jenkins_url": [
         ("jenkins",          "ci"),

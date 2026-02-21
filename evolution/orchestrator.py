@@ -142,6 +142,10 @@ class Orchestrator:
             walker_families.append("schema")
         if "config" in families_to_run:
             walker_families.append("config")
+        if "testing" in families_to_run:
+            walker_families.append("testing")
+        if "coverage" in families_to_run:
+            walker_families.append("coverage")
 
         if walker_families:
             vlog(f"\n[Phase 1] Walking git history for {', '.join(walker_families)}...")
@@ -193,6 +197,8 @@ class Orchestrator:
             "ci": "CI/CD",
             "deployment": "Deployments",
             "security": "Security",
+            "testing": "Test results",
+            "coverage": "Code coverage",
         }
         for fam in active_families:
             label = _family_labels.get(fam, fam)
@@ -535,34 +541,30 @@ class Orchestrator:
         return {f: c for f, c in counts.items() if c > 0}
 
     def _ingest_api(self, phase1, families: list[str]) -> dict[str, int]:
-        """Fetch events from API adapters concurrently."""
-        token = self.tokens.get("github_token") or os.environ.get("GITHUB_TOKEN")
-        if not token:
-            return {}
+        """Fetch events from API adapters concurrently (GitHub + GitLab)."""
+        counts = {}
 
-        from evolution.adapters.github_client import GitHubClient
+        # Try GitHub
+        gh_counts = self._ingest_github_api(phase1, families)
+        counts.update(gh_counts)
 
-        # Infer owner/repo from git remote
-        owner, repo = self._infer_github_remote()
-        if not owner or not repo:
-            return {}
+        # Try GitLab (for families not already covered by GitHub)
+        remaining = [f for f in families if f not in counts]
+        if remaining:
+            gl_counts = self._ingest_gitlab_api(phase1, remaining)
+            counts.update(gl_counts)
 
-        client = GitHubClient(
-            owner, repo, token,
-            cache_dir=self.evo_dir / "api_cache",
-        )
+        # Try CircleCI (for CI family not already covered)
+        remaining = [f for f in families if f not in counts]
+        if remaining and "ci" in remaining:
+            cci_counts = self._ingest_circleci_api(phase1)
+            counts.update(cci_counts)
 
-        adapters_to_fetch = {}
-        if "ci" in families:
-            from evolution.adapters.ci.github_actions_adapter import GitHubActionsAdapter
-            adapters_to_fetch["ci"] = lambda c: GitHubActionsAdapter(client=c, max_runs=500)
-        if "deployment" in families:
-            from evolution.adapters.deployment.github_releases_adapter import GitHubReleasesAdapter
-            adapters_to_fetch["deployment"] = lambda c: GitHubReleasesAdapter(client=c)
-        if "security" in families:
-            from evolution.adapters.security.github_security_adapter import GitHubSecurityAdapter
-            adapters_to_fetch["security"] = lambda c: GitHubSecurityAdapter(client=c)
+        return counts
 
+    def _run_api_adapters(self, phase1, adapters_to_fetch: dict,
+                          client) -> dict[str, int]:
+        """Run adapter factories concurrently and ingest their events."""
         counts = {}
         with ThreadPoolExecutor(max_workers=3, thread_name_prefix="api") as executor:
             futures = {}
@@ -589,8 +591,125 @@ class Orchestrator:
                     count = phase1.ingest(_ListAdapter(events))
                     if count > 0:
                         counts[name] = count
-
         return counts
+
+    def _ingest_github_api(self, phase1, families: list[str]) -> dict[str, int]:
+        """Fetch events from GitHub API adapters."""
+        token = self.tokens.get("github_token") or os.environ.get("GITHUB_TOKEN")
+        if not token:
+            return {}
+
+        from evolution.adapters.github_client import GitHubClient
+
+        owner, repo = self._infer_github_remote()
+        if not owner or not repo:
+            return {}
+
+        client = GitHubClient(
+            owner, repo, token,
+            cache_dir=self.evo_dir / "api_cache",
+        )
+
+        adapters_to_fetch = {}
+        if "ci" in families:
+            from evolution.adapters.ci.github_actions_adapter import GitHubActionsAdapter
+            adapters_to_fetch["ci"] = lambda c: GitHubActionsAdapter(client=c, max_runs=500)
+        if "deployment" in families:
+            from evolution.adapters.deployment.github_releases_adapter import GitHubReleasesAdapter
+            adapters_to_fetch["deployment"] = lambda c: GitHubReleasesAdapter(client=c)
+        if "security" in families:
+            from evolution.adapters.security.github_security_adapter import GitHubSecurityAdapter
+            adapters_to_fetch["security"] = lambda c: GitHubSecurityAdapter(client=c)
+
+        return self._run_api_adapters(phase1, adapters_to_fetch, client)
+
+    def _ingest_gitlab_api(self, phase1, families: list[str]) -> dict[str, int]:
+        """Fetch events from GitLab API adapters."""
+        token = self.tokens.get("gitlab_token") or os.environ.get("GITLAB_TOKEN")
+        if not token:
+            return {}
+
+        project_id = self._infer_gitlab_project()
+        if not project_id:
+            return {}
+
+        from evolution.adapters.gitlab_client import GitLabClient
+
+        client = GitLabClient(
+            project_id, token,
+            cache_dir=self.evo_dir / "api_cache",
+        )
+
+        adapters_to_fetch = {}
+        if "ci" in families:
+            from evolution.adapters.ci.gitlab_pipelines_adapter import GitLabPipelinesAdapter
+            adapters_to_fetch["ci"] = lambda c: GitLabPipelinesAdapter(client=c, max_runs=500)
+        if "deployment" in families:
+            from evolution.adapters.deployment.gitlab_releases_adapter import GitLabReleasesAdapter
+            adapters_to_fetch["deployment"] = lambda c: GitLabReleasesAdapter(client=c)
+
+        return self._run_api_adapters(phase1, adapters_to_fetch, client)
+
+    def _ingest_circleci_api(self, phase1) -> dict[str, int]:
+        """Fetch CI events from CircleCI API."""
+        token = self.tokens.get("circleci_token") or os.environ.get("CIRCLECI_TOKEN")
+        if not token:
+            return {}
+
+        project_slug = self._infer_circleci_slug()
+        if not project_slug:
+            return {}
+
+        from evolution.adapters.ci.circleci_adapter import CircleCIAdapter
+
+        try:
+            adapter = CircleCIAdapter(
+                project_slug=project_slug,
+                token=token,
+                cache_dir=self.evo_dir / "api_cache",
+            )
+            events = list(adapter.iter_events())
+            if events:
+                class _ListAdapter:
+                    def __init__(self, evts):
+                        self._events = evts
+                    def iter_events(self):
+                        return iter(self._events)
+                count = phase1.ingest(_ListAdapter(events))
+                if count > 0:
+                    return {"ci": count}
+        except Exception:
+            pass
+        return {}
+
+    def _infer_circleci_slug(self) -> Optional[str]:
+        """Infer CircleCI project slug from git remote URL.
+
+        Returns slug like "gh/owner/repo" or "bb/owner/repo".
+        """
+        try:
+            import git
+            repo = git.Repo(self.repo_path)
+            for remote in repo.remotes:
+                url = remote.url
+                if "github.com" in url:
+                    # SSH or HTTPS
+                    for sep in ("github.com:", "github.com/"):
+                        if sep in url:
+                            path = url.split(sep)[-1].removesuffix(".git")
+                            parts = path.split("/")
+                            if len(parts) >= 2:
+                                return f"gh/{parts[0]}/{parts[1]}"
+                if "bitbucket.org" in url:
+                    for sep in ("bitbucket.org:", "bitbucket.org/"):
+                        if sep in url:
+                            path = url.split(sep)[-1].removesuffix(".git")
+                            parts = path.split("/")
+                            if len(parts) >= 2:
+                                return f"bb/{parts[0]}/{parts[1]}"
+        except Exception:
+            pass
+        return None
 
     def _ingest_plugins(self, phase1, plugin_configs: list, log) -> dict[str, int]:
         """Ingest events from Tier 3 plugin adapters.
@@ -673,17 +792,50 @@ class Orchestrator:
                 url = remote.url
                 # SSH: git@github.com:owner/repo.git
                 if "github.com:" in url:
-                    parts = url.split("github.com:")[-1].rstrip(".git").split("/")
+                    parts = url.split("github.com:")[-1].removesuffix(".git").split("/")
                     if len(parts) >= 2:
                         return parts[0], parts[1]
                 # HTTPS: https://github.com/owner/repo.git
                 if "github.com/" in url:
-                    parts = url.split("github.com/")[-1].rstrip(".git").split("/")
+                    parts = url.split("github.com/")[-1].removesuffix(".git").split("/")
                     if len(parts) >= 2:
                         return parts[0], parts[1]
         except Exception:
             pass
         return None, None
+
+    def _infer_gitlab_project(self) -> Optional[str]:
+        """Try to infer GitLab project path from git remote URL.
+
+        Returns URL-encoded project path (e.g. "group%2Fproject")
+        suitable for GitLab API v4 /projects/:id endpoints.
+        """
+        # Check CI environment variable first (set automatically in GitLab CI)
+        project_id = os.environ.get("CI_PROJECT_ID")
+        if project_id:
+            return project_id
+
+        try:
+            import git
+            from urllib.parse import quote
+            repo = git.Repo(self.repo_path)
+            for remote in repo.remotes:
+                url = remote.url
+                # SSH: git@gitlab.com:group/project.git
+                for host in ("gitlab.com:", "gitlab."):
+                    if host in url:
+                        path = url.split(host)[-1].removesuffix(".git")
+                        if "/" in path:
+                            return quote(path, safe="")
+                # HTTPS: https://gitlab.com/group/project.git
+                for host in ("gitlab.com/", "gitlab."):
+                    if host in url and "://" in url:
+                        path = url.split(host)[-1].removesuffix(".git")
+                        if "/" in path:
+                            return quote(path, safe="")
+        except Exception:
+            pass
+        return None
 
     def _load_previous_advisory(self) -> Optional[dict]:
         """Load the current advisory.json before it is cleaned, if it exists.
