@@ -225,3 +225,75 @@ class TestSetupCLIAndUIShareConfig:
         cfg3 = EvoConfig(path=cfg_path)
         assert cfg3.get("hooks.notify") is False
         assert cfg3.get("hooks.trigger") == "pre-push"
+
+
+# ─── Task #47: Config key fixes ───
+
+
+class TestSetupAutoOpenKey:
+    """The setup wizard should read/write hooks.auto_open, not report.auto_open."""
+
+    def test_setup_auto_open_uses_hooks_key(self, runner, tmp_path, isolated_config):
+        """Typing 'no' for auto-open writes to hooks.auto_open."""
+        cfg = EvoConfig(path=isolated_config)
+        # Defaults: hooks.auto_open = True
+        assert cfg.get("hooks.auto_open") is True
+
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "ghp_fake"}, clear=False):
+            # Enter through privacy, then type 'no' for auto-open
+            result = runner.invoke(main, ["setup", str(tmp_path)], input="\nno\n")
+
+        assert result.exit_code == 0
+        cfg2 = EvoConfig(path=isolated_config)
+        assert cfg2.get("hooks.auto_open") is False
+
+    def test_setup_privacy_fallback_binary(self, runner, tmp_path, isolated_config):
+        """Privacy options should only show 0 and 1 (binary), not 2."""
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "ghp_fake"}, clear=False):
+            result = runner.invoke(main, ["setup", str(tmp_path)], input="\n\n")
+
+        assert result.exit_code == 0
+        # Should show "0." and "1." options but NOT "2."
+        assert "0." in result.output
+        assert "1." in result.output
+        # Check that no "2. " line exists in the privacy section
+        lines = result.output.split("\n")
+        assert not any(line.strip().startswith("2.") for line in lines), \
+            "Privacy level 2 should not appear as an option"
+
+
+class TestSetupSourcesHint:
+    """Task #48: setup should show 'evo sources' hint after detected tools."""
+
+    def test_setup_shows_sources_hint(self, runner, tmp_path, isolated_config):
+        """When prescan detects tools, show 'evo sources' hint."""
+        from evolution.prescan import DetectedService
+
+        mock_services = [
+            DetectedService(
+                service="sentry",
+                display_name="Sentry",
+                family="error_tracking",
+                adapter="evo-adapter-sentry",
+                detection_layers=["config"],
+                evidence=[".sentryclirc found"],
+            ),
+        ]
+
+        with patch("evolution.prescan.SourcePrescan") as mock_cls, \
+             patch.dict("os.environ", {"GITHUB_TOKEN": "ghp_fake"}, clear=False):
+            mock_cls.return_value.scan.return_value = mock_services
+            result = runner.invoke(main, ["setup", str(tmp_path)], input="\n\n")
+
+        assert result.exit_code == 0
+        assert "evo sources" in result.output
+
+    def test_setup_no_sources_hint_when_nothing_detected(self, runner, tmp_path, isolated_config):
+        """When no tools detected, don't show the sources hint."""
+        with patch("evolution.prescan.SourcePrescan") as mock_cls, \
+             patch.dict("os.environ", {"GITHUB_TOKEN": "ghp_fake"}, clear=False):
+            mock_cls.return_value.scan.return_value = []
+            result = runner.invoke(main, ["setup", str(tmp_path)], input="\n\n")
+
+        assert result.exit_code == 0
+        assert "evo sources" not in result.output

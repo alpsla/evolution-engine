@@ -182,7 +182,7 @@ def collect_patterns(
 
 def aggregate_patterns(
     by_fingerprint: dict,
-    min_repos: int = 2,
+    min_repos: int = 1,
     min_total_occurrences: int = 3,
 ) -> list[dict]:
     """Merge patterns with the same fingerprint into universal patterns.
@@ -289,7 +289,7 @@ def main():
                         help="Directory containing calibration runs")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUTPUT,
                         help="Output path for universal_patterns.json")
-    parser.add_argument("--min-repos", type=int, default=2,
+    parser.add_argument("--min-repos", type=int, default=1,
                         help="Minimum repos seeing a pattern to include (default: 2)")
     parser.add_argument("--min-occurrences", type=int, default=3,
                         help="Minimum total occurrences across repos (default: 3)")

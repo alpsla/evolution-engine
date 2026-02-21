@@ -38,8 +38,9 @@ def format_pr_comment(
     sources_info: Optional[dict] = None,
     investigation_prompt: Optional[str] = None,
     report_url: Optional[str] = None,
+    ci_provider: Optional[str] = None,
 ) -> str:
-    """Format a Phase 5 advisory as a GitHub PR comment.
+    """Format a Phase 5 advisory as a PR/MR comment.
 
     Args:
         advisory: Phase 5 advisory dict (from advisory.json).
@@ -48,9 +49,10 @@ def format_pr_comment(
         sources_info: Optional dict from `evo sources --json` with connected/detected info.
         investigation_prompt: Optional copyable prompt for AI investigation.
         report_url: Optional URL to the HTML report artifact.
+        ci_provider: CI platform — "github", "gitlab", or None (defaults to GitHub behavior).
 
     Returns:
-        Markdown string suitable for `gh pr comment`.
+        Markdown string suitable for `gh pr comment` or GitLab MR note.
     """
     scope = advisory.get("scope", repo_name or "repository")
     summary = advisory.get("summary", {})
@@ -63,7 +65,7 @@ def format_pr_comment(
     if significant == 0:
         lines = ["## Evolution Engine Analysis", ""]
         if sources_info:
-            lines.extend(_format_sources_section(sources_info))
+            lines.extend(_format_sources_section(sources_info, ci_provider=ci_provider))
         lines.append("\u2705 **All clear** — no significant deviations detected.")
         lines.append("")
         lines.append(
@@ -84,7 +86,7 @@ def format_pr_comment(
 
     # Sources section (What EE Can See)
     if sources_info:
-        lines.extend(_format_sources_section(sources_info))
+        lines.extend(_format_sources_section(sources_info, ci_provider=ci_provider))
 
     # Findings header
     lines.append("### Findings")
@@ -153,7 +155,7 @@ def format_pr_comment(
     # "What To Do Next" section
     lines.append("---")
     lines.append("")
-    lines.extend(_format_next_steps(investigation_prompt, report_url))
+    lines.extend(_format_next_steps(investigation_prompt, report_url, ci_provider=ci_provider))
 
     # Footer
     families = summary.get("families_affected", [])
@@ -170,17 +172,19 @@ def format_verification_comment(
     previous_changes: int = 0,
     residual_prompt: Optional[str] = None,
     report_url: Optional[str] = None,
+    ci_provider: Optional[str] = None,
 ) -> str:
-    """Format a verification result as a PR comment update.
+    """Format a verification result as a PR/MR comment update.
 
     Args:
         verification: Verification dict from Phase 5 verify().
         previous_changes: Number of changes in the original advisory.
         residual_prompt: Optional prompt for continuing fixes on remaining issues.
         report_url: Optional URL to the HTML report artifact.
+        ci_provider: CI platform — "github", "gitlab", or None.
 
     Returns:
-        Markdown string for updating the PR comment.
+        Markdown string for updating the PR/MR comment.
     """
     v = verification.get("verification", verification)
     summary = v.get("summary", {})
@@ -273,16 +277,18 @@ def format_accepted_comment(
     advisory: dict,
     accepted_by: str,
     scope: str = "this-pr",
+    ci_provider: Optional[str] = None,
 ) -> str:
-    """Format an accepted-state PR comment.
+    """Format an accepted-state PR/MR comment.
 
     Shows that findings were acknowledged as intentional, with original
     findings collapsed in a details section.
 
     Args:
         advisory: Original Phase 5 advisory dict.
-        accepted_by: GitHub username who accepted the findings.
+        accepted_by: Username who accepted the findings.
         scope: Acceptance scope — "this-pr" or "permanent".
+        ci_provider: CI platform — "gitlab" shows "MR" instead of "PR".
 
     Returns:
         Markdown string for the accepted comment.
@@ -291,10 +297,11 @@ def format_accepted_comment(
     summary = advisory.get("summary", {})
     significant = summary.get("significant_changes", len(changes))
 
+    pr_label = "MR" if ci_provider == "gitlab" else "PR"
     if scope == "permanent":
         scope_label = "Accepted permanently"
     else:
-        scope_label = "Accepted for this PR"
+        scope_label = f"Accepted for this {pr_label}"
 
     lines = [
         "## Evolution Engine Analysis",
@@ -337,11 +344,12 @@ def format_accepted_comment(
 # ─── Internal helpers ───
 
 
-def _format_sources_section(sources_info: dict) -> list[str]:
+def _format_sources_section(sources_info: dict, ci_provider: Optional[str] = None) -> list[str]:
     """Format the 'What EE Can See' section from sources info.
 
     Args:
         sources_info: Dict from `evo sources --json` with connected/detected keys.
+        ci_provider: CI platform — "gitlab" shows GITLAB_TOKEN hint.
 
     Returns:
         List of markdown lines.
@@ -351,6 +359,8 @@ def _format_sources_section(sources_info: dict) -> list[str]:
     connected = sources_info.get("connected", [])
     detected = sources_info.get("detected", [])
     connected_families = set(sources_info.get("current_families", []))
+
+    token_name = "GITLAB_TOKEN" if ci_provider == "gitlab" else "GITHUB_TOKEN"
 
     # Always show git (built-in)
     if "git" in connected_families:
@@ -374,16 +384,16 @@ def _format_sources_section(sources_info: dict) -> list[str]:
         hint = ""
         display = d.get("display_name", family.capitalize())
         if family in ("ci", "deployment"):
-            hint = " — add `GITHUB_TOKEN` secret to enable"
+            hint = f" — add `{token_name}` secret to enable"
         lines.append(f"\u2b1c {display}{hint}")
 
     # Always hint at CI/deploy if not connected and not detected
-    for family, label, hint in [
-        ("ci", "CI builds", " — add `GITHUB_TOKEN` secret to enable"),
-        ("deployment", "Deployments", " — add `GITHUB_TOKEN` secret to enable"),
+    for family, label in [
+        ("ci", "CI builds"),
+        ("deployment", "Deployments"),
     ]:
         if family not in connected_families and family not in seen_families:
-            lines.append(f"\u2b1c {label}{hint}")
+            lines.append(f"\u2b1c {label} — add `{token_name}` secret to enable")
 
     lines.append("")
     return lines
@@ -392,12 +402,14 @@ def _format_sources_section(sources_info: dict) -> list[str]:
 def _format_next_steps(
     investigation_prompt: Optional[str] = None,
     report_url: Optional[str] = None,
+    ci_provider: Optional[str] = None,
 ) -> list[str]:
     """Format the 'What To Do Next' section.
 
     Args:
         investigation_prompt: Optional copyable prompt for AI tools.
         report_url: Optional URL to the HTML report artifact.
+        ci_provider: CI platform — "gitlab" uses local accept instructions.
 
     Returns:
         List of markdown lines.
@@ -423,12 +435,26 @@ def _format_next_steps(
         lines.append("Run `evo investigate .` locally or enable `investigate: true` in the action.")
         lines.append("")
 
-    lines.append("**Option B — Accept for this PR:**")
-    lines.append("If these changes are intentional for this PR, comment `/evo accept` — findings won't reappear on this PR.")
-    lines.append("")
-    lines.append("**Option C — Accept permanently:**")
-    lines.append("Comment `/evo accept permanent` to suppress these findings across all future PRs.")
-    lines.append("")
+    if ci_provider == "gitlab":
+        lines.append("**Option B — Accept for this MR:**")
+        lines.append(
+            "If these changes are intentional, run `evo accept` locally, "
+            "commit `.evo/accepted.json`, and push — findings won't reappear on this MR."
+        )
+        lines.append("")
+        lines.append("**Option C — Accept permanently:**")
+        lines.append(
+            "Run `evo accept --permanent` locally, commit, and push "
+            "to suppress these findings across all future MRs."
+        )
+        lines.append("")
+    else:
+        lines.append("**Option B — Accept for this PR:**")
+        lines.append("If these changes are intentional for this PR, comment `/evo accept` — findings won't reappear on this PR.")
+        lines.append("")
+        lines.append("**Option C — Accept permanently:**")
+        lines.append("Comment `/evo accept permanent` to suppress these findings across all future PRs.")
+        lines.append("")
 
     if report_url:
         lines.append(f"\U0001f4ca [View Full Report]({report_url})")

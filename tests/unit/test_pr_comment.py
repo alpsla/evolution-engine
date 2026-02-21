@@ -710,6 +710,29 @@ class TestFormatAcceptedComment:
         assert "| Risk | Family | Metric | Now | Usual | Change |" in result
         assert "Critical" in result
 
+    def test_accepted_gitlab_says_mr(self):
+        """GitLab provider: says 'this MR' not 'this PR'."""
+        changes = [_make_change()]
+        advisory = _make_advisory(changes=changes)
+        result = format_accepted_comment(advisory, accepted_by="alice", ci_provider="gitlab")
+        assert "Accepted for this MR" in result
+        assert "Accepted for this PR" not in result
+
+    def test_accepted_github_says_pr(self):
+        """Default (GitHub): says 'this PR'."""
+        changes = [_make_change()]
+        advisory = _make_advisory(changes=changes)
+        result = format_accepted_comment(advisory, accepted_by="alice", ci_provider=None)
+        assert "Accepted for this PR" in result
+        assert "Accepted for this MR" not in result
+
+    def test_accepted_permanent_ignores_provider(self):
+        """Permanent scope doesn't mention PR/MR."""
+        changes = [_make_change()]
+        advisory = _make_advisory(changes=changes)
+        result = format_accepted_comment(advisory, accepted_by="alice", scope="permanent", ci_provider="gitlab")
+        assert "Accepted permanently" in result
+
 
 # ─── Helper functions ───
 
@@ -802,6 +825,28 @@ class TestFormatSourcesSection:
         # But deployment still hinted
         assert "Deployments" in text
 
+    def test_sources_gitlab_shows_gitlab_token(self):
+        """GitLab provider: hints use GITLAB_TOKEN instead of GITHUB_TOKEN."""
+        sources = _make_sources_info(
+            connected=[{"family": "git", "adapter": "builtin", "tier": 1}],
+            families=["git"],
+        )
+        lines = _format_sources_section(sources, ci_provider="gitlab")
+        text = "\n".join(lines)
+        assert "GITLAB_TOKEN" in text
+        assert "GITHUB_TOKEN" not in text
+
+    def test_sources_github_shows_github_token(self):
+        """GitHub provider (default): hints use GITHUB_TOKEN."""
+        sources = _make_sources_info(
+            connected=[{"family": "git", "adapter": "builtin", "tier": 1}],
+            families=["git"],
+        )
+        lines = _format_sources_section(sources, ci_provider=None)
+        text = "\n".join(lines)
+        assert "GITHUB_TOKEN" in text
+        assert "GITLAB_TOKEN" not in text
+
 
 class TestFormatNextSteps:
     def test_with_prompt(self):
@@ -835,6 +880,24 @@ class TestFormatNextSteps:
         text = "\n".join(lines)
         assert "View Full Report" not in text
 
+    def test_next_steps_gitlab_mentions_local_accept(self):
+        """GitLab provider: mentions 'evo accept' locally, no '/evo accept'."""
+        lines = _format_next_steps(ci_provider="gitlab")
+        text = "\n".join(lines)
+        assert "evo accept" in text
+        assert "locally" in text
+        assert "accepted.json" in text
+        assert "/evo accept" not in text
+        assert "this MR" in text
+
+    def test_next_steps_github_default(self):
+        """Default (GitHub): uses '/evo accept' comment instructions."""
+        lines = _format_next_steps(ci_provider=None)
+        text = "\n".join(lines)
+        assert "/evo accept" in text
+        assert "this PR" in text
+        assert "accepted.json" not in text
+
 
 # ─── format_comment.py script ───
 
@@ -850,6 +913,11 @@ class TestFormatCommentScript:
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         assert hasattr(mod, "main")
+
+    def test_canonical_module_importable(self):
+        """Verify evolution.format_comment is importable (for python -m)."""
+        from evolution.format_comment import main as fc_main
+        assert callable(fc_main)
 
     def test_script_writes_advisory_comment(self, tmp_path):
         """Run format_comment.py with a sample advisory."""
@@ -1055,6 +1123,36 @@ class TestFormatCommentScript:
         assert "Residual Prompt" in content
         assert "git/files_touched still drifting" in content
         assert "View Full Report" in content
+
+    def test_script_with_ci_provider_gitlab(self, tmp_path):
+        """Run format_comment.py with --ci-provider gitlab — uses local accept."""
+        import subprocess
+        import json
+
+        advisory = _make_advisory(
+            changes=[_make_change()],
+            families_affected=["git"],
+        )
+        advisory_path = tmp_path / "advisory.json"
+        advisory_path.write_text(json.dumps(advisory))
+        output_path = tmp_path / "comment.md"
+
+        script = Path(__file__).parent.parent.parent / "action" / "format_comment.py"
+        if not script.exists():
+            pytest.skip("action/format_comment.py not found")
+
+        result = subprocess.run(
+            [sys.executable, str(script),
+             "--advisory", str(advisory_path),
+             "--ci-provider", "gitlab",
+             "--output", str(output_path)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        content = output_path.read_text()
+        assert "this MR" in content
+        assert "locally" in content
+        assert "/evo accept" not in content
 
 
 import sys

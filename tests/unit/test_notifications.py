@@ -336,3 +336,37 @@ def test_format_multiple():
     ])
     assert "msg1" in result
     assert "msg2" in result
+
+
+# ─── Task #48: Updated adapter discovery message ───
+
+
+def test_notification_not_on_pypi_message(notification_file, tmp_path):
+    """When adapter is NOT on PyPI, notification says 'community adapter in development'."""
+    from evolution.prescan import DetectedService
+
+    svc = DetectedService(
+        service="sentry",
+        display_name="Sentry",
+        family="error_tracking",
+        adapter="evo-adapter-sentry",
+        detection_layers=["config"],
+        evidence=[".sentryclirc found"],
+    )
+
+    mock_eps = MagicMock()
+    mock_eps.select.return_value = []
+
+    state = {"items": []}
+
+    with patch("evolution.prescan.SourcePrescan") as MockPrescan, \
+         patch("importlib.metadata.entry_points", return_value=mock_eps), \
+         patch("evolution.adapter_versions.check_pypi_version", return_value=None):
+        MockPrescan.return_value.scan.return_value = [svc]
+        check_adapter_discovery(state, repo_path=tmp_path)
+
+    assert len(state["items"]) == 1
+    msg = state["items"][0]["message"]
+    assert "community adapter in development" in msg
+    assert "evo adapter new sentry --family error_tracking" in msg
+    assert "coming soon" not in msg

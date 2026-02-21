@@ -11,13 +11,15 @@ pip install evolution-engine
 Evolution Engine integrates into your workflow three ways. Start with the CLI, then graduate to automation as you gain confidence.
 
 ```
-Path 1: CLI Explorer          Path 2: Git Hooks           Path 3: GitHub Action
+Path 1: CLI Explorer          Path 2: Git Hooks           Path 3: CI Integration
 (start here)                  (automate locally)          (automate in CI)
 
   evo analyze .        -->      evo init --path hooks  -->  evo init --path action
-  evo report .                  evo watch .                 PR comments + badges
+  evo report .                  evo watch .                 PR/MR comments + badges
   evo status                    auto-analyze on commit      team-wide coverage
 ```
+
+`evo init` auto-detects whether you're on GitHub or GitLab and generates the right CI configuration.
 
 **Free tier** gets all three paths. **Pro** adds AI investigation (`evo investigate`), fix suggestions (`evo fix`), and inline PR review comments.
 
@@ -139,11 +141,13 @@ evo watch . --stop
 
 ---
 
-## Path 3: GitHub Action (CI)
+## Path 3: CI Integration
 
-Add Evolution Engine to your pull request workflow. Every PR gets an automated analysis comment with risk badges and evidence links.
+Add Evolution Engine to your pull request / merge request workflow. Every PR/MR gets an automated analysis comment with risk badges and evidence links.
 
-### Quick setup
+`evo init` detects your CI platform (GitHub or GitLab) and generates the right configuration.
+
+### GitHub Action
 
 ```bash
 # Generate the workflow file automatically
@@ -155,7 +159,7 @@ git commit -m "ci: add Evolution Engine analysis"
 git push
 ```
 
-### Manual workflow setup
+#### Manual workflow setup
 
 Add to `.github/workflows/evolution.yml`:
 
@@ -180,10 +184,32 @@ jobs:
           comment: true
 ```
 
+### GitLab CI
+
+```bash
+# Generate the .gitlab-ci.yml jobs automatically
+evo init . --path action
+
+# Commit and push to activate
+git add .gitlab-ci.yml
+git commit -m "ci: add Evolution Engine analysis"
+git push
+```
+
+**Requirements:** Set `GITLAB_TOKEN` as a CI/CD variable (Settings > CI/CD > Variables) with `api` scope.
+
+**What you get:**
+- Automated MR comments with risk badges on every merge request
+- Verification updates when you push fixes
+- Acceptance flow: run `evo accept` locally, commit `.evo/accepted.json`, push
+- Advisory caching between pipeline runs
+
+If `.gitlab-ci.yml` already exists, EE appends its jobs without disturbing your existing pipeline.
+
 ### All paths at once
 
 ```bash
-# Set up CLI + hooks + Action in one command
+# Set up CLI + hooks + CI in one command
 evo init . --path all
 ```
 
@@ -275,7 +301,7 @@ Setup & Integration
   evo init [path]                 Detect environment and suggest integration path
   evo init [path] --path cli     Set up CLI-only analysis
   evo init [path] --path hooks   Install git hooks for auto-analysis
-  evo init [path] --path action  Generate GitHub Action workflow
+  evo init [path] --path action  Generate CI config (GitHub Action or GitLab CI)
   evo init [path] --path all     Set up all integration paths
   evo setup [path]               Interactive configuration wizard
   evo setup --ui                 Browser-based settings page

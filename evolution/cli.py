@@ -948,28 +948,46 @@ def sources(path, token, what_if_adapters, json_output):
     else:
         click.echo("  (none)")
 
-    # Detected but not connected
+    # Detected but not connected (third-party services from prescan)
     click.echo()
     if unconnected:
-        # Separate token-gated (built-in) from third-party adapters
-        token_gated = [s for s in unconnected if s.family in ("ci", "deployment", "security")]
-        third_party = [s for s in unconnected if s.family not in ("ci", "deployment", "security")]
-
         click.echo("DETECTED (found in your repo — not yet connected):")
         for s in unconnected:
             evidence_str = "; ".join(s.evidence[:2])
             click.echo(f"  \U0001f50d {s.display_name:20s} {evidence_str}")
 
-        # Single consolidated token hint for built-in adapters
-        if token_gated:
-            token_families = sorted(set(s.family for s in token_gated))
-            click.echo()
-            click.echo(f"  Set GITHUB_TOKEN to connect: {', '.join(token_families)}")
+        # Third-party adapter availability (PyPI check)
+        click.echo()
+        from evolution.adapter_versions import check_pypi_version as _sources_pypi_check
+        for s in unconnected:
+            pkg = s.adapter
+            latest = _sources_pypi_check(pkg, use_cache=True)
+            if latest:
+                click.echo(f"  Install: pip install {pkg}  \u2190 {s.display_name} ({s.family})")
+            else:
+                click.echo(
+                    f"  {s.display_name}: community adapter in development "
+                    f"\u2014 or build your own: evo adapter new {s.service} --family {s.family}"
+                )
     else:
         if detected:
             click.echo("All detected tools are already connected.")
         else:
             click.echo("No additional tools detected in this repo.")
+
+    # Token hints for built-in (Tier 2) adapters
+    from evolution.registry import TIER2_DETECTORS
+    token_hints = []
+    for token_key, adapters in TIER2_DETECTORS.items():
+        env_var = token_key.upper()
+        if os.environ.get(env_var):
+            continue  # token already set
+        families = sorted(set(family for _, family in adapters))
+        token_hints.append(f"  Set {env_var} to unlock: {', '.join(families)}")
+    if token_hints:
+        click.echo()
+        for hint in token_hints:
+            click.echo(hint)
 
     # Summary
     click.echo()
@@ -1671,7 +1689,7 @@ def adapter_discover(path, json_output):
 
     if not_published:
         click.echo()
-        click.echo("Not yet on PyPI (build your own?):")
+        click.echo("Community adapters \u2014 request or build your own:")
         for svc in not_published:
             click.echo(f"  {svc.adapter:30s} ← {svc.display_name} ({svc.family})")
             click.echo(f"    Scaffold: evo adapter new {svc.service} --family {svc.family}")
@@ -2256,6 +2274,7 @@ def setup(path, reset, ui, port):
         if detected:
             for svc in detected:
                 click.echo(f"  \u2713 {svc.display_name} ({svc.family})")
+            click.echo("  Run 'evo sources' to see how connecting these tools enriches analysis")
         else:
             click.echo("  No additional sources detected (git is always available)")
     except Exception:
@@ -2287,7 +2306,7 @@ def setup(path, reset, ui, port):
     meta = config_metadata("sync.privacy_level")
     current = cfg.get("sync.privacy_level")
     labels = meta.get("allowed_labels", {})
-    allowed = meta.get("allowed", [0, 1, 2])
+    allowed = meta.get("allowed", [0, 1])
     click.echo("  Community pattern sharing:")
     for opt in allowed:
         label = labels.get(opt, str(opt))
@@ -2304,7 +2323,7 @@ def setup(path, reset, ui, port):
         pass
 
     # Auto-open report
-    current_open = cfg.get("report.auto_open")
+    current_open = cfg.get("hooks.auto_open")
     try:
         raw = click.prompt(
             f"\n  Auto-open HTML report after analysis? [{'yes' if current_open else 'no'}]",
@@ -2313,7 +2332,7 @@ def setup(path, reset, ui, port):
         if raw:
             value = raw.lower() in ("true", "yes", "y", "1")
             if value != current_open:
-                cfg.set("report.auto_open", value)
+                cfg.set("hooks.auto_open", value)
                 changed += 1
     except (EOFError, click.Abort):
         pass
@@ -2464,16 +2483,22 @@ def init(path, evo_dir, integration_path, families, license_key):
         click.echo(f"  Git repo:       {'yes' if env['is_git_repo'] else 'no'}")
         click.echo(f"  GitHub:         {'yes' if env['has_github'] else 'no'}")
         click.echo(f"  Workflows:      {'yes' if env['has_workflows'] else 'no'}")
+        click.echo(f"  GitLab CI:      {'yes' if env.get('has_gitlab') else 'no'}")
         click.echo(f"  EE configured:  {'yes' if env['has_evo'] else 'no'}")
-        click.echo(f"  EE Action:      {'yes' if env['has_evo_action'] else 'no'}")
+        click.echo(f"  EE in CI:       {'yes' if env['has_evo_action'] or env.get('has_evo_gitlab') else 'no'}")
         if env.get("repo_name"):
             click.echo(f"  Repository:     {env['repo_name']}")
         click.echo()
         suggested = env.get("suggested_path", "cli")
+        ci_label = (
+            "GitLab CI with MR comments"
+            if env.get("ci_provider") == "gitlab"
+            else "GitHub Action with PR comments"
+        )
         paths = [
             ("cli", "Manual analysis with evo analyze / evo report"),
             ("hooks", "Auto-analyze on every commit"),
-            ("action", "GitHub Action with PR comments"),
+            ("action", ci_label),
             ("all", "All of the above"),
         ]
         click.echo("Available paths:")
@@ -2510,7 +2535,11 @@ def init(path, evo_dir, integration_path, families, license_key):
 
     # If action path, remind user to commit the workflow
     if integration_path in ("action", "all"):
-        click.echo("\nCommit and push the workflow file to activate.")
+        if env.get("ci_provider") == "gitlab":
+            click.echo("\nCommit and push .gitlab-ci.yml to activate.")
+            click.echo("Set GITLAB_TOKEN in CI/CD variables (Settings > CI/CD > Variables).")
+        else:
+            click.echo("\nCommit and push the workflow file to activate.")
 
     # Show first-run hint
     hint = pi.first_run_hint()

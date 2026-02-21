@@ -134,7 +134,7 @@ All core engine work is done. Summary of shipped features:
 
 ### Adapter Expansion (New Families & Metrics)
 
-Calibration across 90+ repos showed pattern discovery has saturated with the current 4 families (git, ci, deployment, dependency). Adding new adapters unlocks new cross-family pattern combinations.
+Calibration across 90+ repos showed pattern discovery has saturated with the current 4 families (git, ci, deployment, dependency). Adding new adapters unlocks new cross-family pattern combinations. Now at 6 families (+ testing, coverage).
 
 **Sorted by priority (severity of impact on pattern discovery):**
 
@@ -148,6 +148,7 @@ Calibration across 90+ repos showed pattern discovery has saturated with the cur
 | 57 | **CMake dependency extraction** — parse `CMakeLists.txt` for find_package/FetchContent | Low | dependency for C/C++ (5 repos) | **Complete** ✅ |
 | 54 | **Code coverage metric** — Cobertura XML → coverage family | Low | New coverage family: line_rate, branch_rate | **Complete** ✅ |
 | 58 | **Swift Package Manager** — `Package.resolved` | Low | dependency for Swift/iOS | **Complete** ✅ |
+| 51b | **Sentry adapter** — error tracking → new error_tracking family | Medium | error×git, error×deployment patterns | **Pending** |
 
 #### 55 — Missing Walker Parsers (Critical — Quick Win)
 
@@ -315,7 +316,6 @@ See `docs/LAUNCH_PLAN.md` for detailed beta program, launch timeline, and go-to-
 
 ## Future Enhancements (Post-Beta)
 
-- **Sentry adapter** (#51) — error tracking family, new cross-family patterns (error×git, error×deployment)
 - **Datadog adapter** (#52) — monitoring family, high effort, deferred to post-deployment
 - PostgreSQL + pgvector migration (multi-tenant, when SaaS tier exists)
 - Vendor adapters requiring external services (PagerDuty, New Relic — needs partner access)
