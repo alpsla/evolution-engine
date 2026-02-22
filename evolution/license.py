@@ -41,10 +41,12 @@ class ProFeatureError(Exception):
         message = (
             f"\n\n{feature_name} requires Evolution Engine Pro.\n\n"
             "Upgrade to unlock:\n"
-            "  - CI, deployment, and security adapters\n"
-            "  - LLM-enhanced explanations and semantic patterns\n"
-            "  - Community knowledge base sync (coming soon)\n\n"
-            "Set EVO_LICENSE_KEY or visit https://codequal.dev/pro\n"
+            "  - 20+ adapters across 9 signal families\n"
+            "  - CI, deployment, security & error tracking\n"
+            "  - AI investigation & fix loop\n"
+            "  - Git hooks & CI workflow actions\n"
+            "  - GitHub Action & GitLab CI integration\n\n"
+            "Visit https://codequal.dev/#pricing or set EVO_LICENSE_KEY\n"
         )
         super().__init__(message)
 

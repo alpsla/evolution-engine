@@ -499,7 +499,7 @@ def accepted_clear(path, evo_dir, yes):
               help="Force a specific AI backend")
 @click.option("--model", help="Override AI model name")
 def investigate(path, evo_dir, show_prompt, agent_type, model):
-    """Run AI investigation on the latest advisory.
+    """Run AI investigation on the latest advisory. [Pro]
 
     Feeds the Phase 5 advisory into an AI agent to identify root causes,
     assess risk, and suggest fixes.
@@ -509,6 +509,14 @@ def investigate(path, evo_dir, show_prompt, agent_type, model):
         evo investigate . --show-prompt      # print prompt for manual use
         evo investigate . --agent anthropic  # force Anthropic API
     """
+    from evolution.license import ProFeatureError, require_pro
+
+    try:
+        require_pro("AI Investigation", repo_path=path)
+    except ProFeatureError as e:
+        click.echo(str(e))
+        sys.exit(1)
+
     from evolution.agents.base import get_agent
     from evolution.investigator import Investigator
 
@@ -561,7 +569,7 @@ def investigate(path, evo_dir, show_prompt, agent_type, model):
 @click.option("--residual", is_flag=True,
               help="Generate iteration-aware prompt comparing current vs previous advisory")
 def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes, interactive, residual):
-    """Apply AI fixes and verify with EE in a loop.
+    """Apply AI fixes and verify with EE in a loop. [Pro]
 
     Creates a branch, asks an AI agent to fix the flagged issues,
     re-runs EE to verify, and iterates until the advisory clears
@@ -576,6 +584,14 @@ def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes, 
         evo fix . --yes                  # skip confirmation prompt
         evo fix . --interactive          # review changes after each iteration
     """
+    from evolution.license import ProFeatureError, require_pro
+
+    try:
+        require_pro("AI Fix Loop", repo_path=path)
+    except ProFeatureError as e:
+        click.echo(str(e))
+        sys.exit(1)
+
     import subprocess as _subprocess
 
     from evolution.agents.base import get_agent
@@ -2356,7 +2372,7 @@ def hooks():
 @click.option("--trigger", type=click.Choice(["post-commit", "pre-push"]),
               help="Hook trigger (default: from config)")
 def hooks_install(path, trigger):
-    """Install EE git hook for automatic analysis.
+    """Install EE git hook for automatic analysis. [Pro]
 
     The hook runs `evo analyze` after each commit (or before push)
     and notifies you when findings exceed your configured threshold.
@@ -2365,6 +2381,14 @@ def hooks_install(path, trigger):
         evo hooks install .
         evo hooks install . --trigger pre-push
     """
+    from evolution.license import ProFeatureError, require_pro
+
+    try:
+        require_pro("Git Hooks", repo_path=path)
+    except ProFeatureError as e:
+        click.echo(str(e))
+        sys.exit(1)
+
     from evolution.hooks import HookManager
 
     hm = HookManager(path)
@@ -2523,6 +2547,21 @@ def init(path, evo_dir, integration_path, families, license_key):
             click.echo("Invalid choice.")
             return
 
+    # Gate Pro-only integration paths
+    if integration_path in ("hooks", "action", "all"):
+        from evolution.license import ProFeatureError, require_pro
+
+        feature_labels = {
+            "hooks": "Git Hooks",
+            "action": "CI Integration",
+            "all": "CI Integration & Git Hooks",
+        }
+        try:
+            require_pro(feature_labels[integration_path], repo_path=path)
+        except ProFeatureError as e:
+            click.echo(str(e))
+            sys.exit(1)
+
     result = pi.setup(integration_path, families=families)
 
     if not result["ok"]:
@@ -2567,7 +2606,7 @@ def init(path, evo_dir, integration_path, families, license_key):
 @click.option("--stop", is_flag=True, help="Stop the background daemon")
 @click.option("--status", "show_status", is_flag=True, help="Show daemon status")
 def watch(path, evo_dir, interval, min_severity, daemon, stop, show_status):
-    """Watch for new commits and auto-analyze.
+    """Watch for new commits and auto-analyze. [Pro]
 
     In foreground mode, polls for new commits and runs analysis when
     changes are detected. Use --daemon to run in the background.
@@ -2579,6 +2618,14 @@ def watch(path, evo_dir, interval, min_severity, daemon, stop, show_status):
         evo watch . --stop               # stop the daemon
         evo watch . --status             # check if daemon is running
     """
+    from evolution.license import ProFeatureError, require_pro
+
+    try:
+        require_pro("Commit Watcher", repo_path=path)
+    except ProFeatureError as e:
+        click.echo(str(e))
+        sys.exit(1)
+
     from evolution.watcher import CommitWatcher
 
     evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
