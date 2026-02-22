@@ -49,6 +49,7 @@ All core engine work is done. Summary of shipped features:
 | # | Task | Platform | Effort | Status |
 |---|------|----------|--------|--------|
 | 45b | **Acceptance persistence** — deploy webhook, test `/evo accept` + `/evo accept permanent` on real PR | GitHub | Low | Pending |
+| 45c | **Accept comment cache fix** — in-place comment modification instead of cache-dependent regeneration | GitHub | Low | **Complete** ✅ |
 | GH-WF | **GitHub Action workflow** — trigger on real PR, verify PR comment, inline suggestions, accept flow, verify flow | GitHub | Low | Pending |
 | 37 | **GitLab CLI manual testing** — 7 CLI scenarios on real GitLab repo (see v1 plan §12.2) | GitLab | Low | Pending |
 | GL-WF | **GitLab CI workflow** — trigger on real MR, verify MR comment, accept flow, verify flow | GitLab | Low | Pending |
@@ -84,6 +85,25 @@ All core engine work is done. Summary of shipped features:
 5. Push again → verify findings reappear (PR-scoped, not permanent)
 6. Comment `/evo accept permanent` → verify comment updates to "Accepted permanently"
 7. Open new PR → verify permanently accepted findings are suppressed (pulled from webhook)
+
+#### 45c — Accept Comment Cache Fix (Complete)
+
+**Problem:** The `/evo accept` flow on GitHub Actions failed to update the PR comment because of cache branch scoping:
+- Analysis runs on `pull_request` event → saves advisory cache on the PR branch
+- Accept runs on `issue_comment` event → always runs on `main` → can't access PR branch cache
+- Without the advisory, `format_comment.py` generated an empty accepted comment
+
+**Fix:** In-place comment modification. Instead of regenerating from advisory JSON, the accept handler now fetches the existing comment body via `gh api` and transforms the markdown directly:
+1. Inserts `✅ **Accepted for this PR**` banner after the header
+2. Removes the "What To Do Next" section (or "Continue Fixing" for verification comments)
+3. Strips old footer, adds `<sub>Accepted by @username</sub>`
+4. For `/evo accept permanent`, parses `family:metric` pairs from the findings table for webhook push
+
+**Removed steps (all depended on broken advisory cache):**
+- Checkout for accept, Install Evolution Engine for accept
+- Restore cached advisory, Persist acceptance to accepted.json, Cache accepted.json
+
+**Files changed:** `action/action.yml`
 
 #### 50 — GitLab CI Integration (Complete)
 
@@ -312,6 +332,14 @@ See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implem
 | # | Task | Effort | Blocker? | Status |
 |---|------|--------|----------|--------|
 | 36 | **Lawyer review implementation** — 6 sub-tasks above | Medium | No | **Complete** ✅ |
+| 36.7 | **Webhook signing key** — confirm `EVO_LICENSE_SIGNING_KEY` env var in Vercel production (hard-fail if missing) | Low | Yes — webhook returns 500 without it | Pending |
+| 36.8 | **Axiom 30-day retention** — configure in Axiom dashboard for all datasets | Low | No | Pending |
+| 36.9 | **Verify Axiom/Vercel DPAs** — confirm SCCs in their Data Processing Agreements | Low | No | Pending |
+| 36.10 | **Verify Vercel Pro plan** — confirm project is on Pro tier | Low | No | Pending |
+| 36.11 | **Terms page + routing** — `website/terms.html` created, `/terms` route added | Low | No | **Complete** ✅ |
+| 36.12 | **BSL licensing in README** — dual-license table added | Low | No | **Complete** ✅ |
+| 36.13 | **GDPR deletion runbook** — internal ops procedure | Low | No | **Complete** ✅ |
+| 36.14 | **Lawyer confirmation packet** — `codequal.dev/lawyer-review-packet-2026-02-22` | Low | No | **Complete** ✅ |
 | 38b | **Stripe live-mode testing** — repeat all flows with real Stripe dashboard | Low | Yes — required before launch payments | **Next Priority** |
 | 49 | **Axiom dashboard & monitors** — API health, alerts, usage metrics from existing ingest | Medium | No — operational readiness | Pending |
 
