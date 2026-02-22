@@ -173,11 +173,15 @@ def _handle_payment_failed(stripe, customer_id, attempt_count):
 
 
 def _generate_license_key(tier, email, signing_key):
+    from datetime import timedelta
+
     email_hash = hashlib.sha256(email.lower().encode("utf-8")).hexdigest()[:16]
+    now = datetime.now(timezone.utc)
     payload = {
         "tier": tier,
         "email_hash": email_hash,
-        "issued": datetime.now(timezone.utc).isoformat(),
+        "expires": (now + timedelta(days=35)).isoformat(),
+        "issued": now.isoformat(),
     }
     payload_str = json.dumps(payload, sort_keys=True)
     signature = hmac_mod.new(

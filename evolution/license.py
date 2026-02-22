@@ -244,7 +244,8 @@ def _validate_key(key: str) -> Optional[dict]:
         # Check expiration if present
         if "expires" in payload:
             expires = datetime.fromisoformat(payload["expires"])
-            if datetime.now() > expires:
+            now = datetime.now(expires.tzinfo)
+            if now > expires:
                 return None
 
         return payload
