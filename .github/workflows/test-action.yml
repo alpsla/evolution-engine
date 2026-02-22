@@ -40,3 +40,4 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment: true
           skip-install: true
+          accept-secret: ${{ secrets.EVO_ACCEPT_SECRET }}
