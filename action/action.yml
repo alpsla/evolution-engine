@@ -109,79 +109,78 @@ runs:
         echo "accepted_by=$AUTHOR" >> "$GITHUB_OUTPUT"
         echo "scope=$SCOPE" >> "$GITHUB_OUTPUT"
 
-    - name: Checkout for accept (to access format_comment.py)
-      if: steps.accept.outputs.accepted == 'true'
-      uses: actions/checkout@v4
-      with:
-        sparse-checkout: action
-
     - name: Set up Python (for accept)
       if: steps.accept.outputs.accepted == 'true'
       uses: actions/setup-python@v5
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Install Evolution Engine (for accept)
-      if: steps.accept.outputs.accepted == 'true' && inputs.skip-install != 'true'
-      shell: bash
-      run: |
-        if [ "${{ inputs.evo-version }}" = "latest" ]; then
-          pip install evolution-engine
-        else
-          pip install "evolution-engine==${{ inputs.evo-version }}"
-        fi
-
-    - name: Restore cached advisory (for accept)
-      if: steps.accept.outputs.accepted == 'true'
-      uses: actions/cache/restore@v4
-      with:
-        path: .evo/phase5/advisory.json.prev
-        key: evo-advisory-${{ steps.accept.outputs.pr_number }}
-
-    - name: Persist acceptance to accepted.json
+    - name: Update PR comment to accepted state
       if: steps.accept.outputs.accepted == 'true'
       shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
       run: |
-        # Use cached advisory if available, otherwise create minimal one
-        ADVISORY=".evo/phase5/advisory.json.prev"
-        if [ ! -f "$ADVISORY" ]; then
-          echo '{"changes":[],"summary":{"significant_changes":0}}' > /tmp/empty_advisory.json
-          ADVISORY="/tmp/empty_advisory.json"
+        COMMENT_ID="${{ steps.accept.outputs.comment_id }}"
+        SCOPE="${{ steps.accept.outputs.scope }}"
+        ACCEPTED_BY="${{ steps.accept.outputs.accepted_by }}"
+
+        # Fetch existing comment body (the source of truth — no cache needed)
+        gh api \
+          "/repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" \
+          --jq '.body' > /tmp/ee_comment_body.txt 2>/dev/null
+
+        if [ ! -s /tmp/ee_comment_body.txt ]; then
+          echo "Could not fetch comment body"
+          exit 0
         fi
 
-        # Accept ALL findings from the advisory into .evo/accepted.json
+        # Transform the comment in-place: add accepted banner, remove action sections
         python3 -c "
-        import json, sys
-        sys.path.insert(0, '.')
-        try:
-            from evolution.accepted import AcceptedDeviations
-        except ImportError:
-            sys.path.insert(0, '$(python3 -c "import evolution; print(evolution.__path__[0])" 2>/dev/null)/..')
-            from evolution.accepted import AcceptedDeviations
+        import json, re, sys
 
-        advisory = json.load(open('$ADVISORY'))
-        changes = advisory.get('changes', [])
-        if not changes:
-            sys.exit(0)
+        with open('/tmp/ee_comment_body.txt') as f:
+            body = f.read()
 
-        ad = AcceptedDeviations('.evo')
-        for c in changes:
-            family = c.get('family', '')
-            metric = c.get('metric', '')
-            if family and metric:
-                key = f'{family}:{metric}'
-                ad.add(key, family, metric,
-                       reason='Accepted on PR #${{ steps.accept.outputs.pr_number }}',
-                       scope={'type': 'permanent'})
-        print(f'Persisted {len(changes)} acceptance(s) to .evo/accepted.json')
-        " 2>/dev/null || true
+        scope = '${SCOPE}'
+        username = '${ACCEPTED_BY}'
 
-    - name: Cache accepted.json for this PR
-      if: steps.accept.outputs.accepted == 'true'
-      uses: actions/cache/save@v4
-      with:
-        path: .evo/accepted.json
-        key: evo-accepted-${{ steps.accept.outputs.pr_number }}-${{ github.run_id }}
+        if scope == 'permanent':
+            scope_label = 'Accepted permanently'
+        else:
+            scope_label = 'Accepted for this PR'
+
+        # Insert accepted banner after the first heading
+        header_match = re.search(r'^(## Evolution Engine[^\n]*\n)', body)
+        if header_match:
+            end = header_match.end()
+            banner = '\n✅ **' + scope_label + '** — findings acknowledged as intentional.\n'
+            body = body[:end] + banner + body[end:]
+
+        # Remove action sections (analysis comments)
+        body = re.sub(r'\n---\n\n### What To Do Next.*', '', body, flags=re.DOTALL)
+        # Remove continue fixing section (verification comments)
+        body = re.sub(r'\n### Continue Fixing.*', '', body, flags=re.DOTALL)
+        # Remove report link line
+        body = re.sub(r'\n\U0001f4ca \[View Full Report\][^\n]*', '', body)
+        # Remove trailing footer
+        body = re.sub(r'\n<sub>[^<]*</sub>\s*$', '', body)
+
+        # Add accepted footer
+        body = body.rstrip() + '\n\n<sub>Accepted by @' + username + '</sub>'
+
+        with open('/tmp/ee_patch.json', 'w') as f:
+            json.dump({'body': body}, f)
+        "
+
+        # PATCH the comment with the modified body
+        gh api \
+          --method PATCH \
+          "/repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" \
+          --input /tmp/ee_patch.json \
+          2>/dev/null || true
+
+        echo "Updated comment #${COMMENT_ID} to accepted state"
 
     - name: Push permanent acceptances to webhook
       if: steps.accept.outputs.accepted == 'true' && steps.accept.outputs.scope == 'permanent'
@@ -194,12 +193,12 @@ runs:
           exit 0
         fi
 
-        ADVISORY=".evo/phase5/advisory.json.prev"
-        if [ ! -f "$ADVISORY" ]; then
-          echo "No advisory to push"
+        if [ ! -s /tmp/ee_comment_body.txt ]; then
+          echo "No comment body to parse"
           exit 0
         fi
 
+        # Parse family:metric pairs from the findings table in the comment body
         python3 -c "
         import hashlib, hmac, json, sys, urllib.request, os
 
@@ -207,19 +206,27 @@ runs:
         repo = '${{ github.repository }}'
         signature = hmac.new(secret.encode(), repo.encode(), hashlib.sha256).hexdigest()
 
-        advisory = json.load(open('$ADVISORY'))
+        with open('/tmp/ee_comment_body.txt') as f:
+            body = f.read()
+
+        # Extract family/metric from table rows:
+        #   | badge Risk | family | metric | current | normal | desc |
         entries = []
-        for c in advisory.get('changes', []):
-            family = c.get('family', '')
-            metric = c.get('metric', '')
-            if family and metric:
-                entries.append({
-                    'key': f'{family}:{metric}',
-                    'family': family,
-                    'metric': metric,
-                    'reason': 'Accepted on PR #${{ steps.accept.outputs.pr_number }}',
-                    'accepted_by': '${{ steps.accept.outputs.accepted_by }}',
-                })
+        for line in body.split('\n'):
+            if '|' not in line or line.startswith('|:') or '---' in line:
+                continue
+            cells = [c.strip() for c in line.split('|')]
+            if len(cells) >= 4:
+                family = cells[2]
+                metric = cells[3]
+                if family and metric and family != 'Family' and metric != 'Metric':
+                    entries.append({
+                        'key': f'{family}:{metric}',
+                        'family': family,
+                        'metric': metric,
+                        'reason': 'Accepted on PR #${{ steps.accept.outputs.pr_number }}',
+                        'accepted_by': '${{ steps.accept.outputs.accepted_by }}',
+                    })
 
         if not entries:
             sys.exit(0)
@@ -237,33 +244,6 @@ runs:
         except Exception as e:
             print(f'Webhook push failed (non-fatal): {e}')
         " 2>/dev/null || true
-
-    - name: Format and post accepted comment
-      if: steps.accept.outputs.accepted == 'true'
-      shell: bash
-      env:
-        GH_TOKEN: ${{ inputs.github-token }}
-      run: |
-        ADVISORY=".evo/phase5/advisory.json.prev"
-        if [ ! -f "$ADVISORY" ]; then
-          echo '{"changes":[],"summary":{"significant_changes":0}}' > /tmp/empty_advisory.json
-          ADVISORY="/tmp/empty_advisory.json"
-        fi
-
-        python3 "${{ github.action_path }}/format_comment.py" \
-          --advisory "$ADVISORY" \
-          --accepted-by "${{ steps.accept.outputs.accepted_by }}" \
-          --scope "${{ steps.accept.outputs.scope }}" \
-          --output .evo/pr_comment.md \
-          2>/dev/null || true
-
-        if [ -f .evo/pr_comment.md ]; then
-          gh api \
-            --method PATCH \
-            "/repos/${{ github.repository }}/issues/comments/${{ steps.accept.outputs.comment_id }}" \
-            -f body="$(cat .evo/pr_comment.md)" \
-            2>/dev/null || true
-        fi
 
         # Exit early — skip all analysis steps
         echo "Early exit: /evo accept handled"
