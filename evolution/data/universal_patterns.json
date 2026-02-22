@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "generated_by": "scripts/aggregate_calibration.py",
-  "repos_analyzed": 57,
-  "total_unique_fingerprints": 42,
+  "repos_analyzed": 58,
+  "total_unique_fingerprints": 44,
   "min_repos_filter": 1,
   "patterns": [
     {
@@ -19,11 +19,11 @@
       ],
       "description_statistical": "When ci events occur, git.dispersion is systematically increased (effect size d=0.32, treated=41, control=15958).",
       "description_semantic": null,
-      "correlation_strength": 0.3861,
-      "occurrence_count": 500,
+      "correlation_strength": 0.3858,
+      "occurrence_count": 507,
       "confidence_tier": "confirmed",
       "scope": "universal",
-      "repo_count": 11,
+      "repo_count": 12,
       "repos_observed": [
         "alacritty-api",
         "bat-api",
@@ -33,6 +33,7 @@
         "google--guava",
         "hashicorp--vagrant",
         "heartcombo--devise",
+        "supabase--supabase",
         "svelte-api",
         "syncthing--syncthing",
         "vitejs--vite"
@@ -52,79 +53,22 @@
       ],
       "description_statistical": "When deployment events occur, git.dispersion is systematically increased (effect size d=0.42, treated=177, control=15326).",
       "description_semantic": null,
-      "correlation_strength": 0.9105,
-      "occurrence_count": 457,
+      "correlation_strength": 0.9216,
+      "occurrence_count": 525,
       "confidence_tier": "confirmed",
       "scope": "universal",
-      "repo_count": 9,
+      "repo_count": 10,
       "repos_observed": [
         "alacritty-api",
         "bat-api",
         "deno-api",
+        "getsentry--sentry",
         "hashicorp--terraform",
         "mui--material-ui",
         "prometheus--prometheus",
         "ripgrep-api",
         "starship--starship",
         "uv-api"
-      ]
-    },
-    {
-      "fingerprint": "277fbee0ca5a226a",
-      "pattern_type": "co_occurrence",
-      "discovery_method": "statistical",
-      "sources": [
-        "ci",
-        "git"
-      ],
-      "metrics": [
-        "ci_presence",
-        "files_touched"
-      ],
-      "description_statistical": "When ci events occur, git.files_touched is systematically increased (effect size d=0.22, treated=108, control=3359).",
-      "description_semantic": null,
-      "correlation_strength": 0.4755,
-      "occurrence_count": 332,
-      "confidence_tier": "confirmed",
-      "scope": "universal",
-      "repo_count": 7,
-      "repos_observed": [
-        "caddy-api",
-        "excalidraw-api",
-        "fzf-api",
-        "google--guava",
-        "hashicorp--vagrant",
-        "hashicorp--vagrant-api2",
-        "uv-api"
-      ]
-    },
-    {
-      "fingerprint": "90c834197c323135",
-      "pattern_type": "co_occurrence",
-      "discovery_method": "statistical",
-      "sources": [
-        "ci",
-        "git"
-      ],
-      "metrics": [
-        "change_locality",
-        "run_duration"
-      ],
-      "description_statistical": "Signals git.change_locality and ci.run_duration co-deviate 2.2x more than expected by chance across 8 commit-aligned observations (of 45 shared commits, lift=2.25).",
-      "description_semantic": null,
-      "correlation_strength": 0.1371,
-      "occurrence_count": 51,
-      "confidence_tier": "confirmed",
-      "scope": "universal",
-      "repo_count": 7,
-      "repos_observed": [
-        "axios-api",
-        "expressjs--express",
-        "fastapi",
-        "fzf-api",
-        "hashicorp--vagrant-api2",
-        "pallets--flask",
-        "rails--rails-api2"
       ]
     },
     {
@@ -156,34 +100,6 @@
       ]
     },
     {
-      "fingerprint": "6b116d989f6ae064",
-      "pattern_type": "co_occurrence",
-      "discovery_method": "statistical",
-      "sources": [
-        "ci",
-        "git"
-      ],
-      "metrics": [
-        "ci_presence",
-        "cochange_novelty_ratio"
-      ],
-      "description_statistical": "When ci events occur, git.cochange_novelty_ratio is systematically decreased (effect size d=-0.65, treated=21, control=20095).",
-      "description_semantic": null,
-      "correlation_strength": -0.5997,
-      "occurrence_count": 61,
-      "confidence_tier": "confirmed",
-      "scope": "universal",
-      "repo_count": 6,
-      "repos_observed": [
-        "cli--cli",
-        "electron--electron-api2",
-        "hashicorp--terraform",
-        "huginn--huginn",
-        "microsoft--TypeScript",
-        "uptime-kuma-api"
-      ]
-    },
-    {
       "fingerprint": "061ae7b6422cc376",
       "pattern_type": "co_occurrence",
       "discovery_method": "statistical",
@@ -195,19 +111,76 @@
         "cochange_novelty_ratio",
         "deployment_presence"
       ],
-      "description_statistical": "When deployment events occur, git.cochange_novelty_ratio is systematically decreased (effect size d=-0.27, treated=130, control=7309).",
+      "description_statistical": "When deployment events occur, git.cochange_novelty_ratio is systematically decreased (effect size d=-0.77, treated=20, control=24044).",
       "description_semantic": null,
-      "correlation_strength": -0.6454,
-      "occurrence_count": 487,
+      "correlation_strength": -0.6505,
+      "occurrence_count": 507,
       "confidence_tier": "confirmed",
       "scope": "universal",
-      "repo_count": 5,
+      "repo_count": 6,
       "repos_observed": [
         "deno-api",
+        "getsentry--sentry",
         "prometheus--prometheus",
         "uv-api",
         "vercel--next.js",
         "yt-dlp--yt-dlp"
+      ]
+    },
+    {
+      "fingerprint": "277fbee0ca5a226a",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "ci",
+        "git"
+      ],
+      "metrics": [
+        "ci_presence",
+        "files_touched"
+      ],
+      "description_statistical": "When ci events occur, git.files_touched is systematically increased (effect size d=0.22, treated=108, control=3359).",
+      "description_semantic": null,
+      "correlation_strength": 0.3807,
+      "occurrence_count": 279,
+      "confidence_tier": "confirmed",
+      "scope": "universal",
+      "repo_count": 6,
+      "repos_observed": [
+        "caddy-api",
+        "excalidraw-api",
+        "fzf-api",
+        "google--guava",
+        "hashicorp--vagrant",
+        "uv-api"
+      ]
+    },
+    {
+      "fingerprint": "6c549e872a393610",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "deployment",
+        "git"
+      ],
+      "metrics": [
+        "files_touched",
+        "release_cadence_hours"
+      ],
+      "description_statistical": "Signals git.files_touched and deployment.release_cadence_hours co-deviate 1.6x more than expected by chance across 4 temporally-aligned observations (of 8 shared 24h windows, lift=1.60).",
+      "description_semantic": null,
+      "correlation_strength": 0.3176,
+      "occurrence_count": 98,
+      "confidence_tier": "confirmed",
+      "scope": "universal",
+      "repo_count": 6,
+      "repos_observed": [
+        "alacritty-api",
+        "excalidraw-api",
+        "paperless-ngx--paperless-ngx",
+        "shadcn-ui--ui",
+        "tesseract-ocr--tesseract",
+        "vue-api"
       ]
     },
     {
@@ -265,30 +238,30 @@
       ]
     },
     {
-      "fingerprint": "6c549e872a393610",
+      "fingerprint": "6b116d989f6ae064",
       "pattern_type": "co_occurrence",
       "discovery_method": "statistical",
       "sources": [
-        "deployment",
+        "ci",
         "git"
       ],
       "metrics": [
-        "files_touched",
-        "release_cadence_hours"
+        "ci_presence",
+        "cochange_novelty_ratio"
       ],
-      "description_statistical": "Signals git.files_touched and deployment.release_cadence_hours co-deviate 1.6x more than expected by chance across 4 temporally-aligned observations (of 8 shared 24h windows, lift=1.60).",
+      "description_statistical": "When ci events occur, git.cochange_novelty_ratio is systematically decreased (effect size d=-0.65, treated=21, control=20095).",
       "description_semantic": null,
-      "correlation_strength": 0.2695,
-      "occurrence_count": 72,
+      "correlation_strength": -0.6154,
+      "occurrence_count": 53,
       "confidence_tier": "confirmed",
       "scope": "universal",
       "repo_count": 5,
       "repos_observed": [
-        "alacritty-api",
-        "excalidraw-api",
-        "shadcn-ui--ui",
-        "tesseract-ocr--tesseract",
-        "vue-api"
+        "cli--cli",
+        "hashicorp--terraform",
+        "huginn--huginn",
+        "microsoft--TypeScript",
+        "uptime-kuma-api"
       ]
     },
     {
@@ -316,6 +289,60 @@
         "fatedier--frp",
         "ripgrep-api",
         "yt-dlp--yt-dlp"
+      ]
+    },
+    {
+      "fingerprint": "90c834197c323135",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "ci",
+        "git"
+      ],
+      "metrics": [
+        "change_locality",
+        "run_duration"
+      ],
+      "description_statistical": "Signals git.change_locality and ci.run_duration co-occur with correlation 0.32 across 12 temporally-aligned observations (of 35 shared 24h windows).",
+      "description_semantic": null,
+      "correlation_strength": 0.1595,
+      "occurrence_count": 36,
+      "confidence_tier": "confirmed",
+      "scope": "universal",
+      "repo_count": 5,
+      "repos_observed": [
+        "axios-api",
+        "expressjs--express",
+        "fastapi",
+        "fzf-api",
+        "pallets--flask"
+      ]
+    },
+    {
+      "fingerprint": "399107a26f217b3d",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "ci",
+        "git"
+      ],
+      "metrics": [
+        "ci_presence",
+        "cochange_novelty_ratio"
+      ],
+      "description_statistical": "When ci events occur, git.cochange_novelty_ratio is systematically increased (effect size d=0.44, treated=11, control=4734).",
+      "description_semantic": null,
+      "correlation_strength": 0.3122,
+      "occurrence_count": 34,
+      "confidence_tier": "confirmed",
+      "scope": "universal",
+      "repo_count": 5,
+      "repos_observed": [
+        "axios-api",
+        "excalidraw-api",
+        "mui--material-ui",
+        "paperless-ngx--paperless-ngx",
+        "zed-industries--zed"
       ]
     },
     {
@@ -368,32 +395,6 @@
         "hugo-api",
         "uv-api",
         "vercel--next.js"
-      ]
-    },
-    {
-      "fingerprint": "8dff28efd83862af",
-      "pattern_type": "co_occurrence",
-      "discovery_method": "statistical",
-      "sources": [
-        "deployment",
-        "git"
-      ],
-      "metrics": [
-        "deployment_presence",
-        "files_touched"
-      ],
-      "description_statistical": "When deployment events occur, git.files_touched is systematically increased (effect size d=0.28, treated=93, control=16958).",
-      "description_semantic": null,
-      "correlation_strength": 0.7902,
-      "occurrence_count": 381,
-      "confidence_tier": "statistical",
-      "scope": "universal",
-      "repo_count": 4,
-      "repos_observed": [
-        "alacritty-api",
-        "hashicorp--vagrant",
-        "hashicorp--vagrant-api2",
-        "uv-api"
       ]
     },
     {
@@ -475,32 +476,6 @@
       ]
     },
     {
-      "fingerprint": "399107a26f217b3d",
-      "pattern_type": "co_occurrence",
-      "discovery_method": "statistical",
-      "sources": [
-        "ci",
-        "git"
-      ],
-      "metrics": [
-        "ci_presence",
-        "cochange_novelty_ratio"
-      ],
-      "description_statistical": "When ci events occur, git.cochange_novelty_ratio is systematically increased (effect size d=0.29, treated=11, control=739).",
-      "description_semantic": null,
-      "correlation_strength": 0.2501,
-      "occurrence_count": 23,
-      "confidence_tier": "statistical",
-      "scope": "universal",
-      "repo_count": 4,
-      "repos_observed": [
-        "axios-api",
-        "excalidraw-api",
-        "mui--material-ui",
-        "zed-industries--zed"
-      ]
-    },
-    {
       "fingerprint": "6f7ba485fbcb07d9",
       "pattern_type": "co_occurrence",
       "discovery_method": "statistical",
@@ -548,6 +523,31 @@
         "deno-api",
         "fastlane--fastlane",
         "vue-api"
+      ]
+    },
+    {
+      "fingerprint": "8dff28efd83862af",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "deployment",
+        "git"
+      ],
+      "metrics": [
+        "deployment_presence",
+        "files_touched"
+      ],
+      "description_statistical": "When deployment events occur, git.files_touched is systematically increased (effect size d=0.28, treated=93, control=16958).",
+      "description_semantic": null,
+      "correlation_strength": 0.9191,
+      "occurrence_count": 291,
+      "confidence_tier": "statistical",
+      "scope": "universal",
+      "repo_count": 3,
+      "repos_observed": [
+        "alacritty-api",
+        "hashicorp--vagrant",
+        "uv-api"
       ]
     },
     {
@@ -814,6 +814,29 @@
       ]
     },
     {
+      "fingerprint": "a3fd219df4449b88",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "config",
+        "git"
+      ],
+      "metrics": [
+        "change_locality",
+        "config_presence"
+      ],
+      "description_statistical": "When config events occur, git.change_locality is systematically increased (effect size d=0.64, treated=29, control=34718).",
+      "description_semantic": null,
+      "correlation_strength": 0.6407,
+      "occurrence_count": 29,
+      "confidence_tier": "statistical",
+      "scope": "universal",
+      "repo_count": 1,
+      "repos_observed": [
+        "PostHog--posthog"
+      ]
+    },
+    {
       "fingerprint": "076c41d460d882fa",
       "pattern_type": "co_occurrence",
       "discovery_method": "statistical",
@@ -926,6 +949,29 @@
       "repo_count": 1,
       "repos_observed": [
         "fastapi"
+      ]
+    },
+    {
+      "fingerprint": "deb3f7918f1d2c51",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "ci",
+        "dependency"
+      ],
+      "metrics": [
+        "dependency_count",
+        "run_duration"
+      ],
+      "description_statistical": "Signals ci.run_duration and dependency.dependency_count co-occur with correlation -0.50 across 7 commit-aligned observations (of 22 shared commits).",
+      "description_semantic": null,
+      "correlation_strength": -0.5032,
+      "occurrence_count": 7,
+      "confidence_tier": "statistical",
+      "scope": "universal",
+      "repo_count": 1,
+      "repos_observed": [
+        "paperless-ngx--paperless-ngx"
       ]
     },
     {
@@ -1082,11 +1128,11 @@
       ],
       "description_statistical": "When ci events occur, git.dispersion is systematically increased (effect size d=0.32, treated=41, control=15958).",
       "description_semantic": null,
-      "correlation_strength": 0.3861,
-      "occurrence_count": 500,
+      "correlation_strength": 0.3858,
+      "occurrence_count": 507,
       "confidence_tier": "confirmed",
       "scope": "universal",
-      "repo_count": 11
+      "repo_count": 12
     },
     {
       "fingerprint": "f0980c46c1243135",
@@ -1102,51 +1148,11 @@
       ],
       "description_statistical": "When deployment events occur, git.dispersion is systematically increased (effect size d=0.42, treated=177, control=15326).",
       "description_semantic": null,
-      "correlation_strength": 0.9105,
-      "occurrence_count": 457,
+      "correlation_strength": 0.9216,
+      "occurrence_count": 525,
       "confidence_tier": "confirmed",
       "scope": "universal",
-      "repo_count": 9
-    },
-    {
-      "fingerprint": "277fbee0ca5a226a",
-      "pattern_type": "co_occurrence",
-      "discovery_method": "statistical",
-      "sources": [
-        "ci",
-        "git"
-      ],
-      "metrics": [
-        "ci_presence",
-        "files_touched"
-      ],
-      "description_statistical": "When ci events occur, git.files_touched is systematically increased (effect size d=0.22, treated=108, control=3359).",
-      "description_semantic": null,
-      "correlation_strength": 0.4755,
-      "occurrence_count": 332,
-      "confidence_tier": "confirmed",
-      "scope": "universal",
-      "repo_count": 7
-    },
-    {
-      "fingerprint": "90c834197c323135",
-      "pattern_type": "co_occurrence",
-      "discovery_method": "statistical",
-      "sources": [
-        "ci",
-        "git"
-      ],
-      "metrics": [
-        "change_locality",
-        "run_duration"
-      ],
-      "description_statistical": "Signals git.change_locality and ci.run_duration co-deviate 2.2x more than expected by chance across 8 commit-aligned observations (of 45 shared commits, lift=2.25).",
-      "description_semantic": null,
-      "correlation_strength": 0.1371,
-      "occurrence_count": 51,
-      "confidence_tier": "confirmed",
-      "scope": "universal",
-      "repo_count": 7
+      "repo_count": 10
     },
     {
       "fingerprint": "7b112861822577bb",
@@ -1169,26 +1175,6 @@
       "repo_count": 6
     },
     {
-      "fingerprint": "6b116d989f6ae064",
-      "pattern_type": "co_occurrence",
-      "discovery_method": "statistical",
-      "sources": [
-        "ci",
-        "git"
-      ],
-      "metrics": [
-        "ci_presence",
-        "cochange_novelty_ratio"
-      ],
-      "description_statistical": "When ci events occur, git.cochange_novelty_ratio is systematically decreased (effect size d=-0.65, treated=21, control=20095).",
-      "description_semantic": null,
-      "correlation_strength": -0.5997,
-      "occurrence_count": 61,
-      "confidence_tier": "confirmed",
-      "scope": "universal",
-      "repo_count": 6
-    },
-    {
       "fingerprint": "061ae7b6422cc376",
       "pattern_type": "co_occurrence",
       "discovery_method": "statistical",
@@ -1200,13 +1186,53 @@
         "cochange_novelty_ratio",
         "deployment_presence"
       ],
-      "description_statistical": "When deployment events occur, git.cochange_novelty_ratio is systematically decreased (effect size d=-0.27, treated=130, control=7309).",
+      "description_statistical": "When deployment events occur, git.cochange_novelty_ratio is systematically decreased (effect size d=-0.77, treated=20, control=24044).",
       "description_semantic": null,
-      "correlation_strength": -0.6454,
-      "occurrence_count": 487,
+      "correlation_strength": -0.6505,
+      "occurrence_count": 507,
       "confidence_tier": "confirmed",
       "scope": "universal",
-      "repo_count": 5
+      "repo_count": 6
+    },
+    {
+      "fingerprint": "277fbee0ca5a226a",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "ci",
+        "git"
+      ],
+      "metrics": [
+        "ci_presence",
+        "files_touched"
+      ],
+      "description_statistical": "When ci events occur, git.files_touched is systematically increased (effect size d=0.22, treated=108, control=3359).",
+      "description_semantic": null,
+      "correlation_strength": 0.3807,
+      "occurrence_count": 279,
+      "confidence_tier": "confirmed",
+      "scope": "universal",
+      "repo_count": 6
+    },
+    {
+      "fingerprint": "6c549e872a393610",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "deployment",
+        "git"
+      ],
+      "metrics": [
+        "files_touched",
+        "release_cadence_hours"
+      ],
+      "description_statistical": "Signals git.files_touched and deployment.release_cadence_hours co-deviate 1.6x more than expected by chance across 4 temporally-aligned observations (of 8 shared 24h windows, lift=1.60).",
+      "description_semantic": null,
+      "correlation_strength": 0.3176,
+      "occurrence_count": 98,
+      "confidence_tier": "confirmed",
+      "scope": "universal",
+      "repo_count": 6
     },
     {
       "fingerprint": "4dc9fbd4c95b47bd",
@@ -1249,21 +1275,21 @@
       "repo_count": 5
     },
     {
-      "fingerprint": "6c549e872a393610",
+      "fingerprint": "6b116d989f6ae064",
       "pattern_type": "co_occurrence",
       "discovery_method": "statistical",
       "sources": [
-        "deployment",
+        "ci",
         "git"
       ],
       "metrics": [
-        "files_touched",
-        "release_cadence_hours"
+        "ci_presence",
+        "cochange_novelty_ratio"
       ],
-      "description_statistical": "Signals git.files_touched and deployment.release_cadence_hours co-deviate 1.6x more than expected by chance across 4 temporally-aligned observations (of 8 shared 24h windows, lift=1.60).",
+      "description_statistical": "When ci events occur, git.cochange_novelty_ratio is systematically decreased (effect size d=-0.65, treated=21, control=20095).",
       "description_semantic": null,
-      "correlation_strength": 0.2695,
-      "occurrence_count": 72,
+      "correlation_strength": -0.6154,
+      "occurrence_count": 53,
       "confidence_tier": "confirmed",
       "scope": "universal",
       "repo_count": 5
@@ -1284,6 +1310,46 @@
       "description_semantic": null,
       "correlation_strength": 0.3215,
       "occurrence_count": 42,
+      "confidence_tier": "confirmed",
+      "scope": "universal",
+      "repo_count": 5
+    },
+    {
+      "fingerprint": "90c834197c323135",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "ci",
+        "git"
+      ],
+      "metrics": [
+        "change_locality",
+        "run_duration"
+      ],
+      "description_statistical": "Signals git.change_locality and ci.run_duration co-occur with correlation 0.32 across 12 temporally-aligned observations (of 35 shared 24h windows).",
+      "description_semantic": null,
+      "correlation_strength": 0.1595,
+      "occurrence_count": 36,
+      "confidence_tier": "confirmed",
+      "scope": "universal",
+      "repo_count": 5
+    },
+    {
+      "fingerprint": "399107a26f217b3d",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "ci",
+        "git"
+      ],
+      "metrics": [
+        "ci_presence",
+        "cochange_novelty_ratio"
+      ],
+      "description_statistical": "When ci events occur, git.cochange_novelty_ratio is systematically increased (effect size d=0.44, treated=11, control=4734).",
+      "description_semantic": null,
+      "correlation_strength": 0.3122,
+      "occurrence_count": 34,
       "confidence_tier": "confirmed",
       "scope": "universal",
       "repo_count": 5
@@ -1324,26 +1390,6 @@
       "description_semantic": null,
       "correlation_strength": 0.5058,
       "occurrence_count": 570,
-      "confidence_tier": "statistical",
-      "scope": "universal",
-      "repo_count": 4
-    },
-    {
-      "fingerprint": "8dff28efd83862af",
-      "pattern_type": "co_occurrence",
-      "discovery_method": "statistical",
-      "sources": [
-        "deployment",
-        "git"
-      ],
-      "metrics": [
-        "deployment_presence",
-        "files_touched"
-      ],
-      "description_statistical": "When deployment events occur, git.files_touched is systematically increased (effect size d=0.28, treated=93, control=16958).",
-      "description_semantic": null,
-      "correlation_strength": 0.7902,
-      "occurrence_count": 381,
       "confidence_tier": "statistical",
       "scope": "universal",
       "repo_count": 4
@@ -1409,26 +1455,6 @@
       "repo_count": 4
     },
     {
-      "fingerprint": "399107a26f217b3d",
-      "pattern_type": "co_occurrence",
-      "discovery_method": "statistical",
-      "sources": [
-        "ci",
-        "git"
-      ],
-      "metrics": [
-        "ci_presence",
-        "cochange_novelty_ratio"
-      ],
-      "description_statistical": "When ci events occur, git.cochange_novelty_ratio is systematically increased (effect size d=0.29, treated=11, control=739).",
-      "description_semantic": null,
-      "correlation_strength": 0.2501,
-      "occurrence_count": 23,
-      "confidence_tier": "statistical",
-      "scope": "universal",
-      "repo_count": 4
-    },
-    {
       "fingerprint": "6f7ba485fbcb07d9",
       "pattern_type": "co_occurrence",
       "discovery_method": "statistical",
@@ -1464,6 +1490,26 @@
       "description_semantic": null,
       "correlation_strength": -0.2177,
       "occurrence_count": 5802,
+      "confidence_tier": "statistical",
+      "scope": "universal",
+      "repo_count": 3
+    },
+    {
+      "fingerprint": "8dff28efd83862af",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "deployment",
+        "git"
+      ],
+      "metrics": [
+        "deployment_presence",
+        "files_touched"
+      ],
+      "description_statistical": "When deployment events occur, git.files_touched is systematically increased (effect size d=0.28, treated=93, control=16958).",
+      "description_semantic": null,
+      "correlation_strength": 0.9191,
+      "occurrence_count": 291,
       "confidence_tier": "statistical",
       "scope": "universal",
       "repo_count": 3
@@ -1689,6 +1735,26 @@
       "repo_count": 1
     },
     {
+      "fingerprint": "a3fd219df4449b88",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "config",
+        "git"
+      ],
+      "metrics": [
+        "change_locality",
+        "config_presence"
+      ],
+      "description_statistical": "When config events occur, git.change_locality is systematically increased (effect size d=0.64, treated=29, control=34718).",
+      "description_semantic": null,
+      "correlation_strength": 0.6407,
+      "occurrence_count": 29,
+      "confidence_tier": "statistical",
+      "scope": "universal",
+      "repo_count": 1
+    },
+    {
       "fingerprint": "076c41d460d882fa",
       "pattern_type": "co_occurrence",
       "discovery_method": "statistical",
@@ -1783,6 +1849,26 @@
       "description_statistical": "Signals git.dispersion and dependency.dependency_count co-occur with correlation -0.42 across 6 commit-aligned observations (of 111 shared commits).",
       "description_semantic": null,
       "correlation_strength": -0.4233,
+      "occurrence_count": 7,
+      "confidence_tier": "statistical",
+      "scope": "universal",
+      "repo_count": 1
+    },
+    {
+      "fingerprint": "deb3f7918f1d2c51",
+      "pattern_type": "co_occurrence",
+      "discovery_method": "statistical",
+      "sources": [
+        "ci",
+        "dependency"
+      ],
+      "metrics": [
+        "dependency_count",
+        "run_duration"
+      ],
+      "description_statistical": "Signals ci.run_duration and dependency.dependency_count co-occur with correlation -0.50 across 7 commit-aligned observations (of 22 shared commits).",
+      "description_semantic": null,
+      "correlation_strength": -0.5032,
       "occurrence_count": 7,
       "confidence_tier": "statistical",
       "scope": "universal",

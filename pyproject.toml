@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "Git-native codebase evolution indexer"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = { text = "BSL-1.1" }
 authors = [
   { name = "Slava" }
 ]
@@ -19,7 +19,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "License :: OSI Approved :: MIT License",
+  "License :: Other/Proprietary License",
   "Operating System :: OS Independent",
 ]
 

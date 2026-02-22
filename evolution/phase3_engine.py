@@ -26,6 +26,7 @@ SIGNAL_FILES = {
     "deployment": "deployment_signals.json",
     "config": "config_signals.json",
     "security": "security_signals.json",
+    "error_tracking": "error_tracking_signals.json",
 }
 
 
@@ -136,6 +137,17 @@ class Phase3Engine:
             base = f"This configuration uses {observed:.0f} distinct resource types — {change_str}."
         elif metric == "config_churn":
             base = f"Configuration churn was {observed:.0f} — {change_str}."
+
+        # ---- Error tracking metrics ----
+        elif metric == "event_count":
+            base = f"This error has {observed:.0f} occurrences — {change_str}."
+        elif metric == "user_count":
+            base = f"This error affected {observed:.0f} users — {change_str}."
+        elif metric == "is_unhandled":
+            if observed > 0:
+                base = "This is an unhandled exception."
+            else:
+                base = "This error is handled."
 
         # ---- Security metrics ----
         elif metric == "vulnerability_count":

@@ -87,7 +87,7 @@ def _canonical_repo_name(name: str) -> str:
         'gin' → 'gin'  (short names kept as-is; 'gin-gonic--gin' is different)
     """
     # Strip known suffixes from re-runs of the same repo
-    for suffix in ("-parallel", "-rerun", "-v2", "-retry"):
+    for suffix in ("-parallel", "-rerun", "-v2", "-v3", "-retry", "-api2", "-api3"):
         if name.endswith(suffix):
             return name[: -len(suffix)]
     return name

@@ -62,7 +62,7 @@
         <div class="output">Phase 1: 247 events ingested (4 families)</div>
         <div class="output">Phase 2: 12 signals computed</div>
         <div class="output">Phase 3: Explanations generated</div>
-        <div class="output">Phase 4: 3 patterns matched (27 universal)</div>
+        <div class="output">Phase 4: 3 patterns matched (44 universal)</div>
         <div class="output">Phase 5: Advisory generated</div>
         <div class="output">&nbsp;</div>
         <div><span class="highlight">ADVISORY</span> <span class="output">2 significant changes detected</span></div>
@@ -167,19 +167,37 @@
         </tr>
         <tr>
           <td data-i18n="signals.ci_family">CI</td>
-          <td data-i18n="signals.ci_source">GitHub Actions (more coming)</td>
+          <td data-i18n="signals.ci_source">GitHub Actions, GitLab CI, CircleCI</td>
           <td>run_duration, run_failed</td>
           <td><span class="badge badge-pro" data-i18n="badges.pro">Pro</span></td>
         </tr>
         <tr>
           <td data-i18n="signals.deployment_family">Deployment</td>
-          <td data-i18n="signals.deployment_source">GitHub Releases (more coming)</td>
+          <td data-i18n="signals.deployment_source">GitHub Releases, GitLab Releases</td>
           <td>release_cadence_hours, is_prerelease, asset_count</td>
           <td><span class="badge badge-pro" data-i18n="badges.pro">Pro</span></td>
         </tr>
         <tr>
+          <td data-i18n="signals.testing_family">Testing</td>
+          <td data-i18n="signals.testing_source">JUnit XML reports</td>
+          <td>total_tests, failure_rate, skip_rate, suite_duration</td>
+          <td><span class="badge badge-pro" data-i18n="badges.pro">Pro</span></td>
+        </tr>
+        <tr>
+          <td data-i18n="signals.coverage_family">Coverage</td>
+          <td data-i18n="signals.coverage_source">Cobertura XML reports</td>
+          <td>line_rate, branch_rate</td>
+          <td><span class="badge badge-pro" data-i18n="badges.pro">Pro</span></td>
+        </tr>
+        <tr>
+          <td data-i18n="signals.error_tracking_family">Error Tracking</td>
+          <td data-i18n="signals.error_tracking_source">Sentry</td>
+          <td>event_count, user_count, is_unhandled</td>
+          <td><span class="badge badge-pro" data-i18n="badges.pro">Pro</span></td>
+        </tr>
+        <tr>
           <td data-i18n="signals.security_family">Security</td>
-          <td data-i18n="signals.security_source">Dependabot, Snyk, Semgrep</td>
+          <td data-i18n="signals.security_source">Dependabot</td>
           <td>vulnerability_count, severity_score</td>
           <td><span class="badge badge-pro" data-i18n="badges.pro">Pro</span></td>
         </tr>
@@ -271,11 +289,51 @@
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
+          <h4>GitLab CI</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">ci</div>
+        <p data-i18n="adapters.gitlab_ci_desc">GitLab CI/CD pipeline monitoring and job analysis.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>CircleCI</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">ci</div>
+        <p data-i18n="adapters.circleci_desc">CircleCI pipeline and workflow monitoring.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
           <h4>GitHub Releases</h4>
           <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
         </div>
         <div class="adapter-family">deployment</div>
         <p data-i18n="adapters.github_releases_desc">Release cadence tracking, pre-release detection, asset monitoring.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>Sentry</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">error_tracking</div>
+        <p data-i18n="adapters.sentry_desc">Error tracking — event count, user impact, unhandled errors.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>JUnit XML</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">testing</div>
+        <p data-i18n="adapters.junit_desc">Test results — total tests, failure rate, skip rate, suite duration.</p>
+      </div>
+      <div class="adapter-card">
+        <div class="adapter-card-header">
+          <h4>Cobertura XML</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">coverage</div>
+        <p data-i18n="adapters.cobertura_desc">Code coverage — line rate, branch rate from Cobertura XML reports.</p>
       </div>
       <div class="adapter-card">
         <div class="adapter-card-header">
@@ -314,15 +372,14 @@
         <div class="pricing-price" data-i18n="pricing.free_price">$0</div>
         <div class="pricing-desc" data-i18n="pricing.free_desc">Forever free for git + dependency analysis</div>
         <ul class="pricing-features">
-          <li data-i18n="pricing.free_f1">Git history analysis</li>
-          <li data-i18n="pricing.free_f2">Dependency tracking (pip, npm, go, cargo, bundler)</li>
-          <li data-i18n="pricing.free_f3">27 universal patterns</li>
-          <li data-i18n="pricing.free_f4">Local knowledge base</li>
-          <li data-i18n="pricing.free_f5">HTML reports</li>
-          <li data-i18n="pricing.free_f6">GitHub Action (basic)</li>
-          <li class="disabled" data-i18n="pricing.free_f7">CI/deployment/security adapters</li>
-          <li class="disabled" data-i18n="pricing.free_f8">AI investigation &amp; fix</li>
-          <li class="disabled" data-i18n="pricing.free_f9">Community KB sync</li>
+          <li data-i18n="pricing.free_f1">11 built-in adapters (git + dependency)</li>
+          <li data-i18n="pricing.free_f2">44 universal patterns</li>
+          <li data-i18n="pricing.free_f3">Local knowledge base</li>
+          <li data-i18n="pricing.free_f4">HTML reports</li>
+          <li class="disabled" data-i18n="pricing.free_f5">CI, deployment &amp; security adapters</li>
+          <li class="disabled" data-i18n="pricing.free_f6">Git hooks &amp; CI workflow actions</li>
+          <li class="disabled" data-i18n="pricing.free_f7">AI investigation &amp; fix</li>
+          <li class="disabled" data-i18n="pricing.free_f8">Community KB sync</li>
         </ul>
         <a href="https://pypi.org/project/evolution-engine/" class="btn btn-outline" target="_blank" data-i18n="pricing.free_cta">pip install evolution-engine</a>
       </div>
@@ -331,13 +388,15 @@
         <div class="pricing-price"><span data-i18n="pricing.pro_price_amount">$19</span> <span data-i18n="pricing.pro_price_unit">/dev/month</span></div>
         <div class="pricing-desc" data-i18n="pricing.pro_desc">Full pipeline visibility with AI-powered investigation</div>
         <ul class="pricing-features">
-          <li data-i18n="pricing.pro_f1">Everything in Free</li>
-          <li data-i18n="pricing.pro_f2">CI adapter (GitHub Actions)</li>
-          <li data-i18n="pricing.pro_f3">Deployment adapter (GitHub Releases)</li>
-          <li data-i18n="pricing.pro_f4">AI investigation &amp; fix loop</li>
-          <li data-i18n="pricing.pro_f5">Cross-signal pattern detection</li>
-          <li data-i18n="pricing.pro_f6">Priority adapter requests</li>
-          <li data-i18n="pricing.pro_f7">Email support (info@codequal.dev)</li>
+          <li data-i18n="pricing.pro_f1">20+ adapters across 9 signal families</li>
+          <li data-i18n="pricing.pro_f2">CI, Deployment, Security &amp; Error Tracking</li>
+          <li data-i18n="pricing.pro_f3">Testing &amp; Coverage analysis</li>
+          <li data-i18n="pricing.pro_f4">Git hooks &amp; CI workflow actions</li>
+          <li data-i18n="pricing.pro_f5">GitHub Action &amp; GitLab CI integration</li>
+          <li data-i18n="pricing.pro_f6">AI investigation &amp; fix loop</li>
+          <li data-i18n="pricing.pro_f7">Cross-signal pattern detection</li>
+          <li data-i18n="pricing.pro_f8">Priority adapter requests</li>
+          <li data-i18n="pricing.pro_f9">Email support (info@codequal.dev)</li>
         </ul>
         <a href="#" class="btn btn-primary" onclick="startCheckout(); return false;" data-i18n="pricing.pro_cta">Get Pro</a>
         <p class="billing-disclosure" data-i18n="pricing.billing_disclosure">Billed monthly. Cancel anytime. 30-day money-back guarantee.</p>

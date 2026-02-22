@@ -492,6 +492,32 @@ class Phase2Engine:
             json.dump(signals, f, indent=2)
         return signals
 
+    # =============== Error Tracking ===============
+
+    def run_error_tracking(self):
+        events = self._load_events(source_family="error_tracking")
+        if not events:
+            return []
+
+        def metric_fn(e):
+            payload = e["payload"]
+            stats = payload.get("stats", {})
+            return {
+                "event_count": stats.get("event_count", 0),
+                "user_count": stats.get("user_count", 0),
+                "is_unhandled": 1.0 if payload.get("is_unhandled", False) else 0.0,
+            }
+
+        def window_fn(e, m):
+            return None
+
+        signals = self._emit_signals(events, "error_tracking", "sentry", metric_fn, window_fn)
+
+        out_file = self.output_path / "error_tracking_signals.json"
+        with open(out_file, "w", encoding="utf-8") as f:
+            json.dump(signals, f, indent=2)
+        return signals
+
     # =============== Security ===============
 
     def run_security(self):
@@ -535,6 +561,7 @@ class Phase2Engine:
         results["deployment"] = self.run_deployment()
         results["config"] = self.run_config()
         results["security"] = self.run_security()
+        results["error_tracking"] = self.run_error_tracking()
         return results
 
     def run_all_parallel(self, max_workers: int = 4):
@@ -555,6 +582,7 @@ class Phase2Engine:
             "deployment": self.run_deployment,
             "config": self.run_config,
             "security": self.run_security,
+            "error_tracking": self.run_error_tracking,
         }
 
         results = {}

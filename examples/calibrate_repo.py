@@ -1,9 +1,9 @@
 """
-Calibration Orchestrator — Full 7-Family Pipeline
+Calibration Orchestrator — Full 9-Family Pipeline
 
 Runs all 5 phases on a repository using:
   - Git adapter (version_control family)
-  - Git History Walker (dependency, schema, config families — from git files)
+  - Git History Walker (dependency, schema, config, testing, coverage families — from git files)
   - GitHub API adapters (CI, deployment, security families — from API)
 
 Parallelized:
@@ -130,10 +130,10 @@ def run_calibration(repo_path: str, owner: str, repo: str, evo_dir: Path,
     t0 = time.monotonic()
     walker = GitHistoryWalker(
         repo_path=str(repo_path),
-        target_families=["dependency", "schema", "config"],
+        target_families=["dependency", "schema", "config", "testing", "coverage"],
     )
 
-    walker_counts = {"dependency": 0, "schema": 0, "config": 0}
+    walker_counts = {"dependency": 0, "schema": 0, "config": 0, "testing": 0, "coverage": 0}
     for commit, family, adapter, committed_at in walker.iter_commit_events():
         n = phase1.ingest(adapter, override_observed_at=committed_at)
         if n > 0:

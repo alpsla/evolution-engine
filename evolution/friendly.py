@@ -154,6 +154,14 @@ _METRIC_INSIGHTS = {
     ("config_churn", "up"): "Configuration changed more than usual.",
     ("config_churn", "down"): "Configuration is stable.",
 
+    # Error tracking metrics
+    ("event_count", "up"): "More error occurrences than usual.",
+    ("event_count", "down"): "Fewer error occurrences than usual.",
+    ("user_count", "up"): "More users affected by this error than usual.",
+    ("user_count", "down"): "Fewer users affected by this error.",
+    ("is_unhandled", "up"): "An unhandled exception was detected.",
+    ("is_unhandled", "down"): "Error is now being handled.",
+
     # Security metrics
     ("vulnerability_count", "up"): "More vulnerabilities detected.",
     ("vulnerability_count", "down"): "Fewer vulnerabilities detected.",
@@ -185,6 +193,7 @@ _FRIENDLY_FAMILY = {
     "dependency": "dependency changes", "schema": "API changes",
     "deployment": "deployments", "config": "config changes",
     "security": "security scans",
+    "error_tracking": "error tracking",
 }
 
 _FRIENDLY_METRIC = {
@@ -199,6 +208,9 @@ _FRIENDLY_METRIC = {
     "release_cadence_hours": "release frequency",
     "is_prerelease": "pre-release rate",
     "asset_count": "release artifact count",
+    "event_count": "error occurrences",
+    "user_count": "affected users",
+    "is_unhandled": "unhandled exception rate",
 }
 
 
@@ -280,7 +292,7 @@ def _sanitize_description(desc: str) -> str:
     )
     # Replace internal metric names (family.metric) with friendly names
     desc = re.sub(
-        r'(?:git|ci|dependency|deployment|testing|schema|config|security)\.'
+        r'(?:git|ci|dependency|deployment|testing|schema|config|security|error_tracking)\.'
         r'(\w+)',
         lambda m: _FRIENDLY_METRIC.get(m.group(1), m.group(1).replace("_", " ")),
         desc,

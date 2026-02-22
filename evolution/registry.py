@@ -134,6 +134,9 @@ TIER2_DETECTORS: dict[str, list[tuple[str, str]]] = {
     "circleci_token": [
         ("circleci",         "ci"),
     ],
+    "sentry_token": [
+        ("sentry",           "error_tracking"),
+    ],
     "jenkins_url": [
         ("jenkins",          "ci"),
     ],

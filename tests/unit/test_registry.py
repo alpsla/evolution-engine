@@ -179,6 +179,7 @@ class TestExplainMissing:
         monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
         monkeypatch.setenv("GITLAB_TOKEN", "glpat_test")
         monkeypatch.setenv("CIRCLECI_TOKEN", "cci_test")
+        monkeypatch.setenv("SENTRY_TOKEN", "sentry_test")
         monkeypatch.setenv("JENKINS_URL", "http://jenkins")
         registry = AdapterRegistry(mock_repo)
         messages = registry.explain_missing()

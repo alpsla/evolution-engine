@@ -38,6 +38,7 @@ SIGNAL_FILES = {
     "deployment": "deployment_signals.json",
     "config": "config_signals.json",
     "security": "security_signals.json",
+    "error_tracking": "error_tracking_signals.json",
 }
 
 # Family display names
@@ -51,6 +52,7 @@ FAMILY_LABELS = {
     "deployment": "Deployment",
     "config": "Configuration",
     "security": "Security",
+    "error_tracking": "Error Tracking",
 }
 
 # Metric human-readable names
@@ -81,6 +83,9 @@ METRIC_LABELS = {
     "vulnerability_count": "Vulnerabilities",
     "critical_count": "Critical Vulnerabilities",
     "fixable_ratio": "Fixable Ratio",
+    "event_count": "Error Occurrences",
+    "user_count": "Affected Users",
+    "is_unhandled": "Unhandled Exception",
 }
 
 

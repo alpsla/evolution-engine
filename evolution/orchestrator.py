@@ -158,9 +158,9 @@ class Orchestrator:
         api_families = []
         _gated_families = []
         if not self.license.is_pro() and any(
-            f in families_to_run for f in ["ci", "deployment", "security"]
+            f in families_to_run for f in ["ci", "deployment", "security", "error_tracking"]
         ):
-            _gated_families = [f for f in ["ci", "deployment", "security"] if f in families_to_run]
+            _gated_families = [f for f in ["ci", "deployment", "security", "error_tracking"] if f in families_to_run]
         else:
             if "ci" in families_to_run and self._has_tier2("ci"):
                 api_families.append("ci")
@@ -168,6 +168,8 @@ class Orchestrator:
                 api_families.append("deployment")
             if "security" in families_to_run and self._has_tier2("security"):
                 api_families.append("security")
+            if "error_tracking" in families_to_run and self._has_tier2("error_tracking"):
+                api_families.append("error_tracking")
 
         if api_families:
             vlog(f"\n[Phase 1] Fetching API data for {', '.join(api_families)}...")
@@ -199,6 +201,7 @@ class Orchestrator:
             "security": "Security",
             "testing": "Test results",
             "coverage": "Code coverage",
+            "error_tracking": "Error tracking",
         }
         for fam in active_families:
             label = _family_labels.get(fam, fam)
@@ -560,6 +563,12 @@ class Orchestrator:
             cci_counts = self._ingest_circleci_api(phase1)
             counts.update(cci_counts)
 
+        # Try Sentry (for error_tracking family)
+        remaining = [f for f in families if f not in counts]
+        if remaining and "error_tracking" in remaining:
+            sentry_counts = self._ingest_sentry_api(phase1)
+            counts.update(sentry_counts)
+
         return counts
 
     def _run_api_adapters(self, phase1, adapters_to_fetch: dict,
@@ -681,6 +690,65 @@ class Orchestrator:
         except Exception:
             pass
         return {}
+
+    def _ingest_sentry_api(self, phase1) -> dict[str, int]:
+        """Fetch error tracking events from Sentry API."""
+        token = self.tokens.get("sentry_token") or os.environ.get("SENTRY_AUTH_TOKEN")
+        if not token:
+            return {}
+
+        org, project = self._infer_sentry_org_project()
+        if not org or not project:
+            return {}
+
+        from evolution.adapters.error_tracking.sentry_adapter import SentryAdapter
+
+        try:
+            adapter = SentryAdapter(
+                org=org,
+                project=project,
+                token=token,
+                cache_dir=self.evo_dir / "api_cache",
+            )
+            events = list(adapter.iter_events())
+            if events:
+                class _ListAdapter:
+                    def __init__(self, evts):
+                        self._events = evts
+                    def iter_events(self):
+                        return iter(self._events)
+                count = phase1.ingest(_ListAdapter(events))
+                if count > 0:
+                    return {"error_tracking": count}
+        except Exception:
+            pass
+        return {}
+
+    def _infer_sentry_org_project(self) -> tuple[Optional[str], Optional[str]]:
+        """Infer Sentry org and project from env vars or .sentryclirc."""
+        # Check env vars first
+        org = os.environ.get("SENTRY_ORG")
+        project = os.environ.get("SENTRY_PROJECT")
+        if org and project:
+            return org, project
+
+        # Try .sentryclirc
+        sentryclirc = self.repo_path / ".sentryclirc"
+        if sentryclirc.exists():
+            try:
+                text = sentryclirc.read_text(encoding="utf-8")
+                for line in text.splitlines():
+                    line = line.strip()
+                    if line.startswith("org="):
+                        org = line.split("=", 1)[1].strip()
+                    elif line.startswith("project="):
+                        project = line.split("=", 1)[1].strip()
+                if org and project:
+                    return org, project
+            except OSError:
+                pass
+
+        return None, None
 
     def _infer_circleci_slug(self) -> Optional[str]:
         """Infer CircleCI project slug from git remote URL.

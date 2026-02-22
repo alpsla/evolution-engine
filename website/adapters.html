@@ -425,6 +425,57 @@
           <span class="detect-tag">GITLAB_TOKEN</span>
         </div>
       </div>
+
+      <div class="adapter-card" data-family="ci">
+        <div class="adapter-card-header">
+          <h4>CircleCI</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">ci</div>
+        <p data-i18n="adapters.circleci_desc">CircleCI pipeline and workflow monitoring.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">CIRCLECI_TOKEN</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="error_tracking">
+        <div class="adapter-card-header">
+          <h4>Sentry</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">error_tracking</div>
+        <p data-i18n="adapters.sentry_desc">Error tracking — event count, user impact, unhandled errors.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">SENTRY_AUTH_TOKEN</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="testing">
+        <div class="adapter-card-header">
+          <h4>JUnit XML</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">testing</div>
+        <p data-i18n="adapters.junit_desc">Test results — total tests, failure rate, skip rate, suite duration.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">junit.xml</span>
+          <span class="detect-tag">TEST-*.xml</span>
+          <span class="detect-tag">surefire-reports/</span>
+        </div>
+      </div>
+
+      <div class="adapter-card" data-family="coverage">
+        <div class="adapter-card-header">
+          <h4>Cobertura XML</h4>
+          <span class="badge badge-pro" data-i18n="badges.pro">Pro</span>
+        </div>
+        <div class="adapter-family">coverage</div>
+        <p data-i18n="adapters.cobertura_desc">Code coverage — line rate, branch rate from Cobertura XML reports.</p>
+        <div class="detect-tags">
+          <span class="detect-tag">coverage.xml</span>
+          <span class="detect-tag">coverage/cobertura.xml</span>
+        </div>
+      </div>
     </div>
 
     <!-- ═══════════ Section 2: Plugin Ecosystem ═══════════ -->
@@ -608,20 +659,6 @@ evo analyze .
         <div class="detect-tags">
           <span class="detect-tag">elasticapm</span>
           <span class="detect-tag">elastic-apm-node</span>
-        </div>
-      </div>
-
-      <!-- Error Tracking -->
-      <div class="ecosystem-card" data-family="error_tracking">
-        <div class="ecosystem-card-header">
-          <h4>Sentry</h4>
-          <span class="badge badge-ecosystem" data-i18n="adapters_page.badge_detected">Detected</span>
-        </div>
-        <div class="adapter-family">error_tracking</div>
-        <p>Error rates and release health data</p>
-        <div class="detect-tags">
-          <span class="detect-tag">sentry_sdk</span>
-          <span class="detect-tag">@sentry/node</span>
         </div>
       </div>
 
