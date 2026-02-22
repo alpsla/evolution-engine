@@ -391,4 +391,12 @@ Key documents:
 
 ## License
 
-Open-core: adapters and CLI under MIT, analysis engines proprietary.
+Evolution Engine uses a dual-license model:
+
+| Component | License | File |
+|-----------|---------|------|
+| CLI, adapters, plugins, GitHub Action | [MIT](LICENSE-MIT) | `LICENSE-MIT` |
+| Core analysis engine (Phases 2-5) | [BSL 1.1](LICENSE) | `LICENSE` |
+| Community patterns | CC0-1.0 | — |
+
+The BSL 1.1 license permits non-production use without a commercial license. Production use requires a [Pro subscription](https://codequal.dev/#pricing). On **2029-02-20** the core engine automatically converts to MIT.
