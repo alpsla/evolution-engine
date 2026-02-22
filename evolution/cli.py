@@ -1985,28 +1985,25 @@ def license_status(path):
 @click.argument("key")
 def license_activate(key):
     """Save license key to ~/.evo/license.json."""
-    from evolution.license import get_license
+    from evolution.license import _validate_key
 
-    # Test the key first
-    os_env_backup = os.environ.get("EVO_LICENSE_KEY")
-    os.environ["EVO_LICENSE_KEY"] = key
-    lic = get_license()
-    if os_env_backup:
-        os.environ["EVO_LICENSE_KEY"] = os_env_backup
-    else:
-        os.environ.pop("EVO_LICENSE_KEY", None)
-
-    if not lic.valid:
+    # Validate the new key
+    license_data = _validate_key(key)
+    if not license_data:
         click.echo("Error: Invalid license key")
         sys.exit(1)
 
-    # Save to ~/.evo/license.json
+    tier = license_data.get("tier", "free")
+
+    # Save to ~/.evo/license.json (always overwrites)
     evo_home = Path.home() / ".evo"
     evo_home.mkdir(exist_ok=True)
     license_file = evo_home / "license.json"
 
     license_file.write_text(json.dumps({"license_key": key}, indent=2))
-    click.echo(f"License activated: {lic.tier.upper()}")
+    click.echo(f"License activated: {tier.upper()}")
+    if license_data.get("expires"):
+        click.echo(f"Expires: {license_data['expires'][:10]}")
     click.echo(f"Saved to {license_file}")
 
 
