@@ -282,22 +282,20 @@ All adapter expansion tasks (#51-58) are now **complete**. EE has 7 signal famil
 
 ---
 
-### NEXT PRIORITY: Legal Documentation (#36)
+### Legal Documentation (#36)
 
-**Status:** Reviewed by Daniel Ryan, ESQ. (2026-02-20). All recommendations accepted. Implementation pending.
-
-**Blocking:** Must complete before accepting payments (#38b Stripe live-mode).
+**Status:** Implemented based on lawyer-reviewed language (2026-02-20 memo).
 
 See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implementation details.
 
 | # | Sub-Task | Effort | Status |
 |---|----------|--------|--------|
-| 36.1 | **Create BSL 1.1 license file** — `LICENSE` in repo root (core analysis engine Phases 2-5) | Low | Pending |
-| 36.2 | **Update Privacy Policy** — remove DRAFT, set dates, fix §2.4 email→hash language, 30-day retention, SCC language, add address | Medium | Pending |
-| 36.3 | **Update Terms of Service** — remove DRAFT, dual licensing §4, CC0-1.0 patterns §6.3, Delaware law, AAA arbitration + EU carve-out | Medium | Pending |
-| 36.4 | **EU AI Act Article 50 disclosures** — CLI notice on `evo investigate`/`evo fix`, report footer, help text | Low | Pending |
-| 36.5 | **Update website/privacy.html** — email→hash correction, add Terms link to footer | Low | Pending |
-| 36.6 | **Update plan & memory** — mark #36 complete, unblock #38b | Low | Pending |
+| 36.1 | **Create BSL 1.1 license file** — `LICENSE` in repo root (core analysis engine Phases 2-5) | Low | Complete ✅ |
+| 36.2 | **Update Privacy Policy** — remove DRAFT, set dates, fix §2.4 email→hash language, 30-day retention, SCC language, add address | Medium | Complete ✅ |
+| 36.3 | **Update Terms of Service** — remove DRAFT, dual licensing §4, CC0-1.0 patterns §6.3, Delaware law, AAA arbitration + EU carve-out | Medium | Complete ✅ |
+| 36.4 | **EU AI Act Article 50 disclosures** — CLI notice on `evo investigate`/`evo fix`, report footer, help text | Low | Complete ✅ |
+| 36.5 | **Update website/privacy.html** — email→hash correction, add Terms link to footer | Low | Complete ✅ |
+| 36.6 | **Update plan & memory** — mark #36 complete, unblock #38b | Low | Complete ✅ |
 
 **Key decisions (all confirmed):**
 - **BSL 1.1** with 3-year Change Date (2029-02-20), converts to MIT
@@ -313,8 +311,8 @@ See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implem
 
 | # | Task | Effort | Blocker? | Status |
 |---|------|--------|----------|--------|
-| 36 | **Lawyer review implementation** — 6 sub-tasks above | Medium | Yes — must complete before accepting payments | **Next Priority** |
-| 38b | **Stripe live-mode testing** — repeat all flows with real Stripe dashboard | Low | Yes — blocked by #36 | Pending |
+| 36 | **Lawyer review implementation** — 6 sub-tasks above | Medium | No | **Complete** ✅ |
+| 38b | **Stripe live-mode testing** — repeat all flows with real Stripe dashboard | Low | Yes — required before launch payments | **Next Priority** |
 | 49 | **Axiom dashboard & monitors** — API health, alerts, usage metrics from existing ingest | Medium | No — operational readiness | Pending |
 
 **#38b — Stripe Live-Mode Testing (after #36):**

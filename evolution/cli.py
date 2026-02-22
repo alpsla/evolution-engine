@@ -502,7 +502,8 @@ def investigate(path, evo_dir, show_prompt, agent_type, model):
     """Run AI investigation on the latest advisory. [Pro]
 
     Feeds the Phase 5 advisory into an AI agent to identify root causes,
-    assess risk, and suggest fixes.
+    assess risk, and suggest fixes. This command uses AI (Claude by Anthropic).
+    AI-generated content should be reviewed before acting on recommendations.
 
     Examples:
         evo investigate .                    # auto-detect AI backend
@@ -545,6 +546,8 @@ def investigate(path, evo_dir, show_prompt, agent_type, model):
     click.echo(f"Saved to: {evo_path / 'investigation'}")
     click.echo()
     click.echo(report.text)
+    click.echo()
+    click.echo("[AI Disclosure] This report was generated with the assistance of artificial intelligence (Claude by Anthropic). The analysis is based on your repository's metrics and may contain errors. Please review findings before taking action.")
 
     from evolution.telemetry import track_event
     track_event("cli_command", {"command": "investigate", "agent": report.agent_name})
@@ -573,7 +576,8 @@ def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes, 
 
     Creates a branch, asks an AI agent to fix the flagged issues,
     re-runs EE to verify, and iterates until the advisory clears
-    or max iterations are reached.
+    or max iterations are reached. This command uses AI (Claude by Anthropic)
+    to generate code suggestions that should be carefully reviewed before merging.
 
     Examples:
         evo fix . --dry-run              # preview what would be fixed
@@ -701,6 +705,7 @@ def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes, 
         click.echo(f"\n--- Iteration {it.iteration} ---")
         click.echo(f"  Resolved: {it.resolved}, Persisting: {it.persisting}, "
                     f"New: {it.new_issues}, Regressions: {it.regressions}")
+    click.echo("\nAI-generated code suggestions should be carefully reviewed before merging.")
 
     from evolution.telemetry import track_event
     track_event("cli_command", {

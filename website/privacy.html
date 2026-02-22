@@ -244,7 +244,7 @@
   <ul>
     <li>Payment is handled entirely by <strong>Stripe</strong>. We never see or store your credit card number.</li>
     <li>Your license key is generated server-side and stored in your Stripe customer metadata.</li>
-    <li>The license key is an HMAC-signed token containing only: tier (<code>"pro"</code>), email, and issue date. It is validated locally by the CLI — no server call needed to check your license.</li>
+    <li>The license key is an HMAC-signed token containing only: tier (<code>"pro"</code>), a truncated cryptographic hash of your email (irreversible), and issue date. It is validated locally by the CLI — no server call needed to check your license.</li>
     <li>You can retrieve your license key anytime from the Stripe billing portal or by contacting info@codequal.dev.</li>
   </ul>
 
@@ -258,6 +258,7 @@
     <ul class="footer-links">
       <li><a href="/">Home</a></li>
       <li><a href="docs.html">Docs</a></li>
+      <li><a href="terms.html">Terms</a></li>
       <li><a href="privacy.html">Privacy</a></li>
       <li>info@codequal.dev</li>
     </ul>

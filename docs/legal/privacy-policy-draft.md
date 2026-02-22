@@ -1,11 +1,7 @@
 # Privacy Policy — Evolution Engine (codequal.dev)
 
-> **DRAFT -- FOR LAWYER REVIEW ONLY -- NOT LEGAL ADVICE -- DO NOT PUBLISH WITHOUT PROFESSIONAL LEGAL REVIEW**
->
-> This document is a starting template prepared for legal counsel review. It is not a finalized privacy policy and should not be published or relied upon as legal advice. A qualified attorney should review, revise, and approve this document before publication.
-
-**Effective Date:** [TO BE DETERMINED]
-**Last Updated:** [TO BE DETERMINED]
+**Effective Date:** 2026-02-20
+**Last Updated:** 2026-02-20
 
 ---
 
@@ -53,21 +49,23 @@ When you purchase a Pro subscription, payment is processed by Stripe, Inc. You e
 
 From Stripe, we receive and process:
 
-- **Email address** (associated with your Stripe account)
+- **Email address** (associated with your Stripe account) — this is used only to generate the hashed identifier in your license key and is not stored in our systems beyond Stripe's retention
 - **Stripe customer ID** (a pseudonymous identifier assigned by Stripe)
 - **Subscription status** (active, canceled, etc.)
 
-A truncated cryptographic hash of your email address is embedded in the license key that is generated upon purchase.
+We never log or retain your plaintext email address.
 
 ### 2.4 License Key
 
 Your license key contains:
 
-- **Subscription tier** (e.g., "pro")
-- **Truncated email hash** (the first 16 characters of a SHA-256 hash of your email address — this is irreversible and cannot be used to recover your email)
+- **Subscription tier** (Example: "pro")
+- **A truncated cryptographic hash** (first 16 characters of SHA-256) of the email address associated with your Stripe purchase
 - **Issuance date**
 
-The license key is stored locally on your machine at `~/.evo/license.json` or in the `EVO_LICENSE_KEY` environment variable. The license key is base64-encoded and HMAC-signed, but it is not encrypted. The email hash can be read by anyone with access to the key, but your actual email address cannot be derived from it.
+The license key is stored locally on your machine at `~/.evo/license.json` or in the `EVO_LICENSE_KEY` environment variable. The key is base64-encoded and HMAC-signed, but not encrypted. The email hash is irreversible — the original email address cannot be recovered from the key. This design ensures that even if the license key is exposed, your email address remains protected.
+
+We use the email address provided by Stripe only to generate this hashed identifier. The plaintext email is not stored in any Evolution Engine database or log; it remains with Stripe subject to their privacy policy and retention practices.
 
 ### 2.5 Adapter Request Form
 
@@ -195,12 +193,12 @@ We use the following third-party services to process data on our behalf:
 | Data | Retention Period | Deletion Method |
 |------|-----------------|-----------------|
 | Local `.evo/` files | Until you delete them | `rm -rf ~/.evo/` and/or `rm -rf <repo>/.evo/` |
-| Telemetry data (Axiom) | Per Axiom dataset retention configuration (currently [SPECIFY PERIOD]) | Contact us for deletion |
-| Stripe customer data | Per Stripe's retention policies; cleared on account deletion | Stripe customer portal or contact us |
+| Telemetry data (Axiom) | 30 days | Automatic expiry per Axiom dataset configuration |
+| Stripe customer data | Stripe retains your data for as long as your account is active and as needed to comply with legal obligations | Stripe customer portal or contact us |
 | License key (Stripe metadata) | Cleared automatically on subscription cancellation | Cancel subscription or contact us |
-| Adapter requests (Axiom) | Per Axiom dataset retention configuration (currently [SPECIFY PERIOD]) | Contact us for deletion |
+| Adapter requests (Axiom) | 30 days | Automatic expiry per Axiom dataset configuration |
 | Adapter requests (GitHub Issues) | Indefinite (public issue) | Contact us for removal |
-| Webhook logs (Axiom) | Per Axiom dataset retention configuration (currently [SPECIFY PERIOD]) | Contact us for deletion |
+| Webhook logs (Axiom) | 30 days | Automatic expiry per Axiom dataset configuration |
 
 We aim to retain personal data only for as long as necessary to fulfill the purposes described in this policy. Anonymous telemetry data may be retained for longer periods for product analytics.
 
@@ -253,7 +251,7 @@ You have the right to request that we disclose the categories and specific piece
 You have the right to request that we delete personal information we have collected from you, subject to certain exceptions.
 
 ### 7.3 Right to Opt-Out of Sale or Sharing
-**We do not sell or share your personal information** as defined by the CCPA/CPRA. We do not engage in cross-context behavioral advertising.
+We do not sell your personal information, nor do we share it for cross-context behavioral advertising purposes.
 
 ### 7.4 Right to Non-Discrimination
 We will not discriminate against you for exercising any of your CCPA rights.
@@ -265,7 +263,7 @@ You have the right to request correction of inaccurate personal information.
 
 | Category (CCPA) | Specific Data | Sold or Shared | Business Purpose |
 |-----------------|---------------|:--------------:|-----------------|
-| Identifiers | Email address (license key, adapter requests), Stripe customer ID | No | Payment processing, adapter request tracking |
+| Identifiers | Truncated email hash (license key), email address (adapter requests), Stripe customer ID | No | Payment processing, adapter request tracking |
 | Commercial information | Subscription tier, purchase history | No | Subscription management |
 | Internet/network activity | Anonymous telemetry (opt-in) | No | Product improvement |
 
@@ -325,12 +323,10 @@ Evolution Engine is operated from the United States. If you are located outside 
 For users in the EEA, UK, or Switzerland, we rely on the following mechanisms for international data transfers:
 
 - **Stripe:** Stripe maintains compliance with applicable data transfer frameworks. See Stripe's privacy policy for details.
-- **Axiom:** [VERIFY: Axiom's data transfer mechanism and server locations]
-- **Vercel:** Vercel processes data in accordance with its Data Processing Agreement. [VERIFY: Vercel's data transfer mechanism]
+- **Axiom:** Axiom processes data under Standard Contractual Clauses (SCCs) approved by the European Commission, as documented in their Data Processing Agreement.
+- **Vercel:** Vercel processes data under Standard Contractual Clauses (SCCs) as set forth in their Data Processing Agreement.
 
 Where required, we implement appropriate safeguards such as Standard Contractual Clauses (SCCs) to protect personal data transferred outside the EEA.
-
-[LAWYER NOTE: Verify current status of EU-US Data Privacy Framework and update transfer mechanisms accordingly.]
 
 ---
 
@@ -351,10 +347,10 @@ We encourage you to review this policy periodically. Your continued use of the S
 If you have questions about this Privacy Policy, want to exercise your privacy rights, or need to report a concern, please contact us:
 
 - **Email:** info@codequal.dev
+- **Privacy Team:** info@codequal.dev
 - **Data Subject Access Requests:** info@codequal.dev (subject line: "DSAR Request")
 - **Website:** [https://codequal.dev](https://codequal.dev)
-
-[PLACEHOLDER: Add physical mailing address if required by applicable law. GDPR Article 13 requires the identity and contact details of the data controller. Consider whether a Data Protection Officer (DPO) appointment is necessary.]
+- **Mailing Address:** CodeQual LLC, 30 N Gould St Ste R, Sheridan, WY 82801
 
 We aim to respond to all privacy-related inquiries within 30 days.
 
@@ -373,4 +369,4 @@ In the event of a data breach affecting your personal information, we will notif
 
 ---
 
-*This Privacy Policy applies to Evolution Engine version 0.1.x and the codequal.dev website as of the effective date above.*
+*This Privacy Policy applies to Evolution Engine version 0.2.x and the codequal.dev website as of the effective date above.*

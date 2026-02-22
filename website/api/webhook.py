@@ -47,9 +47,9 @@ class handler(BaseHTTPRequestHandler):
 
         secret_key = os.environ.get("STRIPE_SECRET_KEY")
         webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
-        signing_key = os.environ.get("EVO_LICENSE_SIGNING_KEY", "evo-license-v1-dev-key-replace-in-production")
+        signing_key = os.environ.get("EVO_LICENSE_SIGNING_KEY")
 
-        if not secret_key or not webhook_secret:
+        if not secret_key or not webhook_secret or not signing_key:
             return self._json({"error": "Not configured"}, 500)
 
         stripe.api_key = secret_key

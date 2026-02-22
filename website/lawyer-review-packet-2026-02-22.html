@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legal Implementation Confirmation — Evolution Engine</title>
+  <style>
+    :root { --bg: #fff; --text: #1a1a2e; --muted: #555; --border: #e0e0e0; --green: #2ca58d; --blue: #3b82f6; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: var(--text); line-height: 1.7; padding: 40px 24px; max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.8rem; margin-bottom: 4px; }
+    .subtitle { color: var(--muted); font-size: 1rem; margin-bottom: 32px; }
+    h2 { font-size: 1.3rem; margin-top: 40px; margin-bottom: 16px; padding-top: 20px; border-top: 2px solid var(--border); }
+    h3 { font-size: 1.05rem; margin-top: 24px; margin-bottom: 8px; }
+    p { margin-bottom: 12px; color: var(--text); }
+    ul, ol { margin-bottom: 12px; padding-left: 24px; }
+    li { margin-bottom: 6px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+    th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { font-weight: 600; background: #f8f8fa; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    .pass { color: var(--green); font-weight: 600; }
+    .ref { color: var(--muted); font-size: 0.85rem; }
+    code { background: #f4f4f8; padding: 2px 6px; border-radius: 3px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.85rem; }
+    .header-meta { margin-bottom: 40px; }
+    .header-meta p { color: var(--muted); font-size: 0.9rem; margin-bottom: 4px; }
+    .section-note { background: #f0faf7; border-left: 3px solid var(--green); padding: 12px 16px; margin: 16px 0; border-radius: 0 6px 6px 0; }
+    .section-note p { margin-bottom: 0; font-size: 0.9rem; }
+    .section-warning { background: #fff8f0; border-left: 3px solid #e67e22; padding: 12px 16px; margin: 16px 0; border-radius: 0 6px 6px 0; }
+    .section-warning p { margin-bottom: 0; font-size: 0.9rem; }
+    @media print { body { padding: 20px; font-size: 11pt; } h1 { font-size: 16pt; } h2 { font-size: 13pt; } }
+  </style>
+</head>
+<body>
+
+<h1>Legal Implementation Confirmation</h1>
+<p class="subtitle">Evolution Engine &mdash; Response to Comprehensive Legal Review Memo</p>
+
+<div class="header-meta">
+  <p><strong>To:</strong> Daniel Ryan, ESQ. &mdash; The Law Offices of Daniel H. Ryan PC</p>
+  <p><strong>From:</strong> Rostislav A., Evolution Engine / CodeQual LLC</p>
+  <p><strong>Date:</strong> February 22, 2026</p>
+  <p><strong>Re:</strong> Implementation of all recommendations from your memo dated February 20, 2026</p>
+</div>
+
+<div class="section-note">
+  <p><strong>Summary:</strong> All recommendations from your February 20, 2026 memorandum have been accepted and implemented. This document provides a point-by-point confirmation with references to the specific files changed.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>1. License Mismatch &mdash; Corrected (Critical)</h2>
+
+<p>The <code>pyproject.toml</code> license declaration has been changed from MIT to BSL-1.1, and a dual-licensing structure is now in place:</p>
+
+<table>
+  <thead><tr><th>Component</th><th>License</th><th>File</th></tr></thead>
+  <tbody>
+    <tr><td>Core analysis engine (Phases 2&ndash;5), compiled binaries</td><td>Business Source License 1.1</td><td><code>LICENSE</code></td></tr>
+    <tr><td>CLI wrapper, adapter framework, plugin interfaces, GitHub Action</td><td>MIT</td><td><code>LICENSE-MIT</code></td></tr>
+    <tr><td>Community-contributed patterns</td><td>CC0-1.0</td><td>Terms of Service &sect;6.3</td></tr>
+  </tbody>
+</table>
+
+<h3>BSL 1.1 Parameters</h3>
+<ul>
+  <li><strong>Licensor:</strong> CodeQual LLC</li>
+  <li><strong>Licensed Work:</strong> Evolution Engine Core Analysis Engine v0.2.0 (and all subsequent versions)</li>
+  <li><strong>Additional Use Grant:</strong> Non-production use for internal testing and development without a commercial license. Production use requires a valid Pro subscription.</li>
+  <li><strong>Change Date:</strong> 2029-02-20</li>
+  <li><strong>Change License:</strong> MIT</li>
+</ul>
+<p class="ref">The LICENSE file includes the full canonical BSL 1.1 template text including Terms, Covenants of Licensor, and Notice sections.</p>
+
+<h3>PyPI Package Metadata</h3>
+<ul>
+  <li><code>license = { text = "BSL-1.1" }</code></li>
+  <li><code>classifier = "License :: Other/Proprietary License"</code></li>
+</ul>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>2. Privacy Policy &mdash; All Corrections Applied</h2>
+<p class="ref">File: <code>docs/legal/privacy-policy-draft.md</code></p>
+
+<table>
+  <thead><tr><th>Memo Ref.</th><th>Recommendation</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>&sect;2.3.5</td><td><strong>CRITICAL:</strong> Correct &sect;2.4 email hash discrepancy &mdash; replace "email address" with "truncated cryptographic hash (first 16 characters of SHA-256)" and add irreversibility language</td><td class="pass">Done</td></tr>
+    <tr><td>&sect;2.3.5</td><td>Update &sect;2.3 for consistency &mdash; email "used only to generate the hashed identifier" and "not stored in our systems"</td><td class="pass">Done</td></tr>
+    <tr><td>&sect;2.3.1</td><td>Replace &sect;11 international transfer placeholders with SCC language for Stripe, Axiom, Vercel</td><td class="pass">Done</td></tr>
+    <tr><td>&sect;2.3.2</td><td>Fill all [SPECIFY PERIOD] placeholders in &sect;5 with 30 days; add Stripe retention language</td><td class="pass">Done</td></tr>
+    <tr><td>&sect;2.3.3</td><td>Add physical address in &sect;13; designate "Privacy Team" as contact</td><td class="pass">Done</td></tr>
+    <tr><td>&sect;2.3.4</td><td>Add CCPA &sect;7.3 clarifying sentence re: no sale or cross-context behavioral advertising</td><td class="pass">Done</td></tr>
+    <tr><td>&mdash;</td><td>CCPA &sect;7.6 categories table &mdash; updated "Email address (license key)" to "Truncated email hash (license key)" for consistency with hash correction</td><td class="pass">Done</td></tr>
+    <tr><td>&mdash;</td><td>Remove DRAFT banner, set effective date 2026-02-20, update version to 0.2.x</td><td class="pass">Done</td></tr>
+  </tbody>
+</table>
+
+<p>The corrected &sect;2.4 uses your exact recommended language, including the full paragraph on data minimization and Stripe-only retention of plaintext email.</p>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>3. Terms of Service &mdash; All Corrections Applied</h2>
+<p class="ref">File: <code>docs/legal/terms-of-service-draft.md</code></p>
+
+<table>
+  <thead><tr><th>Memo Ref.</th><th>Recommendation</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>&sect;3.2.1</td><td>&sect;3.2 Pro tier &mdash; reference website pricing page instead of enumerating features</td><td class="pass">Done</td></tr>
+    <tr><td>Part 4</td><td>&sect;4 &mdash; Replace with dual licensing structure (MIT + BSL 1.1), add &sect;4.2 Pro Tier License</td><td class="pass">Done</td></tr>
+    <tr><td>Part 4</td><td>&sect;5.1 &mdash; Reference Business Source License 1.1 in reverse engineering clause</td><td class="pass">Done</td></tr>
+    <tr><td>&sect;3.2.2</td><td>&sect;6.3 &mdash; CC0-1.0 Universal Public Domain Dedication for community patterns</td><td class="pass">Done</td></tr>
+    <tr><td>&sect;3.2.3</td><td>&sect;9 Limitation of Liability &mdash; confirmed OK as-is; [LAWYER NOTE] removed</td><td class="pass">Done</td></tr>
+    <tr><td>&sect;3.2.4</td><td>&sect;13 Governing Law &mdash; State of Delaware</td><td class="pass">Done</td></tr>
+    <tr><td>&sect;3.2.5</td><td>&sect;14.2 Arbitration &mdash; AAA, Commercial Arbitration Rules, remote/virtual default</td><td class="pass">Done</td></tr>
+    <tr><td>&sect;3.2.5</td><td>&sect;14 EU carve-out &mdash; arbitration and class action waiver inapplicable to EU residents</td><td class="pass">Done</td></tr>
+    <tr><td>&mdash;</td><td>&sect;14.5 Opt-out jurisdiction &mdash; Delaware</td><td class="pass">Done</td></tr>
+    <tr><td>&mdash;</td><td>&sect;17 Contact &mdash; physical address added, [PLACEHOLDER] removed</td><td class="pass">Done</td></tr>
+    <tr><td>&mdash;</td><td>All [LAWYER NOTE] tags removed (6 instances)</td><td class="pass">Done</td></tr>
+    <tr><td>&mdash;</td><td>DRAFT banner removed, effective date 2026-02-20, version 0.2.x</td><td class="pass">Done</td></tr>
+  </tbody>
+</table>
+
+<p>Dual licensing language in &sect;4.1 uses your exact recommended text for both MIT and BSL 1.1 subsections.</p>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>4. EU AI Act Article 50 &mdash; All Disclosures Implemented</h2>
+
+<p>Per your recommendation to implement all three disclosure layers:</p>
+
+<table>
+  <thead><tr><th>Layer</th><th>Location</th><th>Content</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>A. CLI notice</td>
+      <td><code>evolution/cli.py</code></td>
+      <td>"[AI Disclosure] This report was generated with the assistance of artificial intelligence (Claude by Anthropic). The analysis is based on your repository's metrics and may contain errors. Please review findings before taking action."</td>
+      <td class="pass">Done</td>
+    </tr>
+    <tr>
+      <td>A. CLI notice</td>
+      <td><code>evolution/cli.py</code> (fix command)</td>
+      <td>"AI-generated code suggestions should be carefully reviewed before merging."</td>
+      <td class="pass">Done</td>
+    </tr>
+    <tr>
+      <td>B. Report footer</td>
+      <td><code>evolution/report_generator.py</code></td>
+      <td>"This investigation was generated with the assistance of artificial intelligence (Claude by Anthropic). AI-generated content should be reviewed by a developer before acting upon recommendations."</td>
+      <td class="pass">Done</td>
+    </tr>
+    <tr>
+      <td>C. Help text</td>
+      <td><code>evolution/cli.py</code></td>
+      <td>Both <code>evo investigate</code> and <code>evo fix</code> help text mention AI usage (Claude by Anthropic)</td>
+      <td class="pass">Done</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>5. IP / Third-Party Compliance</h2>
+
+<table>
+  <thead><tr><th>Item</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>Third-party trademark disclaimer on website footer (all pages)</td><td class="pass">Already in place</td></tr>
+    <tr><td>GitHub App consideration (&sect;5.3.1)</td><td>Noted for future &mdash; not blocking launch</td></tr>
+    <tr><td>Snyk ToS review (&sect;5.3.2)</td><td>Will review before building adapter</td></tr>
+  </tbody>
+</table>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>6. Production Security Fix</h2>
+
+<p>Per your pre-launch critical item: the <code>webhook.py</code> Stripe webhook handler previously contained a fallback development signing key. This has been removed. The handler now requires <code>EVO_LICENSE_SIGNING_KEY</code> as an environment variable and returns a 500 error if it is not configured.</p>
+
+<p class="ref">File: <code>website/api/webhook.py</code></p>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>7. Website Updates</h2>
+
+<ul>
+  <li><strong>Privacy page</strong> (<code>privacy.html</code>): License key description updated to reflect truncated irreversible email hash</li>
+  <li><strong>Terms page</strong> (<code>terms.html</code>): Full Terms of Service now published at <a href="https://codequal.dev/terms">codequal.dev/terms</a></li>
+  <li><strong>Footer links</strong>: "Terms" link added to all website pages (Home, Docs, Adapters, Privacy, Terms)</li>
+  <li><strong>Vercel routing</strong>: <code>/terms</code> route configured in <code>vercel.json</code></li>
+</ul>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>8. Placeholder Resolution &mdash; Complete</h2>
+
+<table>
+  <thead><tr><th>Document</th><th>Section</th><th>Placeholder</th><th>Resolution</th></tr></thead>
+  <tbody>
+    <tr><td>ToS</td><td>&sect;13</td><td>Governing law state</td><td>Delaware</td></tr>
+    <tr><td>ToS</td><td>&sect;14.2</td><td>Arbitration body</td><td>American Arbitration Association (AAA)</td></tr>
+    <tr><td>ToS</td><td>&sect;14.2</td><td>Arbitration location</td><td>Remote/virtual proceedings</td></tr>
+    <tr><td>ToS</td><td>&sect;6.3</td><td>Community pattern license</td><td>CC0-1.0</td></tr>
+    <tr><td>Privacy</td><td>&sect;5</td><td>Axiom retention period (3 instances)</td><td>30 days</td></tr>
+    <tr><td>Both</td><td>Contact</td><td>Physical mailing address</td><td>CodeQual LLC, 30 N Gould St Ste R, Sheridan, WY 82801</td></tr>
+    <tr><td>Privacy</td><td>&sect;11</td><td>Axiom/Vercel transfer mechanisms</td><td>Standard Contractual Clauses (SCCs)</td></tr>
+  </tbody>
+</table>
+
+<div class="section-note">
+  <p><strong>Zero placeholders remain.</strong> A full-text search for [SPECIFY], [LAWYER NOTE], [PLACEHOLDER], [VERIFY], and [TO BE DETERMINED] returns no matches in either document.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>9. Remaining Operational Items</h2>
+
+<div class="section-warning">
+  <p>The following items from your memo are operational tasks (not code/document changes) and are being addressed separately:</p>
+</div>
+
+<ol>
+  <li><strong>Verify Vercel Pro plan is active</strong> &mdash; Dashboard check</li>
+  <li><strong>Configure Axiom 30-day retention</strong> &mdash; Setting in Axiom dashboard for all datasets</li>
+  <li><strong>Verify Axiom and Vercel DPAs include SCCs</strong> &mdash; Checking their trust centers</li>
+  <li><strong>Confirm <code>EVO_LICENSE_SIGNING_KEY</code> env var</strong> is set in Vercel production environment</li>
+</ol>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>10. Files Modified</h2>
+
+<table>
+  <thead><tr><th>File</th><th>Change</th></tr></thead>
+  <tbody>
+    <tr><td><code>LICENSE</code></td><td>Created &mdash; BSL 1.1 (full canonical template)</td></tr>
+    <tr><td><code>LICENSE-MIT</code></td><td>Created &mdash; MIT scoped to CLI/adapters/plugins</td></tr>
+    <tr><td><code>pyproject.toml</code></td><td>License changed to BSL-1.1, classifier to Other/Proprietary</td></tr>
+    <tr><td><code>docs/legal/privacy-policy-draft.md</code></td><td>All corrections per memo Part Two</td></tr>
+    <tr><td><code>docs/legal/terms-of-service-draft.md</code></td><td>All corrections per memo Parts Three and Four</td></tr>
+    <tr><td><code>evolution/cli.py</code></td><td>EU AI Act disclosures (investigate + fix commands)</td></tr>
+    <tr><td><code>evolution/report_generator.py</code></td><td>AI disclosure footer in HTML reports</td></tr>
+    <tr><td><code>website/api/webhook.py</code></td><td>Dev signing key fallback removed</td></tr>
+    <tr><td><code>website/privacy.html</code></td><td>Hash language corrected, Terms link added</td></tr>
+    <tr><td><code>website/terms.html</code></td><td>Created &mdash; full Terms of Service page</td></tr>
+    <tr><td><code>website/vercel.json</code></td><td>Added /terms route</td></tr>
+    <tr><td><code>website/index.html</code></td><td>Terms link added to footer</td></tr>
+    <tr><td><code>website/docs.html</code></td><td>Privacy + Terms links added to footer</td></tr>
+    <tr><td><code>website/adapters.html</code></td><td>Terms link added to footer</td></tr>
+  </tbody>
+</table>
+
+<p style="margin-top: 48px; padding-top: 20px; border-top: 2px solid var(--border); color: var(--muted); font-size: 0.85rem;">
+  This document was prepared on February 22, 2026 by CodeQual LLC in response to the Final Comprehensive Legal Review memorandum dated February 20, 2026 from The Law Offices of Daniel H. Ryan PC. All source code changes are committed to the Evolution Engine repository and will be included in the next release.
+</p>
+
+</body>
+</html>
