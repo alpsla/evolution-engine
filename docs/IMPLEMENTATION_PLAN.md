@@ -1,6 +1,6 @@
 # Evolution Engine — Implementation Plan
 
-> **Last updated:** February 20, 2026 | 1563 tests passing | v0.2.0 on PyPI | 42 universal patterns | 6 signal families
+> **Last updated:** February 22, 2026 | 1584 tests passing | v0.2.0 on PyPI | 44 universal patterns | 7 signal families
 >
 > This document tracks remaining work before public beta.
 > For completed implementation history, see `IMPLEMENTATION_PLAN_v1.md`.
@@ -14,7 +14,7 @@ All core engine work is done. Summary of shipped features:
 | Area | Status | Key Files |
 |------|--------|-----------|
 | 5-phase pipeline (events → signals → explanations → patterns → advisory) | ✅ | `evolution/phase*.py` |
-| 6 signal families (git, ci, deployment, dependency, testing, coverage) | ✅ | `evolution/adapters/`, `phase2_engine.py` |
+| 7 signal families (git, ci, deployment, dependency, testing, coverage, error_tracking) | ✅ | `evolution/adapters/`, `phase2_engine.py` |
 | CLI with 30+ commands (`evo analyze`, `verify`, `accept`, `investigate`, `fix`, etc.) | ✅ | `evolution/cli.py` |
 | 3-tier adapter ecosystem (built-in, API, plugins) with scaffold/validate/security | ✅ | `evolution/adapter_*.py` |
 | Source prescan (`evo sources`, `--what-if`) | ✅ | `evolution/prescan.py` |
@@ -24,7 +24,7 @@ All core engine work is done. Summary of shipped features:
 | Accept deviations — scoped (permanent, commits, dates, this-run) | ✅ | `evolution/accepted.py` |
 | Run history — snapshot, compare, clean | ✅ | `evolution/history.py` |
 | Pattern distribution — PyPI auto-fetch, KB sync, registry | ✅ | `evolution/pattern_registry.py`, `kb_sync.py` |
-| 42 universal patterns from 90+ repos | ✅ | `evolution/data/universal_patterns.json` |
+| 44 universal patterns from 58+ repos (calibration v3) | ✅ | `evolution/data/universal_patterns.json` |
 | License system — free/pro tiers, HMAC-signed keys, Stripe checkout | ✅ | `evolution/license.py` |
 | Cython compilation + CI wheels (Linux/macOS/Windows) | ✅ | `build_cython.py`, `.github/workflows/build-wheels.yml` |
 | Website — codequal.dev on Vercel (landing, docs, privacy, Stripe, pattern registry) | ✅ | `website/` |
@@ -32,6 +32,10 @@ All core engine work is done. Summary of shipped features:
 | PR acceptance flow — 3 options, scope, webhook persistence | ✅ | `evolution/pr_comment.py`, `website/api/accept.py` |
 | GitLab CI integration — `.gitlab-ci.yml` template, MR comments, platform-aware accept | ✅ | `evolution/init.py`, `evolution/format_comment.py` |
 | FP validation — 1.6% rate | ✅ | `evolution/fp_validation.py` |
+| Sentry error tracking adapter — error_tracking family (#51b) | ✅ | `evolution/adapters/error_tracking/sentry_adapter.py` |
+| Calibration v3 — 48/51 repos, 44 patterns, parallel runner | ✅ | `.calibration/`, `scripts/aggregate_calibration.py` |
+| HTML report adapter cards — "Expand Your Coverage" section | ✅ | `evolution/report_generator.py` |
+| Website Pro tier — pricing, adapter catalog, i18n (en/de/es) | ✅ | `website/` |
 | UX overhaul — 15 fixes (§13 of v1 plan) + sources/config/adapter UX (#46-48) | ✅ | Multiple files |
 | Historical trend detection — three-category classification | ✅ | `evolution/phase5_engine.py` |
 | Pre-launch hardening — security fixes, signing key deployment | ✅ | Multiple files |
@@ -148,7 +152,7 @@ Calibration across 90+ repos showed pattern discovery has saturated with the cur
 | 57 | **CMake dependency extraction** — parse `CMakeLists.txt` for find_package/FetchContent | Low | dependency for C/C++ (5 repos) | **Complete** ✅ |
 | 54 | **Code coverage metric** — Cobertura XML → coverage family | Low | New coverage family: line_rate, branch_rate | **Complete** ✅ |
 | 58 | **Swift Package Manager** — `Package.resolved` | Low | dependency for Swift/iOS | **Complete** ✅ |
-| 51b | **Sentry adapter** — error tracking → new error_tracking family | Medium | error×git, error×deployment patterns | **Pending** |
+| 51b | **Sentry adapter** — error tracking → new error_tracking family | Medium | error×git, error×deployment patterns | **Complete** ✅ |
 
 #### 55 — Missing Walker Parsers (Critical — Quick Win)
 
@@ -267,22 +271,51 @@ Calibration across 90+ repos showed pattern discovery has saturated with the cur
 
 #### Post-Adapter Calibration Plan
 
-All adapter expansion tasks (#51-58) are now **complete**. EE has 6 signal families: git, ci, deployment, dependency, testing, coverage.
+All adapter expansion tasks (#51-58) are now **complete**. EE has 7 signal families: git, ci, deployment, dependency, testing, coverage, error_tracking.
 
-**Next calibration (v3) should:**
-1. Re-calibrate all 90+ repos with testing + coverage families enabled
-2. Expected: new testing×git, testing×ci, coverage×git pattern fingerprints
-3. Run after manual testing of GitHub Action and GitLab CI workflows (pre-deployment verification)
+**Calibration v3 — Complete:**
+- 48/51 repos successful (3 failed: elasticsearch, spring-boot, nixpkgs — memory/timeout)
+- 2.17M events, 6.18M signals
+- 44 universal patterns (net +2 from v2)
+- Testing/coverage families produced no new universal patterns — JUnit XML and Cobertura XML are CI artifacts not committed to git history, so the walker can't find them. These adapters are still valuable for users who generate reports locally.
+- Error tracking (Sentry) is API-based — requires auth tokens, can't calibrate from open-source repos
+
+---
+
+### NEXT PRIORITY: Legal Documentation (#36)
+
+**Status:** Reviewed by Daniel Ryan, ESQ. (2026-02-20). All recommendations accepted. Implementation pending.
+
+**Blocking:** Must complete before accepting payments (#38b Stripe live-mode).
+
+See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implementation details.
+
+| # | Sub-Task | Effort | Status |
+|---|----------|--------|--------|
+| 36.1 | **Create BSL 1.1 license file** — `LICENSE` in repo root (core analysis engine Phases 2-5) | Low | Pending |
+| 36.2 | **Update Privacy Policy** — remove DRAFT, set dates, fix §2.4 email→hash language, 30-day retention, SCC language, add address | Medium | Pending |
+| 36.3 | **Update Terms of Service** — remove DRAFT, dual licensing §4, CC0-1.0 patterns §6.3, Delaware law, AAA arbitration + EU carve-out | Medium | Pending |
+| 36.4 | **EU AI Act Article 50 disclosures** — CLI notice on `evo investigate`/`evo fix`, report footer, help text | Low | Pending |
+| 36.5 | **Update website/privacy.html** — email→hash correction, add Terms link to footer | Low | Pending |
+| 36.6 | **Update plan & memory** — mark #36 complete, unblock #38b | Low | Pending |
+
+**Key decisions (all confirmed):**
+- **BSL 1.1** with 3-year Change Date (2029-02-20), converts to MIT
+- **Entity:** CodeQual LLC, 30 N Gould St Ste R, Sheridan, WY 82801
+- **Governing law:** Delaware | **Arbitration:** AAA, remote/virtual, with EU carve-out
+- **Community patterns:** CC0-1.0 (public domain dedication)
+- **Axiom retention:** 30 days for all datasets
+- **Privacy §2.4 fix:** "email" → "truncated SHA-256 hash, irreversible"
 
 ---
 
 ### External / Infrastructure
 
-| # | Task | Effort | Blocker? |
-|---|------|--------|----------|
-| 36 | **Lawyer review** — ToS + Privacy sign-off → corrected docs → translator | Medium | Yes — must complete before accepting payments |
-| 38b | **Stripe live-mode testing** — repeat all flows with real Stripe dashboard | Low | Yes — blocked by #36 |
-| 49 | **Axiom dashboard & monitors** — API health, alerts, usage metrics from existing ingest | Medium | No — operational readiness |
+| # | Task | Effort | Blocker? | Status |
+|---|------|--------|----------|--------|
+| 36 | **Lawyer review implementation** — 6 sub-tasks above | Medium | Yes — must complete before accepting payments | **Next Priority** |
+| 38b | **Stripe live-mode testing** — repeat all flows with real Stripe dashboard | Low | Yes — blocked by #36 | Pending |
+| 49 | **Axiom dashboard & monitors** — API health, alerts, usage metrics from existing ingest | Medium | No — operational readiness | Pending |
 
 **#38b — Stripe Live-Mode Testing (after #36):**
 1. Pro purchase — complete checkout with real card, verify license key, `evo license status` shows Pro
@@ -297,12 +330,12 @@ All adapter expansion tasks (#51-58) are now **complete**. EE has 6 signal famil
 
 ---
 
-### Pre-Launch Calibration & Testing
+### Pre-Launch Testing
 
 | # | Task | Effort | Blocker? | Status |
 |---|------|--------|----------|--------|
-| CAL3 | **Calibration v3** — re-run on 90+ repos with 6 families (testing + coverage) | Medium | Yes — validates new families | Pending |
-| FULL | **Full automated test suite** — final pass before deployment | Low | Yes | Pending |
+| CAL3 | **Calibration v3** — 48/51 repos, 44 patterns, 7 families | Medium | Yes | **Complete** ✅ |
+| FULL | **Full automated test suite** — 1584 tests passing | Low | Yes | **Complete** ✅ |
 
 ### Launch
 
@@ -316,7 +349,7 @@ See `docs/LAUNCH_PLAN.md` for detailed beta program, launch timeline, and go-to-
 
 ## Future Enhancements (Post-Beta)
 
-- **Datadog adapter** (#52) — monitoring family, high effort, deferred to post-deployment
+- **Datadog adapter** — monitoring family, high effort, deferred to post-deployment
 - PostgreSQL + pgvector migration (multi-tenant, when SaaS tier exists)
 - Vendor adapters requiring external services (PagerDuty, New Relic — needs partner access)
 - Real-time event streaming (webhooks vs batch polling)
