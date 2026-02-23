@@ -1,228 +1,261 @@
 # Evolution Engine — Value Proposition
 
-> **Development Process Intelligence**
-> The only tool that cross-correlates signals across your entire development pipeline
-> to surface risks no single tool can see.
+> **The drift detector for AI-assisted development.**
+> AI coding tools write correct code that's architecturally wrong.
+> Evolution Engine catches the drift, shows the evidence, and closes the loop.
 
 ---
 
-## The Problem Nobody Is Solving
+## The Problem: AI Tools Don't Know Your Baseline
 
-Every engineering team uses multiple tools: Git, CI/CD, dependency managers, deployment platforms, security scanners. Each tool reports on its own silo — build failed, dependency outdated, deploy succeeded. But **the dangerous changes are the ones that look normal in isolation and only become visible when you connect the dots**.
+AI coding assistants — Cursor, Copilot, Claude Code, Codex — are generating more code than ever. They write syntactically correct, test-passing code that silently drifts from your project's architectural norms. They don't know that your team never touches more than 3 directories in a single commit, or that your dependency tree was intentionally kept shallow, or that your release cadence was weekly for a reason.
 
-Consider:
+The result: code that looks fine in isolation but compounds into structural debt that surfaces weeks later as build instability, cascading dependency upgrades, or production incidents nobody can trace back to a root cause.
 
-- A developer touches 15 files across 8 directories in a single commit. The CI passes. The dependency audit is clean. Everything looks fine — but the **code dispersion** is 3x the team's baseline, and historically, commits with this signature precede production incidents within 2 weeks.
+**No existing tool catches this.** Linters check syntax. Security scanners check CVEs. CI checks tests. But nobody is watching whether the *pattern of development* has shifted — and whether that shift was intentional.
 
-- A new dependency is added. The security scanner finds no CVEs. But the **dependency depth** doubled, the **build time** increased 40%, and the last time this pattern appeared in similar repos, it led to a cascading upgrade cycle that consumed a full sprint.
-
-- Release cadence accelerates from weekly to daily. Individually, each release passes all checks. But the **change locality** metric has been declining for 3 weeks — work is becoming scattered, and teams that exhibit this pattern typically see a quality regression within a month.
-
-**No existing tool catches these.** Snyk sees dependencies. GitHub Actions sees builds. Datadog sees production. But nobody is watching the **structural health of how your software evolves over time**.
+Evolution Engine is that missing layer.
 
 ---
 
 ## What Evolution Engine Does
 
-Evolution Engine observes your development process — not your code — and learns what is structurally normal for **your specific project**. When something deviates from that learned baseline, it tells you what changed, how unusual it is, whether it matches a known risk pattern, and what to do about it.
+EE observes your development process — not your code — and learns what is structurally normal for **your specific project**. When something deviates from that learned baseline, it tells you what changed, when the drift started, which commit introduced it, and whether it matches a known risk pattern calibrated across 90+ open-source repositories.
+
+Then it does something no other tool does: it closes the loop.
+
+### The Full Loop
+
+```
+evo analyze .       Detect drift across 7 signal families
+        |
+evo investigate .   AI traces root cause to the exact commit
+        |
+evo fix .           AI generates a course-correction (not a patch — a realignment)
+        |
+evo verify .        Re-analyze to confirm the drift resolved
+        |
+evo accept . 1 2    Human accepts findings or escalates
+```
+
+**Detect drift. Show evidence + exact commit. AI fixes it. Verify fix worked. Human accepts or escalates.** No other tool offers this complete loop.
+
+This is not classical code review. The advisory is a drift alarm, not a bug report. Investigation means "when did the AI go off track?" not "what's broken?" Fixing means course-correcting — finding the breakpoint commit, assessing whether drift was intentional, and guiding the AI back on track.
+
+---
+
+## The Evidence Behind It
+
+EE's pattern library is not hand-curated opinions. It is statistically validated from real-world calibration:
+
+| Metric | Value |
+|--------|-------|
+| Repositories calibrated | 90+ open-source repos |
+| SDLC signals analyzed | 6.18 million |
+| Commits processed | 2.1 million |
+| Validated cross-signal patterns | 44 |
+| False positive rate | 1.6% |
+| Signal families | 7 (Git, CI, Deployment, Dependency, Testing, Coverage, Error Tracking) |
+
+Each pattern represents a statistically significant correlation between events across different signal families — for example, "when a CI failure coincides with a spike in code dispersion, build instability follows in 7 out of 12 repos where this pattern appeared."
 
 ### The 5-Phase Pipeline
 
 ```
-Your Repository
-      |
-Phase 1: Event Recording — what happened (commits, builds, releases, deps)
-      |
-Phase 2: Signal Detection — what's unusual (statistical deviation from YOUR baseline)
-      |
-Phase 3: Explanation — what it means (PM-friendly, evidence-backed)
-      |
-Phase 4: Pattern Matching — has this been seen before (across 43+ calibrated repos)
-      |
-Phase 5: Advisory — what to do (prioritized, actionable, with evidence)
+Phase 1: Event Recording     What happened (commits, builds, releases, deps, tests, errors)
+Phase 2: Signal Detection     What's unusual (statistical deviation from YOUR baseline)
+Phase 3: Explanation          What it means (evidence-backed, PM-readable)
+Phase 4: Pattern Matching     Has this been seen before (44 patterns from 90+ repos)
+Phase 5: Advisory             What to do (prioritized by severity, with evidence)
 ```
 
-### Key Differentiators
-
-**1. Cross-Signal Correlation**
-EE doesn't just flag "build time increased." It tells you "build time increased AND code dispersion spiked AND a new dependency was added — this combination has been observed in 9 out of 43 repos and preceded CI instability in 7 of them." No other tool connects these dots.
-
-**2. Baseline Is Yours, Not a Global Average**
-EE builds its statistical model from **your repository's own history**. A 500-file commit is normal for a monorepo refactor but alarming for a microservice. EE knows the difference because it learns from what's typical for you — using MAD/IQR-based deviation, not arbitrary thresholds.
-
-**3. Pattern Memory That Grows**
-Every analysis contributes to a local knowledge base. Over time, EE recognizes your project's specific rhythms — "dispersion always spikes before a major release" or "dependency changes cluster on Tuesdays after the planning meeting." The community pattern library (27 patterns from 43 repos) provides immediate value; your local patterns make it personal.
-
-**4. Local-First, Privacy by Design**
-Your code never leaves your machine. Analysis runs locally. No accounts, no cloud uploads, no telemetry by default. The only data that can optionally leave your machine is anonymized pattern fingerprints (e.g., "ci event correlates with high dispersion") — never code, filenames, or project details.
-
-**5. Works With Your Tools, Not Against Them**
-EE treats Snyk, Datadog, GitHub Actions, and every other tool as **data sources**, not competitors. It is the aggregation layer that sits above your existing toolchain and cross-correlates what they individually report. Adding a new tool to your stack makes EE smarter, not redundant.
-
-**6. Learns What You Tell It**
-Not every anomaly is a problem. When a deviation is expected — a planned refactoring, a deliberate architecture change, a known migration — you tell EE once and it remembers. Scoped acceptance means you can say "this was expected for these specific commits" without permanently hiding future anomalies of the same type. EE gets smarter about *your* project with every interaction.
+Deviation detection uses MAD/IQR-based modified z-scores against your repository's own history — not arbitrary thresholds, not global averages. A 500-file commit is normal for a monorepo refactor but alarming for a microservice. EE knows the difference because the baseline is yours.
 
 ---
 
-## The Value: Concrete Outcomes
+## Seven Signal Families
 
-### For Individual Developers
+| Family | What It Watches | Example Metrics |
+|--------|----------------|-----------------|
+| **Git** | Commit structure, file dispersion, change locality | `files_touched`, `dispersion`, `change_locality`, `cochange_novelty_ratio` |
+| **CI** | Build duration, pass/fail patterns | `run_duration`, `run_failed` |
+| **Deployment** | Release cadence, prerelease flags | `release_cadence_hours`, `is_prerelease`, `asset_count` |
+| **Dependency** | Dependency count, tree depth (10+ ecosystems) | `dependency_count`, `max_depth` |
+| **Testing** | Test counts, failure and skip rates | `total_tests`, `failure_rate`, `skip_rate`, `suite_duration` |
+| **Coverage** | Line and branch coverage trends | `line_rate`, `branch_rate` |
+| **Error Tracking** | Error volume, affected users, unhandled errors | `event_count`, `user_count`, `is_unhandled` |
 
-| Without EE | With EE |
-|-----------|---------|
-| "CI passed, LGTM" | "CI passed, but this commit's structure matches a pattern that preceded build instability in 7 similar repos" |
-| Ship and hope | Ship with evidence-backed confidence |
-| Debug production issues reactively | Get early warnings about structural drift |
-| Manually review large PRs for risk | Automated risk assessment with specific file references |
-
-### For Engineering Leads & PMs
-
-| Without EE | With EE |
-|-----------|---------|
-| Gut feeling about project health | Quantified baseline with deviation tracking |
-| "Why did quality drop this quarter?" | "Dispersion increased 40% in weeks 3-5, correlating with 3 new contributors and no pair programming" |
-| Invisible technical debt accumulation | Pattern-matched early warnings before debt compounds |
-| Post-mortems after incidents | Pre-mortems before incidents |
-
-### For Teams & Organizations
-
-| Without EE | With EE |
-|-----------|---------|
-| Each repo is an island | Cross-repo pattern library identifies systemic risks |
-| Knowledge locked in senior engineers' heads | Structural patterns captured in a knowledge base that persists across team changes |
-| "Move fast and break things" | Move fast with a safety net that learns from your own history |
+Dependency tracking supports npm, pnpm, Go, Cargo, Bundler, pip, Composer, Gradle, Maven, Swift, and CMake out of the box.
 
 ---
 
 ## Why This Matters Now
 
-### The AI Agent Era Changes Everything
+AI coding tools are changing how software gets built. The volume of generated code is increasing, but the feedback loops haven't kept up. The core problem:
 
-As AI coding assistants generate more code, the human review bottleneck shifts from "did I write this correctly?" to "is this change structurally sound in context?" AI agents can write correct code that is architecturally wrong — they don't have baseline awareness of how your project typically evolves.
+**AI agents write code without baseline awareness.** They don't know what's normal for your project. They optimize locally — correct function, passing test — while drifting globally from your project's structural norms.
 
-EE provides that missing layer:
-- **For humans reviewing AI-generated PRs**: automated structural risk assessment
-- **For AI agents producing code**: a feedback signal about whether changes fit the project's patterns
-- **For teams adopting AI tools**: confidence that velocity gains aren't creating hidden structural debt
+This creates a new category of risk:
 
-### The Cross-Signal Insight Gap Is Growing
+- **Correct but scattered**: AI touches 12 files across 6 directories for a change that should be localized to 2 files. CI passes. Tests pass. But the dispersion signature matches a pattern that preceded build instability in similar repos.
+- **Correct but deep**: AI adds a dependency that works perfectly but doubles your dependency tree depth. No CVEs, no build failures — but the structural profile shifted.
+- **Correct but fast**: AI accelerates your release cadence from weekly to daily. Each release passes checks. But change locality has been declining for 3 weeks — a pattern that historically precedes quality regression.
 
-Modern development involves more signals than ever — more CI systems, more dependency sources, more deployment targets, more security scanners. Each adds data, but nobody synthesizes it. The gap between "data available" and "insights derived" widens with every tool added.
+EE provides the missing feedback loop: tell the developer (or the AI agent) that the *pattern* of development has shifted, show when it started, and provide evidence so they can decide whether the drift was intentional.
 
-EE closes that gap. It is the **intelligence layer** that turns your existing toolchain's output into actionable structural awareness.
+For teams adopting AI tools, this is the difference between "we're shipping faster" and "we're shipping faster and we can prove quality isn't degrading."
 
 ---
 
-## How It Fits Into Your Workflow
+## Three Integration Paths
 
-EE meets you where you are. Three integration paths, designed as a natural progression:
+EE meets you where you are. Start free, automate when you trust it.
 
-### Path 1: CLI — See Everything, Build Trust
+### Path 1: CLI Explorer (Free)
 
 ```bash
 pip install evolution-engine
-evo analyze .            # Full pipeline — always shows everything
-evo report . --open      # Interactive HTML report in your browser
-evo investigate .        # AI root cause analysis (Pro)
-evo fix .                # Iterative AI fix loop (Pro)
+evo analyze .            # Full 5-phase pipeline
+evo report . --open      # Interactive HTML report
+evo sources .            # See what data EE can access
+evo history .            # Track changes over time
 ```
 
-**This is where every user starts.** When you pay for a tool, you need to see it working. The CLI always shows the full report — every finding, every severity level, every pattern match. No filtering, no hiding. You explore, you tune (`evo accept` for false positives), you build confidence in what EE catches and how accurate it is.
+Start here. See what EE catches. Explore findings, tune with `evo accept` for intentional changes, build confidence. No account needed. No data leaves your machine.
 
-### Path 2: Automated Local Hooks — Silent Until It Matters
+### Path 2: Git Hooks (Pro)
 
 ```bash
-evo hooks install .      # One-time setup, then forget about it
-# EE runs on every commit in the background
-# Silent when all clear — notifies only when threshold is met
+evo hooks install .      # One-time setup
+# EE runs silently after every commit
+# Notifies only when findings exceed your threshold
 ```
 
-Once you trust EE's judgment, you automate it. The hook runs analysis silently after every commit. It only surfaces when findings reach your configured threshold:
+Once you trust EE's judgment, automate it. The hook runs analysis in the background after every commit. Silent when all clear — notifies only when it matters. You control the threshold.
 
-| Advisory Status | Default | What happens |
-|----------------|---------|-------------|
-| ⚠️ Action Required | Notify | Desktop notification + report opens |
-| 🔍 Needs Attention | Notify | Desktop notification + report opens |
-| 👁️ Worth Monitoring | Silent | Logged, no interruption |
-| ✅ All Clear | Silent | Nothing — you keep working |
-
-You control the threshold: `evo config set hooks.min_severity critical` if you only want alerts for the serious stuff.
-
-### Path 3: GitHub Action — Watch Every PR
+### Path 3: GitHub Action / GitLab CI (Pro)
 
 ```yaml
-- uses: codequal/evolution-engine@v1
+# GitHub Action
+- uses: alpsla/evolution-engine@v1
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
-    investigate: true                          # Pro
-    suggest-fixes: true                        # Pro
-    anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+    investigate: true
+    suggest-fixes: true
 ```
 
-For teams: every PR gets automatic analysis, AI investigation, inline fix suggestions on changed lines, and verification when the developer pushes a fix. The PR comment updates itself as findings get resolved.
-
-### The Journey
-
-```
-Day 1:   evo analyze . → "OK, this works. I see what it catches."
-Week 1:  evo analyze . → "The Critical findings are real. Medium is usually worth reviewing."
-Week 2:  evo hooks install . → "Just tell me when it matters."
-Week 3:  evo init --github-action → "Watch my team's PRs too."
+```yaml
+# GitLab CI
+evo-analyze:
+  stage: test
+  script:
+    - evo analyze . --ci gitlab
+    - evo investigate .
 ```
 
-The progression is natural: explore → trust → automate. EE earns its place in your workflow.
+For teams: every PR/MR gets automatic analysis, AI investigation, inline fix suggestions on changed lines, and verification when the developer pushes a fix. The comment updates itself as findings get resolved.
+
+### The Natural Progression
+
+```
+Day 1:   evo analyze .            "I see what it catches."            (Free)
+Week 1:  evo analyze . --verify   "The critical findings are real."  (Free)
+Week 2:  evo hooks install .      "Just tell me when it matters."   (Pro)
+Week 3:  evo init --github-action "Watch my team's PRs too."        (Pro)
+```
 
 ---
 
 ## Free vs. Pro
 
-| Capability | Free | Pro ($19/dev/month) |
-|-----------|------|---------------------|
-| Git history analysis | Yes | Yes |
-| Dependency tracking (pip, npm, go, cargo, bundler) | Yes | Yes |
-| Statistical deviation detection | Yes | Yes |
-| Pattern matching (27 universal patterns) | Yes | Yes |
-| Local knowledge base | Yes | Yes |
-| HTML reports | Yes | Yes |
-| GitHub Action (analyze + comment) | Yes | Yes |
-| Custom adapter development | Yes | Yes |
-| CI/Build adapter (GitHub Actions) | — | Yes |
-| Deployment adapter (GitHub Releases) | — | Yes |
-| Security adapter (Dependabot/Snyk) | — | Yes |
-| AI investigation (root cause analysis) | — | Yes |
-| AI fix loop (iterative remediation) | — | Yes |
-| Inline PR fix suggestions | — | Yes |
-| Community pattern sync | — | Yes |
-| LLM-enhanced explanations | — | Yes |
+### Free Tier — CLI Only
 
-**The free tier is genuinely powerful.** Git + dependency analysis with pattern matching and HTML reports covers the most common use cases. Pro adds the cross-signal depth (CI, deployment, security), AI-powered investigation, and community patterns that make EE transformative for teams.
+Full pipeline, no restrictions on analysis depth. No account required. No data leaves your machine.
+
+- Git history analysis (full walker, all metrics)
+- Dependency tracking (10+ package ecosystems)
+- Statistical deviation detection (MAD/IQR baselines)
+- Pattern matching (44 validated patterns)
+- Local knowledge base
+- Interactive HTML reports
+- Run history and trend comparison
+- Source detection and `--what-if` planning
+
+### Pro — $19/dev/month
+
+Everything in Free, plus the full loop and team integration:
+
+- Git hooks — local automation (`evo hooks install`, `evo watch`)
+- GitHub Action + GitLab CI integration
+- AI investigation — root cause analysis to exact commit (`evo investigate`)
+- AI fix loop — iterative course-correction (`evo fix`)
+- Inline PR/MR fix suggestions on changed lines
+- CI, Deployment, and Error Tracking adapters
+- Community pattern sync
+- Priority support
+
+### Founding Member — $9.50/month for 3 months
+
+Full Pro access in exchange for monthly feedback on what's working and what's not. 50 spots. Code: **FOUNDING50**.
 
 ---
 
-## The Competitive Landscape
+## Who This Is For
 
-| Tool | What It Does | What It Misses |
-|------|-------------|----------------|
-| **Snyk / Dependabot** | Dependency vulnerabilities | Structural patterns, CI correlation, deployment context |
-| **SonarQube / CodeClimate** | Static code quality | Process signals, historical baselines, cross-tool correlation |
-| **Datadog / New Relic** | Production monitoring | Pre-production structural drift, development process patterns |
-| **GitHub Copilot / Qodo** | Code generation & review | Structural baseline awareness, cross-signal pattern matching |
-| **LinearB / Sleuth** | Developer metrics (DORA) | Per-repo structural baselines, statistical deviation, pattern memory |
+### Individual developers using AI coding tools
 
-**EE is not competing with any of these.** It makes each of them more valuable by correlating their signals into structural insights none can produce alone.
+You're shipping faster with Cursor or Copilot but you have no way to know if the AI is drifting from your project's norms. EE gives you a quantified answer: "This commit's structural profile matches / doesn't match your project's baseline." Confidence, not gut feeling.
+
+### Engineering leads and PMs
+
+You need to answer "is quality holding up?" with data, not anecdotes. EE provides per-repo baselines with deviation tracking over time. When dispersion spikes or dependency depth creeps up, you see it in the trend — with the exact commits that caused it — before it becomes a production incident.
+
+### Teams adopting AI tools at scale
+
+You want the velocity gains of AI-assisted development without the hidden structural debt. EE is the feedback loop that lets you measure whether AI-generated code is maintaining architectural coherence across the team.
+
+---
+
+## Competitive Positioning
+
+**EE is not competing with your existing tools. It makes them more valuable.**
+
+| Tool Category | Examples | What They Do | What EE Adds |
+|--------------|----------|-------------|-------------|
+| Security scanners | Snyk, Dependabot | Find CVEs in dependencies | Correlate dependency changes with CI failures and deployment patterns |
+| Static analysis | SonarQube, CodeClimate | Code quality metrics | Per-repo baselines, cross-signal patterns, historical trend detection |
+| Monitoring | Datadog, New Relic, Sentry | Production observability | Pre-production drift detection, development process patterns |
+| AI coding tools | Cursor, Copilot, Codex | Code generation | Baseline awareness feedback loop — tell the AI when it's drifting |
+| Dev metrics | LinearB, Sleuth | DORA metrics | Per-repo statistical deviation, pattern memory, actionable advisories |
+
+EE is the **aggregation layer** that sits above your existing toolchain. It cross-correlates signals that no single tool can see. Every tool you add to your stack becomes a new signal family for EE — adding more tools makes EE smarter, not redundant.
+
+---
+
+## Core Design Principles
+
+**Local-first, privacy by design.** Your code never leaves your machine. Analysis runs locally. No accounts, no cloud uploads, no telemetry. The only data that can optionally leave your machine is anonymized pattern fingerprints (e.g., "ci event correlates with high dispersion") — never code, filenames, or project details.
+
+**Deterministic analysis.** The pipeline uses payload timestamps, not wall clock time. Events are sorted chronologically. Same input, same output. Every time.
+
+**Evidence over opinion.** Every advisory includes the specific commits, the deviation magnitude, the pattern match confidence, and the historical precedent. No black boxes, no unexplained scores.
+
+**Aggregation, not competition.** EE treats every other tool as a data source. The value proposition strengthens with every tool in your stack.
 
 ---
 
 ## The Bottom Line
 
-Evolution Engine answers a question no other tool can:
+AI coding tools are generating more code than ever. They write correct code that's architecturally wrong — they don't have baseline awareness.
 
-> **"Given everything that changed across my entire development pipeline, does this look structurally normal for this project — and if not, what should I do about it?"**
+Evolution Engine provides the missing feedback loop:
 
-It's the difference between a dashboard that shows you numbers and an advisor that tells you what the numbers mean together.
+> **Detect the drift. Show the evidence. Fix the course. Verify it worked. Human decides.**
+
+Five commands. Seven signal families. Forty-four validated patterns from 90+ repos. 1.6% false positive rate. Local-first. Privacy by design.
+
+The question isn't whether AI-assisted development introduces structural drift — it does. The question is whether you're detecting it before it compounds.
 
 ---
 
-*This document serves as the foundational value proposition for Evolution Engine. It informs all marketing materials, deployment support presentations, sales conversations, and product documentation.*
-
-*Last updated: 2026-02-14*
+*Last updated: 2026-02-22*

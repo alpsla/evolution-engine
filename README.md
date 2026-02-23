@@ -1,36 +1,52 @@
 # Evolution Engine
 
-**Development Process Intelligence — a local-first CLI tool that observes how software evolves, learns what is structurally normal, and surfaces unexpected change with evidence to act.**
+**AI coding tools write correct code that silently breaks your architecture. Evolution Engine detects the drift, shows you the exact commit, and lets your AI fix it — with evidence.**
+
+Calibrated on 90+ open-source repos. 6.18M signals analyzed. Your code never leaves your machine.
 
 ---
 
-## What It Does
+## The Problem
 
-Run `evo analyze .` on any git repository. The Evolution Engine detects adapters automatically, builds per-repo baselines, and reports when your development process deviates from its own historical norms — across commits, CI, dependencies, deployments, and more.
+AI coding assistants (Cursor, Copilot, Claude Code, Codex) generate code that passes tests and looks correct in isolation. But over time, they introduce **architectural drift** — scattered file changes, unexpected dependency growth, broken structural patterns — that no single tool catches.
 
-No data leaves your machine. No configuration required. No accounts to create.
+Evolution Engine is a **drift detector for AI-assisted development**. It learns what is structurally normal for *your* repository, flags when development patterns shift, identifies the exact commit where drift started, and hands evidence to your AI agent to fix it.
 
-### The Pipeline
+### The Loop: Detect → Evidence → Fix → Verify
 
 ```
-Sources → Phase 1 (Record) → Phase 2 (Measure) → Phase 3 (Explain)
-                                  │                    │
-                                  └──── Phase 4 (Learn) ←──┘
-                                           │
-                                    Phase 5 (Inform)
-                                           │
-                                      HTML Report
-                                           │
-                                       HUMAN / AI
+  evo analyze .          What changed? Is it unusual for THIS repo?
+       |
+  evo investigate .      AI identifies the root cause commit + drift pattern
+       |
+  evo fix .              AI proposes a fix based on evidence, not guesswork
+       |
+  evo verify .           Did the fix resolve the drift? Or did it make it worse?
+       |
+  evo accept . 1 2       Expected change? Accept it. Move on.
+```
+
+This is the full cycle no other tool offers: detect drift, provide evidence, let AI fix it, verify the fix worked, and let humans decide what's intentional.
+
+### How It Works (5-Phase Pipeline)
+
+```
+Your Repo → Phase 1 (Record events) → Phase 2 (Detect deviation from YOUR baseline)
+                                            |
+            Phase 5 (Advisory) ← Phase 4 (Match known patterns) ← Phase 3 (Explain)
+                    |
+               HTML Report + PR/MR Comments
+                    |
+              HUMAN decides: investigate / fix / accept
 ```
 
 | Phase | What It Does |
 |-------|-------------|
-| **Phase 1** | Records immutable events from truth sources |
-| **Phase 2** | Computes baselines and deviation signals (MAD/IQR robust statistics) |
-| **Phase 3** | Explains signals in human language (template + optional LLM) |
-| **Phase 4** | Discovers cross-source patterns (correlation, lift, presence-based) |
-| **Phase 5** | Advisory reports with evidence packages |
+| **Phase 1** | Records immutable events — commits, builds, deps, releases |
+| **Phase 2** | Computes per-repo baselines, flags statistical deviation (MAD/IQR) |
+| **Phase 3** | Explains signals in human language — PM-friendly, evidence-backed |
+| **Phase 4** | Matches against 44 validated patterns from 90+ repos |
+| **Phase 5** | Prioritized advisory with severity, evidence, and action items |
 
 ---
 
@@ -68,29 +84,20 @@ evo init . --path action         # Generate workflow file, then push
 evo init . --path all
 ```
 
-Free tier gets all three paths. Pro adds AI investigation, fix suggestions, and inline PR review comments.
+Free tier covers Path 1 (CLI). Pro unlocks Path 2 (hooks) and Path 3 (CI integration), plus AI investigation, AI fix loop, and inline PR review comments.
 
-### From Source
+### Founding Member Program
 
-```bash
-git clone <repo-url>
-cd evolution-engine
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-
-# Run the test suite (840+ tests)
-python -m pytest tests/ -v
-```
+We're looking for 50 developers who use AI coding tools daily. In exchange for monthly feedback, you get founding member pricing: **$9.50/month for 3 months** (regular: $19/month). Use code `FOUNDING50` at checkout.
 
 ### Environment Variables
 
 ```bash
 # .env file (all optional)
 GITHUB_TOKEN=ghp_xxx            # Unlocks CI, deployment, security adapters
-EVO_LICENSE_KEY=xxx              # Pro/Team features (free tier works without)
-OPENROUTER_API_KEY=xxx           # LLM-enhanced explanations (Phase 3.1)
-PHASE31_ENABLED=false            # LLM off by default
+GITLAB_TOKEN=glpat-xxx          # Unlocks GitLab CI, releases adapters
+EVO_LICENSE_KEY=xxx              # Pro features (free tier works without)
+ANTHROPIC_API_KEY=sk-ant-xxx    # For evo investigate / evo fix (Pro)
 ```
 
 ---
@@ -288,8 +295,7 @@ evolution-engine/
 │   ├── registry.py                # 3-tier adapter auto-detection
 │   ├── phase1_engine.py           # Phase 1: Observation
 │   ├── phase2_engine.py           # Phase 2: Baselines (MAD/IQR)
-│   ├── phase3_engine.py           # Phase 3: Explanations
-│   ├── phase3_1_renderer.py       # Phase 3.1: LLM enhancement
+│   ├── phase3_engine.py           # Phase 3: Explanations (template-based)
 │   ├── phase4_engine.py           # Phase 4: Pattern discovery
 │   ├── phase5_engine.py           # Phase 5: Advisory
 │   ├── knowledge_store.py         # SQLite knowledge base
@@ -299,12 +305,11 @@ evolution-engine/
 │   ├── pattern_validator.py       # Pattern package validation
 │   ├── pattern_scaffold.py        # Pattern package scaffolding
 │   ├── report_generator.py        # Standalone HTML report generator
+│   ├── investigator.py            # AI investigation (evo investigate, Pro)
+│   ├── fixer.py                   # AI fix-verify loop (evo fix, Pro)
 │   ├── adapter_validator.py       # 13-check adapter certification
 │   ├── adapter_scaffold.py        # Package scaffolding + AI prompt gen
 │   ├── license.py                 # License tier gating
-│   ├── llm_openrouter.py          # OpenRouter LLM client
-│   ├── llm_anthropic.py           # Anthropic LLM client
-│   ├── validation_gate.py         # LLM output validation
 │   ├── data/
 │   │   ├── universal_patterns.json  # Bundled universal patterns
 │   │   ├── pattern_index.json       # Known pattern packages
@@ -320,7 +325,7 @@ evolution-engine/
 │       └── security/              # Security Scanning (Trivy, Dependabot)
 ├── tests/
 │   ├── conftest.py                # Shared fixtures
-│   ├── unit/                      # 200+ unit tests
+│   ├── unit/                      # 1500+ unit tests
 │   │   ├── test_phase2_deviation.py
 │   │   ├── test_phase4_cooccurrence.py
 │   │   ├── test_phase5_advisory.py
@@ -350,9 +355,15 @@ evolution-engine/
 
 ---
 
+## Why Now
+
+AI coding tools are generating more code than ever. Teams ship faster — but structural quality is invisible until something breaks. EE provides the missing feedback loop: a guardrail that tells you (and your AI) when development patterns drift from what's normal for your project.
+
+Calibrated on **90+ open-source repos**, **6.18 million SDLC signals**, and **2.1 million commits**. 44 validated cross-signal patterns. 1.6% false positive rate.
+
 ## Open-Core Model
 
-| Open Source (MIT) | Proprietary |
+| Open Source (MIT) | Proprietary (BSL 1.1) |
 |-------------------|-------------|
 | All adapters | Phase 2-5 engines |
 | CLI, registry, orchestrator | Knowledge store |

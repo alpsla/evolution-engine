@@ -12,7 +12,7 @@ Evolution Engine integrates into your workflow three ways. Start with the CLI, t
 
 ```
 Path 1: CLI Explorer          Path 2: Git Hooks           Path 3: CI Integration
-(start here)                  (automate locally)          (automate in CI)
+(start here, free)            (automate locally, Pro)     (automate in CI, Pro)
 
   evo analyze .        -->      evo init --path hooks  -->  evo init --path action
   evo report .                  evo watch .                 PR/MR comments + badges
@@ -21,7 +21,7 @@ Path 1: CLI Explorer          Path 2: Git Hooks           Path 3: CI Integration
 
 `evo init` auto-detects whether you're on GitHub or GitLab and generates the right CI configuration.
 
-**Free tier** gets all three paths. **Pro** adds AI investigation (`evo investigate`), fix suggestions (`evo fix`), and inline PR review comments.
+**Free tier** covers Path 1 (CLI analysis, reports, patterns, history). **Pro** unlocks Path 2 (hooks), Path 3 (CI integration), AI investigation (`evo investigate`), fix loop (`evo fix`), and inline PR review comments.
 
 ---
 
