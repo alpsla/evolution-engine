@@ -438,14 +438,15 @@ def _format_next_steps(
     if ci_provider == "gitlab":
         lines.append("**Option B — Accept for this MR:**")
         lines.append(
-            "If these changes are intentional, run `evo accept` locally, "
-            "commit `.evo/accepted.json`, and push — findings won't reappear on this MR."
+            "If these changes are intentional, run `evo analyze .` to see numbered findings (starting from 1), "
+            "then `evo accept . 1 2 --scope this-run` to accept specific changes for this MR. "
+            "Commit `.evo/accepted.json` and push."
         )
         lines.append("")
         lines.append("**Option C — Accept permanently:**")
         lines.append(
-            "Run `evo accept --permanent` locally, commit, and push "
-            "to suppress these findings across all future MRs."
+            "Run `evo accept . 1 2` (permanent by default) to suppress these findings across all future MRs. "
+            "Commit `.evo/accepted.json` and push."
         )
         lines.append("")
     else:
