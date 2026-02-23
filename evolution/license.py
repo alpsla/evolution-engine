@@ -24,6 +24,11 @@ from typing import Optional
 _DEV_SIGNING_KEY = b"evo-license-v1-dev-key-replace-in-production"
 
 
+def _is_test_environment() -> bool:
+    """Check if running in a test environment (pytest)."""
+    return os.environ.get("EVO_TEST_MODE") == "1" or "pytest" in os.environ.get("_", "")
+
+
 def _get_signing_key() -> bytes:
     """Get the license signing key from environment or fall back to dev key."""
     import os
@@ -103,8 +108,8 @@ def get_license(repo_path: Optional[str] = None) -> License:
     # 1. Check environment variable
     env_key = os.environ.get("EVO_LICENSE_KEY")
     if env_key:
-        # Special trial key
-        if env_key == "pro-trial":
+        # Test-only trial key — only works inside pytest / EVO_TEST_MODE=1
+        if env_key == "pro-trial" and _is_test_environment():
             return License(
                 tier="pro",
                 valid=True,
@@ -133,7 +138,7 @@ def get_license(repo_path: Optional[str] = None) -> License:
             data = json.loads(home_license.read_text())
             key = data.get("license_key")
             if key:
-                if key == "pro-trial":
+                if key == "pro-trial" and _is_test_environment():
                     return License(
                         tier="pro",
                         valid=True,
@@ -163,7 +168,7 @@ def get_license(repo_path: Optional[str] = None) -> License:
                 data = json.loads(repo_license.read_text())
                 key = data.get("license_key")
                 if key:
-                    if key == "pro-trial":
+                    if key == "pro-trial" and _is_test_environment():
                         return License(
                             tier="pro",
                             valid=True,

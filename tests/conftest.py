@@ -1,12 +1,16 @@
 """Shared fixtures for Evolution Engine test suite."""
 
 import json
+import os
 import random
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
+
+# Enable test-only license features (e.g. pro-trial key)
+os.environ["EVO_TEST_MODE"] = "1"
 
 from evolution.phase1_engine import Phase1Engine
 from evolution.phase2_engine import Phase2Engine

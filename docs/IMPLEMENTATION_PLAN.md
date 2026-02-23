@@ -373,6 +373,68 @@ See `docs/LAUNCH_PLAN.md` for detailed beta program, launch timeline, and go-to-
 
 ---
 
+## Post-Beta Month 2: License Hardening
+
+License system currently validates offline via HMAC-signed keys. No protection against key sharing across machines. Acceptable for beta (50 users, trust-based) but must be hardened before scaling past ~200 users.
+
+**Completed (Feb 22, 2026):**
+- [x] Remove `pro-trial` backdoor from production code (test-only via `_is_test_environment()`)
+
+### Phase 1: Activation Tracking (Month 2, Low Effort)
+
+Silent phone-home on first `evo analyze` with a Pro key. Does NOT block — just logs.
+
+| Data Sent | Purpose |
+|-----------|---------|
+| `email_hash` (already in key) | Identify the subscriber |
+| `machine_id` (hash of hostname + username) | Count unique installations |
+| `evo_version` | Track version adoption |
+| `timestamp` | Activation timing |
+
+**Implementation:**
+- POST to `codequal.dev/api/activate` on first Pro `evo analyze` per machine
+- Store activation in Upstash Redis: `activation:{email_hash}` → set of `machine_id`s
+- Axiom dashboard shows activations per key (alert if >5 machines)
+- No user interaction — no prompts, no data collection beyond what's in the key
+- Graceful failure — if API is unreachable, analysis continues normally
+- Cache activation locally in `~/.evo/activation.json` so it only phones home once per machine
+
+**Files to create/modify:**
+- `evolution/activation.py` — activation logic (POST, cache, graceful failure)
+- `evolution/orchestrator.py` — call `check_activation()` on Pro analyze
+- `website/api/activate.py` — Vercel handler, Redis storage
+- Tests
+
+### Phase 2: Activation Limit (Month 2-3, Medium Effort)
+
+After tracking shows the actual usage pattern, add a soft limit.
+
+- Allow 3 machines per license key (personal laptop, work machine, CI)
+- 4th machine shows warning: "This key is active on 3 machines. Contact support@codequal.dev to add more."
+- 7-day grace period on new machines (don't block immediately)
+- `evo license devices` command to list active machines
+- Deactivation: `evo license deactivate` removes current machine from the list
+
+### Phase 3: Periodic Validation (Month 3+, Medium Effort)
+
+Once-per-week phone home to verify subscription is still active.
+
+- On `evo analyze`, check if last validation is >7 days old
+- POST to `codequal.dev/api/validate` with `email_hash`
+- Server checks Stripe subscription status → returns `{valid: true/false, expires: "..."}`
+- Cache result for 7 days (offline grace period)
+- If subscription cancelled: degrade to free tier after cache expires
+- Handles the "cancelled but key still works forever" gap
+
+### What NOT to Do
+
+- No aggressive DRM — devs will choose alternatives
+- No blocking offline use — local-first is the selling point
+- No obfuscation games — determined pirates always win, focus on honest users
+- No phone/email collection — `email_hash` and auto-generated `machine_id` are sufficient
+
+---
+
 ## Future Enhancements (Post-Beta)
 
 - **Datadog adapter** — monitoring family, high effort, deferred to post-deployment
@@ -394,9 +456,12 @@ See `architecture.md` for detailed module documentation.
 - `_CatFileContentStream` is NOT thread-safe — keep git walker sequential
 - `load_dotenv()` in phase4 engine pollutes env — tests must clear GITHUB_TOKEN
 - GitHub free tier: 5,000 req/hr — max ~8 parallel agents safely
-- Phase 3.1 LLM retired — templates produce PM-friendly text
+- Phase 3.1 LLM retired — templates produce PM-friendly text (`friendly.py`)
+- `llm_openrouter.py`, `llm_anthropic.py`, `phase3_1_renderer.py` — dormant legacy code, only used if Phase 4b explicitly enabled
+- `validation_gate.py` — still live, used by Phase 4b pattern validation
 - Analysis is deterministic — Phase 1 uses payload timestamps, Phase 2 sorts chronologically
+- `pro-trial` license key only works in test environments (pytest / `EVO_TEST_MODE=1`)
 
 **Cost:**
-- Phase 4b (sonnet): ~$0.003/pattern, total LLM cost ~$0.01/repo
-- AI investigation/fix uses `ANTHROPIC_API_KEY` (user-provided)
+- Phase 4b (sonnet): ~$0.003/pattern, total LLM cost ~$0.01/repo (off by default)
+- AI investigation/fix uses `ANTHROPIC_API_KEY` (user-provided, Pro only)
