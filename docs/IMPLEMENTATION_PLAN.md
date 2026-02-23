@@ -362,6 +362,53 @@ See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implem
 |---|------|--------|----------|--------|
 | CAL3 | **Calibration v3** — 48/51 repos, 44 patterns, 7 families | Medium | Yes | **Complete** ✅ |
 | FULL | **Full automated test suite** — 1584 tests passing | Low | Yes | **Complete** ✅ |
+| CLI-COV | **CLI command test coverage** — fill gaps in CLI runner tests | Medium | Yes — core commands untested | **Next Priority** |
+
+### CLI Command Test Coverage Audit (Feb 22, 2026)
+
+**60 commands in README. 43% covered, 27% partial, 30% missing.**
+
+71 `runner.invoke()` calls across test suite. Key test files: `test_adapter_cli.py` (39), `test_setup_cli.py` (16), `test_pattern_cli.py` (16), `test_accepted.py` (7), `test_sources_cli.py` (5).
+
+#### Priority 1 — Core Commands (MISSING, High Impact)
+
+These are the main user-facing commands with zero CLI-level tests:
+
+| Command | Underlying Tests | CLI Test | What to Test |
+|---------|-----------------|----------|-------------|
+| `evo analyze` | Phase 1-5 engines extensively tested | **MISSING** | Invoke with mock repo, verify output format, verify exit codes |
+| `evo report` | report_generator tested | **MISSING** | Invoke, verify HTML file created |
+| `evo status` | — | **MISSING** | Invoke, verify adapter/run info output |
+| `evo investigate` | investigator module tested | **MISSING** | Invoke, verify Pro gate, verify --show-prompt |
+| `evo fix` | fixer module tested (30 tests) | **MISSING** | Invoke, verify Pro gate, verify --dry-run |
+
+#### Priority 2 — Partial Coverage (Functions tested, CLI entry point not)
+
+| Command Group | Function Tests | CLI Test | What to Add |
+|---------------|---------------|----------|-------------|
+| `evo init` (all --path variants) | 56 tests (ProjectInit class) | **MISSING** | Runner tests for --path cli/hooks/action/all, Pro gate on hooks/action |
+| `evo hooks install/uninstall/status` | 78 tests (HookManager) | **MISSING** | Runner tests, Pro gate verification |
+| `evo config list/get/set/reset` | 39 tests (EvoConfig) | **MISSING** | Runner tests for each subcommand |
+| `evo history list/show/diff/clean` | 36 tests (HistoryManager) | **MISSING** | Runner tests for each subcommand |
+| `evo verify` | 15 tests (verification logic) | **MISSING** | Runner test with mock advisory JSON |
+
+#### Priority 3 — Secondary Commands (MISSING, Lower Impact)
+
+| Command | Notes |
+|---------|-------|
+| `evo watch` | 37 CommitWatcher tests exist, need CLI runner test + Pro gate |
+| `evo patterns list/pull/push/export/import/publish` | KB modules tested, CLI entry points not |
+| `evo license status/activate` | License module tested (22 tests), CLI not |
+| `evo notifications list/dismiss/check` | Notifications module tested (23 tests), CLI not |
+| `evo adapter guide` | Only missing adapter CLI command |
+
+#### Well-Covered (No Action Needed)
+
+- **Adapter CLI** — 12/14 subcommands covered (85.7%) in `test_adapter_cli.py`
+- **Acceptance CLI** — 4/4 covered (100%) in `test_accepted.py`
+- **Sources CLI** — covered in `test_sources_cli.py`
+- **Setup CLI** — covered in `test_setup_cli.py`
+- **Pattern CLI** — 7/13 subcommands covered in `test_pattern_cli.py`
 
 ### Launch
 
@@ -370,6 +417,7 @@ See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implem
 | 42 | **Community beta** — announce, gather feedback | Low | No — begins once above items verified |
 
 See `docs/LAUNCH_PLAN.md` for detailed beta program, launch timeline, and go-to-market strategy.
+See `docs/marketing/MARKETING_PLAN.md` for detailed execution plan, social media calendar, and channel strategy.
 
 ---
 
