@@ -410,11 +410,76 @@ These are the main user-facing commands with zero CLI-level tests:
 - **Setup CLI** — covered in `test_setup_cli.py`
 - **Pattern CLI** — 7/13 subcommands covered in `test_pattern_cli.py`
 
+### Legal & Compliance (Remaining)
+
+From data-flow audit and lawyer review — items not yet resolved:
+
+| # | Task | Effort | Blocker? | Status |
+|---|------|--------|----------|--------|
+| L1 | **DSAR process** — document procedure for GDPR Article 15-17 access/deletion requests | Low | Yes — legally required | Pending |
+| L2 | **Privacy policy link on adapter request form** — server-side form must link to privacy policy before data submission | Low | Yes — GDPR consent | Pending |
+| L3 | **Cookie/analytics disclosure** — codequal.dev may use Vercel analytics; disclose in privacy policy or add consent banner | Low | No | Pending |
+| L4 | **Webhook error sanitization** — `webhook.py` logs `str(exc)` to Axiom; Stripe exceptions could contain PII | Low | No | Pending |
+| L5 | **Stripe customer_id in Axiom** — indirect PII; assess if logging is necessary or can be further anonymized | Low | No | Pending |
+| L6 | **Anthropic API terms review** — confirm data processing terms for investigation/fix prompts | Low | No | Pending |
+
+**Already addressed:**
+- [x] License key email → SHA-256 hash (Feb 20)
+- [x] Axiom 30-day retention documented in privacy policy (Feb 20)
+- [x] EU AI Act Article 50 disclosures (Feb 20)
+- [x] GDPR deletion runbook (Feb 22)
+- [x] `pro-trial` backdoor removed (Feb 22)
+
+---
+
+### Consolidated Priority List (Feb 23+)
+
+All pending work across the plan, ordered by priority:
+
+#### Blockers (Must Complete Before Beta Launch)
+
+| Priority | Task | Effort | Section |
+|----------|------|--------|---------|
+| **B1** | **CLI test coverage — core commands** (analyze, report, status, investigate, fix) | Medium | CLI-COV §Priority 1 |
+| **B2** | **Webhook signing key** — confirm `EVO_LICENSE_SIGNING_KEY` in Vercel production (#36.7) | Low | External |
+| **B3** | **Stripe live-mode testing** — full checkout/cancel/coupon/renewal flows (#38b) | Low | External |
+| **B4** | **GitHub Action workflow** — trigger on real PR, verify full flow (GH-WF) | Low | Manual Testing |
+| **B5** | **GitLab CI workflow** — trigger on real MR, verify full flow (GL-WF) | Low | Manual Testing |
+| **B6** | **Acceptance persistence** — deploy webhook, test on real PR (#45b) | Low | Manual Testing |
+| **B7** | **GitLab CLI manual testing** — 7 scenarios on real GitLab repo (#37) | Low | Manual Testing |
+| **B8** | **DSAR process** — document access/deletion request procedure (L1) | Low | Legal |
+
+#### Should Have (Before Scaling Past Beta)
+
+| Priority | Task | Effort | Section |
+|----------|------|--------|---------|
+| **S1** | **CLI test coverage — integration commands** (init, hooks, config, history, verify) | Medium | CLI-COV §Priority 2 |
+| **S2** | **CLI test coverage — secondary commands** (watch, patterns, license, notifications) | Medium | CLI-COV §Priority 3 |
+| **S3** | **Axiom dashboard & monitors** — API health, alerts, usage metrics (#49) | Medium | External |
+| **S4** | **Axiom 30-day retention** — configure in dashboard (#36.8) | Low | External |
+| **S5** | **Verify Axiom/Vercel DPAs** — confirm SCCs (#36.9) | Low | External |
+| **S6** | **Verify Vercel Pro plan** (#36.10) | Low | External |
+| **S7** | **Privacy policy link on forms** (L2) | Low | Legal |
+| **S8** | **Cookie/analytics disclosure** (L3) | Low | Legal |
+| **S9** | **Webhook error sanitization** (L4) | Low | Legal |
+
+#### Post-Beta Month 2+
+
+| Priority | Task | Section |
+|----------|------|---------|
+| **P1** | License activation tracking (silent phone-home) | License Hardening §Phase 1 |
+| **P2** | License activation limit (3 machines) | License Hardening §Phase 2 |
+| **P3** | License periodic validation (weekly) | License Hardening §Phase 3 |
+| **P4** | Datadog adapter | Future |
+| **P5** | IDE extensions (VS Code, JetBrains) | Future |
+
+---
+
 ### Launch
 
 | # | Task | Effort | Blocker? |
 |---|------|--------|----------|
-| 42 | **Community beta** — announce, gather feedback | Low | No — begins once above items verified |
+| 42 | **Community beta** — announce, gather feedback | Low | No — begins once B1-B8 verified |
 
 See `docs/LAUNCH_PLAN.md` for detailed beta program, launch timeline, and go-to-market strategy.
 See `docs/marketing/MARKETING_PLAN.md` for detailed execution plan, social media calendar, and channel strategy.
