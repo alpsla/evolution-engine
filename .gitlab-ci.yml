@@ -52,6 +52,10 @@ evo-analyze:
     - apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1
     - pip install git+https://github.com/alpsla/evolution_monitor.git@main
     - |
+      # Restore committed accepted.json over any cached version
+      git checkout HEAD -- .evo/accepted.json 2>/dev/null || true
+      cat .evo/accepted.json 2>/dev/null || echo "No accepted.json"
+    - |
       # Save previous advisory for verification on next push
       if [ -f .evo/phase5/advisory.json ]; then
         cp .evo/phase5/advisory.json .evo/phase5/advisory.json.prev
