@@ -114,13 +114,15 @@ stages:
   if [ -n "$EXISTING_NOTE_ID" ]; then
     curl -sf --request PUT \\
       --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \\
-      --form "body=@.evo/comment.md" \\
+      --header "Content-Type: application/json" \\
+      --data "$(python3 -c "import json,sys; print(json.dumps({{'body': open('.evo/comment.md').read()}}))")" \\
       "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes/$EXISTING_NOTE_ID" \\
       > /dev/null
   else
     curl -sf --request POST \\
       --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \\
-      --form "body=@.evo/comment.md" \\
+      --header "Content-Type: application/json" \\
+      --data "$(python3 -c "import json,sys; print(json.dumps({{'body': open('.evo/comment.md').read()}}))")" \\
       "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes" \\
       > /dev/null
   fi
