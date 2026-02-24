@@ -388,24 +388,13 @@ def _format_sources_section(sources_info: dict, ci_provider: Optional[str] = Non
         seen_display.add(display)
         lines.append(f"\u2705 {display}")
 
-    # Show detected-but-not-connected as available to enable (only if adapter exists)
+    # Track detected families (only show CI/deployment as actionable hints)
     seen_families = set()
     for d in detected:
         family = d.get("family", "")
         if family in connected_families or family in seen_families:
             continue
-        if family not in _FAMILIES_WITH_ADAPTERS:
-            continue
         seen_families.add(family)
-        display = d.get("display_name", _FAMILY_DISPLAY.get(family, family.replace("_", " ").title()))
-        # Skip if this display name was already shown as connected
-        if display in seen_display:
-            continue
-        seen_display.add(display)
-        hint = ""
-        if family in ("ci", "deployment"):
-            hint = f" — add `{token_name}` secret to enable"
-        lines.append(f"\u2b1c {display}{hint}")
 
     # Always hint at CI/deploy if not connected and not detected
     for family, label in [
