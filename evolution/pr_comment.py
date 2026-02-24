@@ -443,10 +443,10 @@ def _format_next_steps(
         lines.append("")
     else:
         lines.append("**Option B — Accept for this PR:**")
-        lines.append("If these changes are intentional for this PR, comment `/evo accept` — findings won't reappear on this PR.")
+        lines.append("If these changes are intentional, leave a PR comment with just `/evo accept` — findings won't reappear on this PR.")
         lines.append("")
         lines.append("**Option C — Accept permanently:**")
-        lines.append("Comment `/evo accept permanent` to suppress these findings across all future PRs.")
+        lines.append("Leave a PR comment with `/evo accept permanent` to suppress these findings across all future PRs.")
         lines.append("")
 
     if report_url:
