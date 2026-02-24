@@ -271,10 +271,12 @@ runs:
 
     - name: Restore previous advisory (for verification on subsequent pushes)
       if: steps.accept.outputs.accepted != 'true' && inputs.comment == 'true' && github.event_name == 'pull_request'
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         path: .evo/phase5/advisory.json.prev
-        key: evo-advisory-${{ github.event.pull_request.number }}
+        key: evo-advisory-${{ github.event.pull_request.number }}-
+        restore-keys: |
+          evo-advisory-${{ github.event.pull_request.number }}-
 
     - name: Restore cached acceptances
       if: steps.accept.outputs.accepted != 'true' && inputs.comment == 'true' && github.event_name == 'pull_request'
@@ -579,5 +581,11 @@ runs:
       if: steps.accept.outputs.accepted != 'true' && inputs.comment == 'true' && github.event_name == 'pull_request'
       shell: bash
       run: |
-        # Save current advisory for next push comparison (persisted via actions/cache)
         cp .evo/phase5/advisory.json .evo/phase5/advisory.json.prev 2>/dev/null || true
+
+    - name: Save advisory cache
+      if: steps.accept.outputs.accepted != 'true' && inputs.comment == 'true' && github.event_name == 'pull_request'
+      uses: actions/cache/save@v4
+      with:
+        path: .evo/phase5/advisory.json.prev
+        key: evo-advisory-${{ github.event.pull_request.number }}-${{ github.run_id }}
