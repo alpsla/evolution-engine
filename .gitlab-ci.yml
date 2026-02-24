@@ -45,7 +45,7 @@ evo-analyze:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   cache:
-    key: evo-v3-$CI_MERGE_REQUEST_IID
+    key: evo-v4-$CI_MERGE_REQUEST_IID
     paths:
       - .evo/
   script:
