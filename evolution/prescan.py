@@ -376,4 +376,3 @@ class SourcePrescan:
         # Strip metadata keys
         return {k: v for k, v in data.items() if not k.startswith("_")}
 
-# B1 test marker — safe to remove

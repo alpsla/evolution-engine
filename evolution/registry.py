@@ -588,4 +588,3 @@ class AdapterRegistry:
             "blocked": self.get_blocked(),
         }
 
-# B1 test marker — safe to remove
