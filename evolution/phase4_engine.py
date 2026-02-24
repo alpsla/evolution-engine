@@ -413,10 +413,10 @@ class Phase4Engine:
 
         # Build per-metric deviation series keyed by commit SHA
         # Key: (engine_id, metric) -> {commit_sha: {deviation, direction, event_ref}}
-        metric_by_commit: dict[tuple, dict[str, dict]] = defaultdict(dict)
+        metric_by_commit: dict[tuple, dict[str, dict]] = {}
         # Also build per-metric deviation series keyed by time bucket
         # Key: (engine_id, metric) -> {bucket: {deviation, direction, event_ref}}
-        metric_by_bucket: dict[tuple, dict[int, dict]] = defaultdict(dict)
+        metric_by_bucket: dict[tuple, dict[int, dict]] = {}
 
         for s in valid_signals:
             event_ref = s.get("event_ref", "")
@@ -432,7 +432,7 @@ class Phase4Engine:
 
             commit_sha = commit_index.get(event_ref)
             if commit_sha:
-                metric_by_commit[key][commit_sha] = entry
+                metric_by_commit.setdefault(key, {})[commit_sha] = entry
 
             # Temporal bucket for supplementary alignment
             ts = temporal_index.get(event_ref)
@@ -440,9 +440,9 @@ class Phase4Engine:
                 bucket = self._time_bucket(ts, window_hours)
                 if bucket is not None:
                     # Keep the entry with highest absolute deviation per bucket
-                    existing = metric_by_bucket[key].get(bucket)
+                    existing = metric_by_bucket.setdefault(key, {}).get(bucket)
                     if existing is None or abs(deviation) > abs(existing["deviation"]):
-                        metric_by_bucket[key][bucket] = entry
+                        metric_by_bucket.setdefault(key, {})[bucket] = entry
 
         # Only consider metrics with enough commit observations
         active_metrics_commit = [k for k, v in metric_by_commit.items() if len(v) >= min_support]
@@ -690,9 +690,9 @@ class Phase4Engine:
 
         # Map each signal to its commit SHA
         # Build: {(engine_id, metric): {commit_sha: deviation_value}}
-        metric_deviations: dict[tuple, dict[str, float]] = defaultdict(dict)
+        metric_deviations: dict[tuple, dict[str, float]] = {}
         # Track which commits have events from each engine
-        commits_by_engine: dict[str, set] = defaultdict(set)
+        commits_by_engine: dict[str, set] = {}
 
         for s in signals:
             dev = s.get("deviation", {})
@@ -707,8 +707,8 @@ class Phase4Engine:
             metric = s["metric"]
             deviation = dev["measure"]
 
-            metric_deviations[(engine, metric)][commit_sha] = deviation
-            commits_by_engine[engine].add(commit_sha)
+            metric_deviations.setdefault((engine, metric), {})[commit_sha] = deviation
+            commits_by_engine.setdefault(engine, set()).add(commit_sha)
 
         # We need git + at least one non-git family
         git_commits = commits_by_engine.get("git", set())
