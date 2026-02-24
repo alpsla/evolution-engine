@@ -114,18 +114,11 @@ class TestFormatPrComment:
         result = format_pr_comment(_make_advisory(changes=changes))
         assert "| Risk | Family | Metric | Now | Usual | Change |" in result
 
-    def test_description_truncation(self):
+    def test_description_not_truncated(self):
         long_desc = "A" * 100
         changes = [_make_change(description=long_desc)]
         result = format_pr_comment(_make_advisory(changes=changes))
-        assert "A" * 80 + "..." in result
-        assert "A" * 100 not in result
-
-    def test_short_description_not_truncated(self):
-        short_desc = "Small change"
-        changes = [_make_change(description=short_desc)]
-        result = format_pr_comment(_make_advisory(changes=changes))
-        assert "Small change" in result
+        assert "A" * 100 in result
 
     def test_pattern_matches_section(self):
         changes = [_make_change()]
@@ -255,7 +248,7 @@ class TestSourcesSection:
         sources = _make_sources_info(
             connected=[{"family": "git", "adapter": "builtin", "tier": 1}],
             detected=[
-                {"service": "sentry", "display_name": "Sentry", "family": "monitoring",
+                {"service": "sentry", "display_name": "Sentry", "family": "error_tracking",
                  "adapter": "evo-adapter-sentry", "detection_layers": ["config"]},
             ],
             families=["git"],
@@ -846,6 +839,26 @@ class TestFormatSourcesSection:
         text = "\n".join(lines)
         assert "GITHUB_TOKEN" in text
         assert "GITLAB_TOKEN" not in text
+
+    def test_detected_without_adapter_hidden(self):
+        """Detected services without EE adapters (e.g. PagerDuty, Datadog) are not shown."""
+        sources = _make_sources_info(
+            connected=[{"family": "git", "adapter": "builtin", "tier": 1}],
+            detected=[
+                {"service": "pagerduty", "display_name": "PagerDuty", "family": "incidents",
+                 "adapter": "evo-adapter-pagerduty", "detection_layers": ["config"]},
+                {"service": "datadog", "display_name": "Datadog", "family": "monitoring",
+                 "adapter": "evo-adapter-datadog", "detection_layers": ["config"]},
+                {"service": "sentry", "display_name": "Sentry", "family": "error_tracking",
+                 "adapter": "evo-adapter-sentry", "detection_layers": ["config"]},
+            ],
+            families=["git"],
+        )
+        lines = _format_sources_section(sources)
+        text = "\n".join(lines)
+        assert "PagerDuty" not in text
+        assert "Datadog" not in text
+        assert "Sentry" in text  # error_tracking has an adapter
 
 
 class TestFormatNextSteps:

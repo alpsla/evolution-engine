@@ -46,6 +46,12 @@ _FAMILY_DISPLAY = {
     "incidents": "Incidents",
 }
 
+# Families that have actual EE adapters — only show these in "What EE Can See"
+_FAMILIES_WITH_ADAPTERS = {
+    "git", "version_control", "ci", "deployment", "dependency",
+    "testing", "coverage", "error_tracking",
+}
+
 
 def format_pr_comment(
     advisory: dict,
@@ -122,9 +128,6 @@ def format_pr_comment(
         current = _fmt(c.get("current", 0))
         normal = _fmt(c.get("normal", {}).get("median", c.get("normal", {}).get("mean", 0)))
         desc = c.get("description", "")
-        # Truncate description for table
-        if len(desc) > 83:
-            desc = desc[:80] + "..."
         lines.append(
             f"| {badge} {risk['label']} | {family} | {metric} | {current} | {normal} | {desc} |"
         )
@@ -334,8 +337,6 @@ def format_accepted_comment(
             current = _fmt(c.get("current", 0))
             normal = _fmt(c.get("normal", {}).get("median", c.get("normal", {}).get("mean", 0)))
             desc = c.get("description", "")
-            if len(desc) > 83:
-                desc = desc[:80] + "..."
             lines.append(
                 f"| {badge} {risk['label']} | {family} | {metric} | {current} | {normal} | {desc} |"
             )
@@ -387,11 +388,13 @@ def _format_sources_section(sources_info: dict, ci_provider: Optional[str] = Non
         seen_display.add(display)
         lines.append(f"\u2705 {display}")
 
-    # Show detected-but-not-connected as available to enable
+    # Show detected-but-not-connected as available to enable (only if adapter exists)
     seen_families = set()
     for d in detected:
         family = d.get("family", "")
         if family in connected_families or family in seen_families:
+            continue
+        if family not in _FAMILIES_WITH_ADAPTERS:
             continue
         seen_families.add(family)
         display = d.get("display_name", _FAMILY_DISPLAY.get(family, family.replace("_", " ").title()))
