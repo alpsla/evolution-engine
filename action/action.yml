@@ -150,6 +150,9 @@ runs:
         else:
             scope_label = 'Accepted for this PR'
 
+        # Remove any existing acceptance banner before inserting new one
+        body = re.sub(r'\n✅ \*\*Accepted[^\n]*\n', '', body)
+
         # Insert accepted banner after the first heading
         header_match = re.search(r'^(## Evolution Engine[^\n]*\n)', body)
         if header_match:
