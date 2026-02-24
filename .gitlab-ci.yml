@@ -54,13 +54,21 @@ evo-analyze:
     - |
       # Restore committed accepted.json over any cached version
       git checkout HEAD -- .evo/accepted.json 2>/dev/null || true
+      echo "=== accepted.json BEFORE analysis ==="
       cat .evo/accepted.json 2>/dev/null || echo "No accepted.json"
+      echo "=== evo_dir contents ==="
+      ls -la .evo/ 2>/dev/null || echo "No .evo dir"
     - |
       # Save previous advisory for verification on next push
       if [ -f .evo/phase5/advisory.json ]; then
         cp .evo/phase5/advisory.json .evo/phase5/advisory.json.prev
       fi
     - evo analyze . --quiet
+    - |
+      echo "=== accepted.json AFTER analysis ==="
+      cat .evo/accepted.json 2>/dev/null || echo "No accepted.json"
+      echo "=== advisory summary ==="
+      python3 -c "import json; a=json.load(open('.evo/phase5/advisory.json')); print(f'Changes: {a[\"summary\"][\"significant_changes\"]}, Accepted: {a[\"summary\"].get(\"accepted_changes\",0)}')" 2>/dev/null || true
     - |
       # Run verification if previous advisory exists
       if [ -f .evo/phase5/advisory.json.prev ] && [ -f .evo/phase5/advisory.json ]; then
