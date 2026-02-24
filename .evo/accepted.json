@@ -12,6 +12,17 @@
         "type": "this-run",
         "advisory_id": "86090858a123c12b"
       }
+    },
+    {
+      "key": "git:change_locality",
+      "family": "git",
+      "metric": "change_locality",
+      "reason": "",
+      "accepted_at": "2026-02-24T05:03:37.855261+00:00",
+      "from_advisory": "86090858a123c12b",
+      "scope": {
+        "type": "permanent"
+      }
     }
   ]
 }
