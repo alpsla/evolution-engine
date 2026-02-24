@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "accepted": [
+    {
+      "key": "git:cochange_novelty_ratio",
+      "family": "git",
+      "metric": "cochange_novelty_ratio",
+      "reason": "",
+      "accepted_at": "2026-02-24T04:59:21.254414+00:00",
+      "from_advisory": "86090858a123c12b",
+      "scope": {
+        "type": "this-run",
+        "advisory_id": "86090858a123c12b"
+      }
+    }
+  ]
+}
