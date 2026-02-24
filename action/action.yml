@@ -344,6 +344,15 @@ runs:
             print(f'Merged {added} permanent acceptance(s) from webhook')
         " 2>/dev/null || true
 
+    - name: Backup previous advisory before analysis (cleanup deletes it)
+      if: steps.accept.outputs.accepted != 'true' && github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        if [ -f .evo/phase5/advisory.json.prev ]; then
+          cp .evo/phase5/advisory.json.prev /tmp/evo_prev_advisory.json
+          echo "Backed up previous advisory for verification"
+        fi
+
     - name: Detect sources
       id: sources
       if: steps.accept.outputs.accepted != 'true'
@@ -518,15 +527,14 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.github-token }}
       run: |
-        # Check if we have a previous advisory to compare against
+        # The cache restores advisory.json.prev before analysis, but evo analyze
+        # cleans .evo/phase5/. Check for the backup copy saved before analysis.
+        if [ -f /tmp/evo_prev_advisory.json ]; then
+          cp /tmp/evo_prev_advisory.json .evo/phase5/advisory.json.prev
+        fi
+
         if [ -f .evo/phase5/advisory.json.prev ]; then
-          echo "::group::Verification debug"
-          echo "Previous advisory exists: $(wc -c < .evo/phase5/advisory.json.prev) bytes"
-          echo "Current advisory exists: $(ls -la .evo/phase5/advisory.json 2>/dev/null || echo 'NOT FOUND')"
-          evo verify .evo/phase5/advisory.json.prev --path . --quiet 2>&1 || true
-          echo "Verify exit code: $?"
-          echo "verification.json exists: $(ls -la .evo/phase5/verification.json 2>/dev/null || echo 'NOT FOUND')"
-          echo "::endgroup::"
+          evo verify .evo/phase5/advisory.json.prev --path . --quiet 2>/dev/null || true
 
           # Build report artifact URL
           REPORT_URL=""
@@ -546,8 +554,7 @@ runs:
 
           python3 "${{ github.action_path }}/format_comment.py" \
             $FORMAT_ARGS \
-            2>&1 || true
-          echo "pr_comment.md exists after verification format: $(ls -la .evo/pr_comment.md 2>/dev/null || echo 'NOT FOUND')"
+            2>/dev/null || true
 
           if [ -f .evo/pr_comment.md ]; then
             EXISTING=$(gh api \
