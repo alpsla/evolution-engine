@@ -191,6 +191,7 @@ evo-comment:
   needs:
     - evo-analyze
   script:
+    - apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1
     - pip install evolution-engine{version_pin}
     - |
       if [ ! -f .evo/phase5/advisory.json ]; then
