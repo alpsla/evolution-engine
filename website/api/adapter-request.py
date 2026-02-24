@@ -164,7 +164,7 @@ _Vote with a thumbs-up if you'd also like this adapter!_
                 "issue_url": result.get("html_url", ""),
             })
         except Exception as e:
-            error_entry = {"type": "adapter_request", "error": "github_issue_creation_failed", "detail": str(e), "timestamp": time.time()}
+            error_entry = {"type": "adapter_request", "error": "github_issue_creation_failed", "detail": type(e).__name__, "timestamp": time.time()}
             print(json.dumps(error_entry))
             _axiom_send(error_entry)
             return self._json({"success": True, "message": "Request recorded. We'll follow up soon."})

@@ -70,7 +70,6 @@ class handler(BaseHTTPRequestHandler):
             if event_type == "checkout.session.completed":
                 session = event["data"]["object"]
                 customer_id = session.get("customer")
-                result["customer_id"] = customer_id
                 if customer_id:
                     _handle_checkout_completed(stripe, customer_id, signing_key)
                     result["action"] = "license_generated"
@@ -88,7 +87,6 @@ class handler(BaseHTTPRequestHandler):
                 invoice = event["data"]["object"]
                 customer_id = invoice.get("customer")
                 attempt_count = invoice.get("attempt_count", 0)
-                result["customer_id"] = customer_id
                 result["attempt_count"] = attempt_count
                 if customer_id:
                     _handle_payment_failed(stripe, customer_id, attempt_count)
@@ -97,7 +95,7 @@ class handler(BaseHTTPRequestHandler):
             _axiom_send({
                 "type": "webhook_error",
                 "event_type": event_type,
-                "error": str(exc),
+                "error": type(exc).__name__,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             })
             return self._json({"error": "Internal processing error"}, 500)
@@ -131,10 +129,11 @@ def _handle_checkout_completed(stripe, customer_id, signing_key):
 
     stripe.Customer.modify(customer_id, metadata={"evo_license_key": license_key})
 
+    cid_hash = hashlib.sha256(customer_id.encode()).hexdigest()[:12]
     log_entry = {
         "type": "webhook",
         "event": "license_generated",
-        "customer_id": customer_id,
+        "customer_id_hash": cid_hash,
         "tier": "pro",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
@@ -144,10 +143,11 @@ def _handle_checkout_completed(stripe, customer_id, signing_key):
 
 def _handle_subscription_deleted(stripe, customer_id):
     stripe.Customer.modify(customer_id, metadata={"evo_license_key": ""})
+    cid_hash = hashlib.sha256(customer_id.encode()).hexdigest()[:12]
     log_entry = {
         "type": "webhook",
         "event": "license_revoked",
-        "customer_id": customer_id,
+        "customer_id_hash": cid_hash,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     print(json.dumps(log_entry))
@@ -161,10 +161,11 @@ def _handle_payment_failed(stripe, customer_id, attempt_count):
         "evo_payment_failed_at": datetime.now(timezone.utc).isoformat(),
         "evo_payment_attempt": str(attempt_count),
     })
+    cid_hash = hashlib.sha256(customer_id.encode()).hexdigest()[:12]
     log_entry = {
         "type": "webhook",
         "event": "payment_failed",
-        "customer_id": customer_id,
+        "customer_id_hash": cid_hash,
         "attempt_count": attempt_count,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

@@ -85,9 +85,9 @@ Our server-side handlers log operational data to Axiom, a log aggregation servic
 | Source | Data Logged | Contains Personal Data |
 |--------|-------------|:----------------------:|
 | Telemetry handler | Event name, aggregate counts, anonymous ID, version, timestamp | No |
-| Stripe webhook | Stripe customer ID, subscription tier, timestamp | Indirect (customer ID) |
+| Stripe webhook | Truncated hash of Stripe customer ID, subscription tier, timestamp | No (hashed, irreversible) |
 | Adapter request handler | Adapter name, family, description, use case, email, timestamp | Yes (email) |
-| Error logs | Event type, error message, timestamp | No (sanitized) |
+| Error logs | Event type, error class name, timestamp | No (sanitized — no exception details) |
 
 ### 2.7 AI Investigation (User-Initiated)
 

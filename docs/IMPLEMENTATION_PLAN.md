@@ -1,6 +1,6 @@
 # Evolution Engine — Implementation Plan
 
-> **Last updated:** February 22, 2026 | 1584 tests passing | v0.2.0 on PyPI | 44 universal patterns | 7 signal families
+> **Last updated:** February 23, 2026 | 1667 tests passing | v0.2.0 on PyPI | 44 universal patterns | 7 signal families
 >
 > This document tracks remaining work before public beta.
 > For completed implementation history, see `IMPLEMENTATION_PLAN_v1.md`.
@@ -332,7 +332,7 @@ See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implem
 | # | Task | Effort | Blocker? | Status |
 |---|------|--------|----------|--------|
 | 36 | **Lawyer review implementation** — 6 sub-tasks above | Medium | No | **Complete** ✅ |
-| 36.7 | **Webhook signing key** — confirm `EVO_LICENSE_SIGNING_KEY` env var in Vercel production (hard-fail if missing) | Low | Yes — webhook returns 500 without it | Pending |
+| 36.7 | **Webhook signing key** — confirm `EVO_LICENSE_SIGNING_KEY` env var in Vercel production (hard-fail if missing) | Low | Yes — webhook returns 500 without it | **Complete** ✅ |
 | 36.8 | **Axiom 30-day retention** — configure in Axiom dashboard for all datasets | Low | No | Pending |
 | 36.9 | **Verify Axiom/Vercel DPAs** — confirm SCCs in their Data Processing Agreements | Low | No | Pending |
 | 36.10 | **Verify Vercel Pro plan** — confirm project is on Pro tier | Low | No | Pending |
@@ -340,7 +340,7 @@ See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implem
 | 36.12 | **BSL licensing in README** — dual-license table added | Low | No | **Complete** ✅ |
 | 36.13 | **GDPR deletion runbook** — internal ops procedure | Low | No | **Complete** ✅ |
 | 36.14 | **Lawyer confirmation packet** — `codequal.dev/lawyer-review-packet-2026-02-22` | Low | No | **Complete** ✅ |
-| 38b | **Stripe live-mode testing** — repeat all flows with real Stripe dashboard | Low | Yes — required before launch payments | **Next Priority** |
+| 38b | **Stripe live-mode testing** — repeat all flows with real Stripe dashboard | Low | Yes — required before launch payments | **Complete** ✅ |
 | 49 | **Axiom dashboard & monitors** — API health, alerts, usage metrics from existing ingest | Medium | No — operational readiness | Pending |
 
 **#38b — Stripe Live-Mode Testing (after #36):**
@@ -361,46 +361,52 @@ See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implem
 | # | Task | Effort | Blocker? | Status |
 |---|------|--------|----------|--------|
 | CAL3 | **Calibration v3** — 48/51 repos, 44 patterns, 7 families | Medium | Yes | **Complete** ✅ |
-| FULL | **Full automated test suite** — 1584 tests passing | Low | Yes | **Complete** ✅ |
-| CLI-COV | **CLI command test coverage** — fill gaps in CLI runner tests | Medium | Yes — core commands untested | **Next Priority** |
+| FULL | **Full automated test suite** — 1667 tests passing | Low | Yes | **Complete** ✅ |
+| CLI-COV | **CLI command test coverage — core commands** (analyze, report, status, investigate, fix) | Medium | Yes | **Complete** ✅ |
+| CLI-COV2 | **CLI command test coverage — integration + secondary commands** | Medium | No | **Complete** ✅ |
 
-### CLI Command Test Coverage Audit (Feb 22, 2026)
+### CLI Command Test Coverage Audit (Feb 23, 2026)
 
-**60 commands in README. 43% covered, 27% partial, 30% missing.**
+**60 commands in README. 83 CLI runner tests across 3 files + existing module tests.**
 
-71 `runner.invoke()` calls across test suite. Key test files: `test_adapter_cli.py` (39), `test_setup_cli.py` (16), `test_pattern_cli.py` (16), `test_accepted.py` (7), `test_sources_cli.py` (5).
+120 `runner.invoke()` calls across test suite. Key test files: `test_adapter_cli.py` (39), `test_core_cli.py` (34), `test_integration_cli.py` (27), `test_secondary_cli.py` (22), `test_setup_cli.py` (16), `test_pattern_cli.py` (16), `test_accepted.py` (7), `test_sources_cli.py` (5).
 
-#### Priority 1 — Core Commands (MISSING, High Impact)
+#### Priority 1 — Core Commands (Complete ✅)
 
-These are the main user-facing commands with zero CLI-level tests:
+34 tests in `tests/unit/test_core_cli.py` covering all 5 core commands:
 
-| Command | Underlying Tests | CLI Test | What to Test |
-|---------|-----------------|----------|-------------|
-| `evo analyze` | Phase 1-5 engines extensively tested | **MISSING** | Invoke with mock repo, verify output format, verify exit codes |
-| `evo report` | report_generator tested | **MISSING** | Invoke, verify HTML file created |
-| `evo status` | — | **MISSING** | Invoke, verify adapter/run info output |
-| `evo investigate` | investigator module tested | **MISSING** | Invoke, verify Pro gate, verify --show-prompt |
-| `evo fix` | fixer module tested (30 tests) | **MISSING** | Invoke, verify Pro gate, verify --dry-run |
+| Command | Tests | Coverage |
+|---------|-------|----------|
+| `evo analyze` | 8 | happy path, no_events exit, --json, --quiet, --no-report, --show-prompt, --families, --token |
+| `evo report` | 6 | happy path, no advisory exit, --output, --title, --serve, --verify |
+| `evo status` | 5 | happy path, missing tokens shown/hidden, last advisory, --token |
+| `evo investigate` | 7 | happy path, Pro gate, --show-prompt, no advisory exit, failed report, --agent, AI disclosure |
+| `evo fix` | 8 | --dry-run, Pro gate, all_clear/partial/max_iterations statuses, --yes, --dry-run --residual, branch+iteration reporting |
 
-#### Priority 2 — Partial Coverage (Functions tested, CLI entry point not)
+#### Priority 2 — Integration Commands (Complete ✅)
 
-| Command Group | Function Tests | CLI Test | What to Add |
-|---------------|---------------|----------|-------------|
-| `evo init` (all --path variants) | 56 tests (ProjectInit class) | **MISSING** | Runner tests for --path cli/hooks/action/all, Pro gate on hooks/action |
-| `evo hooks install/uninstall/status` | 78 tests (HookManager) | **MISSING** | Runner tests, Pro gate verification |
-| `evo config list/get/set/reset` | 39 tests (EvoConfig) | **MISSING** | Runner tests for each subcommand |
-| `evo history list/show/diff/clean` | 36 tests (HistoryManager) | **MISSING** | Runner tests for each subcommand |
-| `evo verify` | 15 tests (verification logic) | **MISSING** | Runner test with mock advisory JSON |
+27 tests in `tests/unit/test_integration_cli.py`:
 
-#### Priority 3 — Secondary Commands (MISSING, Lower Impact)
+| Command Group | Tests | Coverage |
+|---------------|-------|----------|
+| `evo init` | 5 | --path cli, hooks Pro gate, action Pro gate, setup failure, --families |
+| `evo hooks install/uninstall/status` | 7 | happy path, Pro gate, install failure, uninstall success/not-found, status installed/not-installed |
+| `evo config list/get/set/reset` | 5 | grouped list, get found/unknown, set, reset |
+| `evo history list/show/diff/clean` | 8 | list happy/empty/json, show happy/not-found, diff happy/too-few-runs, clean no-args |
+| `evo verify` | 2 | happy path (all resolved), --quiet with persisting issues |
 
-| Command | Notes |
-|---------|-------|
-| `evo watch` | 37 CommitWatcher tests exist, need CLI runner test + Pro gate |
-| `evo patterns list/pull/push/export/import/publish` | KB modules tested, CLI entry points not |
-| `evo license status/activate` | License module tested (22 tests), CLI not |
-| `evo notifications list/dismiss/check` | Notifications module tested (23 tests), CLI not |
-| `evo adapter guide` | Only missing adapter CLI command |
+#### Priority 3 — Secondary Commands (Complete ✅)
+
+22 tests in `tests/unit/test_secondary_cli.py`:
+
+| Command Group | Tests | Coverage |
+|---------------|-------|----------|
+| `evo watch` | 4 | Pro gate, --status running/not-running, --stop |
+| `evo license status/activate` | 4 | free tier, pro tier, activate valid/invalid |
+| `evo notifications list/dismiss` | 3 | list empty/has-items, dismiss all |
+| `evo patterns list/pull/push/new` | 5 | no-kb, pull success/failure, push success/disabled, scaffold |
+| `evo patterns add/remove/block/unblock/packages` | 5 | add, remove, block, unblock, packages-none |
+| `evo adapter guide` | — | Only remaining uncovered adapter CLI command |
 
 #### Well-Covered (No Action Needed)
 
@@ -416,11 +422,11 @@ From data-flow audit and lawyer review — items not yet resolved:
 
 | # | Task | Effort | Blocker? | Status |
 |---|------|--------|----------|--------|
-| L1 | **DSAR process** — document procedure for GDPR Article 15-17 access/deletion requests | Low | Yes — legally required | Pending |
-| L2 | **Privacy policy link on adapter request form** — server-side form must link to privacy policy before data submission | Low | Yes — GDPR consent | Pending |
-| L3 | **Cookie/analytics disclosure** — codequal.dev may use Vercel analytics; disclose in privacy policy or add consent banner | Low | No | Pending |
-| L4 | **Webhook error sanitization** — `webhook.py` logs `str(exc)` to Axiom; Stripe exceptions could contain PII | Low | No | Pending |
-| L5 | **Stripe customer_id in Axiom** — indirect PII; assess if logging is necessary or can be further anonymized | Low | No | Pending |
+| L1 | **DSAR process** — document procedure for GDPR Article 15-17 access/deletion requests | Low | Yes — legally required | **Complete** ✅ (runbook at `docs/legal/gdpr-deletion-runbook.md`) |
+| L2 | **Privacy policy link on adapter request form** — server-side form must link to privacy policy before data submission | Low | Yes — GDPR consent | **Complete** ✅ |
+| L3 | **Cookie/analytics disclosure** — codequal.dev may use Vercel analytics; disclose in privacy policy or add consent banner | Low | No | **Complete** ✅ (consent banner on all pages, no third-party analytics) |
+| L4 | **Webhook error sanitization** — `webhook.py` logs `str(exc)` to Axiom; Stripe exceptions could contain PII | Low | No | **Complete** ✅ (logs `type(exc).__name__` only) |
+| L5 | **Stripe customer_id in Axiom** — indirect PII; assess if logging is necessary or can be further anonymized | Low | No | **Complete** ✅ (hashed to `customer_id_hash`, 12-char SHA-256 prefix) |
 | L6 | **Anthropic API terms review** — confirm data processing terms for investigation/fix prompts | Low | No | Pending |
 
 **Already addressed:**
@@ -429,39 +435,55 @@ From data-flow audit and lawyer review — items not yet resolved:
 - [x] EU AI Act Article 50 disclosures (Feb 20)
 - [x] GDPR deletion runbook (Feb 22)
 - [x] `pro-trial` backdoor removed (Feb 22)
+- [x] DSAR procedure — L1 (Feb 22, runbook covers Art 15-17 + CCPA)
+- [x] Privacy policy link on adapter request form — L2 (Feb 23)
+- [x] Cookie/analytics disclosure — L3 (consent banner on all pages, no third-party analytics)
+- [x] Webhook error sanitization — L4 (Feb 23, `type(exc).__name__` only)
+- [x] Stripe customer_id anonymized — L5 (Feb 23, hashed to 12-char SHA-256 prefix)
 
 ---
 
-### Consolidated Priority List (Feb 23+)
+### Consolidated Priority List (Feb 23, updated)
 
-All pending work across the plan, ordered by priority:
+All pending work across the plan, ordered by priority.
+
+**1667 tests passing** — all automated test coverage complete (core + integration + secondary CLI commands).
 
 #### Blockers (Must Complete Before Beta Launch)
 
-| Priority | Task | Effort | Section |
-|----------|------|--------|---------|
-| **B1** | **CLI test coverage — core commands** (analyze, report, status, investigate, fix) | Medium | CLI-COV §Priority 1 |
-| **B2** | **Webhook signing key** — confirm `EVO_LICENSE_SIGNING_KEY` in Vercel production (#36.7) | Low | External |
-| **B3** | **Stripe live-mode testing** — full checkout/cancel/coupon/renewal flows (#38b) | Low | External |
-| **B4** | **GitHub Action workflow** — trigger on real PR, verify full flow (GH-WF) | Low | Manual Testing |
-| **B5** | **GitLab CI workflow** — trigger on real MR, verify full flow (GL-WF) | Low | Manual Testing |
-| **B6** | **Acceptance persistence** — deploy webhook, test on real PR (#45b) | Low | Manual Testing |
-| **B7** | **GitLab CLI manual testing** — 7 scenarios on real GitLab repo (#37) | Low | Manual Testing |
-| **B8** | **DSAR process** — document access/deletion request procedure (L1) | Low | Legal |
+4 remaining — all manual testing, no code changes expected. Planned as a single 3-phase testing session.
+
+| Priority | Task | Effort | Section | Status |
+|----------|------|--------|---------|--------|
+| **B1** | **GitHub Action workflow** — trigger on real PR, verify PR comment, inline suggestions, accept flow, verify flow (GH-WF) | Low | Manual Testing | Planned — Phase 2 of testing session |
+| **B2** | **Acceptance persistence** — deploy webhook, set `EVO_ACCEPT_SECRET`, test `/evo accept` + `/evo accept permanent` on real PR (#45b) | Low | Manual Testing | Planned — Phase 1 of testing session |
+| **B3** | **GitLab CI workflow** — trigger on real MR, verify MR comment, accept flow, verify flow (GL-WF) | Low | Manual Testing | Planned — Phase 3 of testing session |
+| **B4** | **GitLab CLI manual testing** — 7 scenarios on real GitLab repo (#37) | Low | Manual Testing | Planned — Phase 3 of testing session |
+
+**Testing session plan:** Phase 1 (B2: webhook infra) → Phase 2 (B1: GitHub Action) → Phase 3 (B3+B4: GitLab CI + CLI).
+Webhook is platform-agnostic, so Phase 1 enables both Phase 2 and 3.
+See `memory/transition-2026-02-23-manual-testing.md` for full session plan.
+
+**Test repos:**
+- GitHub: `alpsla/evolution_monitor` (origin, has `test-action.yml` workflow)
+- GitLab: `d3925/codequal` (`git@gitlab.com:d3925/codequal.git`, empty — needs seeding)
 
 #### Should Have (Before Scaling Past Beta)
 
-| Priority | Task | Effort | Section |
-|----------|------|--------|---------|
-| **S1** | **CLI test coverage — integration commands** (init, hooks, config, history, verify) | Medium | CLI-COV §Priority 2 |
-| **S2** | **CLI test coverage — secondary commands** (watch, patterns, license, notifications) | Medium | CLI-COV §Priority 3 |
-| **S3** | **Axiom dashboard & monitors** — API health, alerts, usage metrics (#49) | Medium | External |
-| **S4** | **Axiom 30-day retention** — configure in dashboard (#36.8) | Low | External |
-| **S5** | **Verify Axiom/Vercel DPAs** — confirm SCCs (#36.9) | Low | External |
-| **S6** | **Verify Vercel Pro plan** (#36.10) | Low | External |
-| **S7** | **Privacy policy link on forms** (L2) | Low | Legal |
-| **S8** | **Cookie/analytics disclosure** (L3) | Low | Legal |
-| **S9** | **Webhook error sanitization** (L4) | Low | Legal |
+4 remaining — all external/ops tasks.
+
+| Priority | Task | Effort | Section | Status |
+|----------|------|--------|---------|--------|
+| **S1** | **Axiom dashboard & monitors** — API health, alerts, usage metrics (#49) | Medium | External | Pending |
+| **S2** | **Axiom 30-day retention** — configure in dashboard (#36.8) | Low | External | Pending |
+| **S3** | **Verify Axiom/Vercel DPAs** — confirm SCCs (#36.9) | Low | External | Pending |
+| **S4** | **Verify Vercel Pro plan** (#36.10) | Low | External | Pending |
+
+#### Nice to Have (Low Priority)
+
+| Priority | Task | Effort | Section | Status |
+|----------|------|--------|---------|--------|
+| **N1** | **Anthropic API terms review** — confirm data processing terms for investigation/fix prompts (L6) | Low | Legal | Pending |
 
 #### Post-Beta Month 2+
 
@@ -472,6 +494,21 @@ All pending work across the plan, ordered by priority:
 | **P3** | License periodic validation (weekly) | License Hardening §Phase 3 |
 | **P4** | Datadog adapter | Future |
 | **P5** | IDE extensions (VS Code, JetBrains) | Future |
+
+#### Completed (Since Last Update)
+
+| Task | Date |
+|------|------|
+| CLI test coverage — core commands (B1, 34 tests) | Feb 22 |
+| CLI test coverage — integration commands (S1, 27 tests) | Feb 23 |
+| CLI test coverage — secondary commands (S2, 22 tests) | Feb 23 |
+| Webhook signing key (#36.7) | Feb 22 |
+| Stripe live-mode testing (#38b) | Feb 22 |
+| DSAR process (L1) | Feb 22 |
+| Privacy policy link on forms (L2) | Feb 23 |
+| Cookie/analytics disclosure (L3) | Feb 23 |
+| Webhook error sanitization (L4) | Feb 23 |
+| Stripe customer_id anonymization (L5) | Feb 23 |
 
 ---
 
