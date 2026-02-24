@@ -244,7 +244,8 @@ class TestSourcesSection:
         assert "CI builds" in result
         assert "GITHUB_TOKEN" in result
 
-    def test_sources_shows_detected_services(self):
+    def test_sources_hides_detected_without_action(self):
+        """Detected services without a simple enable action are hidden from PR comment."""
         sources = _make_sources_info(
             connected=[{"family": "git", "adapter": "builtin", "tier": 1}],
             detected=[
@@ -255,7 +256,9 @@ class TestSourcesSection:
         )
         changes = [_make_change()]
         result = format_pr_comment(_make_advisory(changes=changes), sources_info=sources)
-        assert "Sentry" in result
+        assert "Sentry" not in result
+        # CI/deploy still hinted since they just need a token
+        assert "CI builds" in result
 
     def test_sources_none_graceful(self):
         """No sources_info → no sources section at all."""
@@ -840,8 +843,8 @@ class TestFormatSourcesSection:
         assert "GITHUB_TOKEN" in text
         assert "GITLAB_TOKEN" not in text
 
-    def test_detected_without_adapter_hidden(self):
-        """Detected services without EE adapters (e.g. PagerDuty, Datadog) are not shown."""
+    def test_detected_services_hidden_from_comment(self):
+        """All detected-but-not-connected services are hidden — only CI/deploy hinted."""
         sources = _make_sources_info(
             connected=[{"family": "git", "adapter": "builtin", "tier": 1}],
             detected=[
@@ -858,7 +861,10 @@ class TestFormatSourcesSection:
         text = "\n".join(lines)
         assert "PagerDuty" not in text
         assert "Datadog" not in text
-        assert "Sentry" in text  # error_tracking has an adapter
+        assert "Sentry" not in text
+        # CI/deploy still get the token hint
+        assert "CI builds" in text
+        assert "Deployments" in text
 
 
 class TestFormatNextSteps:
