@@ -545,8 +545,11 @@ runs:
           # Build format args for verification comment
           FORMAT_ARGS="--verification .evo/phase5/verification.json --output .evo/pr_comment.md"
 
+          # Use residual prompt if available, otherwise fall back to investigation prompt
           if [ -f .evo/phase5/residual_prompt.txt ]; then
             FORMAT_ARGS="$FORMAT_ARGS --residual-prompt .evo/phase5/residual_prompt.txt"
+          elif [ -f .evo/phase5/investigation_prompt.txt ]; then
+            FORMAT_ARGS="$FORMAT_ARGS --residual-prompt .evo/phase5/investigation_prompt.txt"
           fi
           if [ -n "$REPORT_URL" ]; then
             FORMAT_ARGS="$FORMAT_ARGS --report-url $REPORT_URL"
