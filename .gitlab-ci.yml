@@ -1,0 +1,120 @@
+# Evolution Engine — GitLab CI pipeline (test: install from git HEAD)
+# Required CI/CD variables:
+#   GITLAB_TOKEN — project access token with api scope
+
+stages:
+  - analyze
+  - comment
+
+# ── Helper: find existing EE note ID ──
+.evo-find-note: &evo-find-note |
+  EXISTING_NOTE_ID=$(curl -sf \
+    --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+    "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes?per_page=100" \
+    | python3 -c "
+  import sys, json
+  notes = json.load(sys.stdin)
+  for n in notes:
+      if '## Evolution Engine' in n.get('body', ''):
+          print(n['id'])
+          break
+  " 2>/dev/null || true)
+
+# ── Helper: post or update MR note ──
+.evo-post-note: &evo-post-note |
+  if [ -n "$EXISTING_NOTE_ID" ]; then
+    curl -sf --request PUT \
+      --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+      --header "Content-Type: application/json" \
+      --data "$(python3 -c "import json,sys; print(json.dumps({'body': open('.evo/comment.md').read()}))")" \
+      "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes/$EXISTING_NOTE_ID" \
+      > /dev/null
+  else
+    curl -sf --request POST \
+      --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+      --header "Content-Type: application/json" \
+      --data "$(python3 -c "import json,sys; print(json.dumps({'body': open('.evo/comment.md').read()}))")" \
+      "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes" \
+      > /dev/null
+  fi
+
+# ── Stage 1: Run EE analysis ──
+evo-analyze:
+  stage: analyze
+  image: python:3.11-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  cache:
+    key: evo-$CI_MERGE_REQUEST_IID
+    paths:
+      - .evo/
+  script:
+    - apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1
+    - pip install git+https://github.com/alpsla/evolution_monitor.git@main
+    - |
+      # Save previous advisory for verification on next push
+      if [ -f .evo/phase5/advisory.json ]; then
+        cp .evo/phase5/advisory.json .evo/phase5/advisory.json.prev
+      fi
+    - evo analyze . --quiet
+    - |
+      # Run verification if previous advisory exists
+      if [ -f .evo/phase5/advisory.json.prev ] && [ -f .evo/phase5/advisory.json ]; then
+        evo verify .evo/phase5/advisory.json.prev --path . --quiet || true
+      fi
+    - |
+      # Collect sources info for comment
+      evo sources --json > .evo/sources.json 2>/dev/null || true
+  artifacts:
+    paths:
+      - .evo/phase5/
+      - .evo/sources.json
+    expire_in: 7 days
+
+# ── Stage 2: Post/update MR comment ──
+evo-comment:
+  stage: comment
+  image: python:3.11-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  needs:
+    - evo-analyze
+  script:
+    - apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1
+    - pip install git+https://github.com/alpsla/evolution_monitor.git@main
+    - |
+      if [ ! -f .evo/phase5/advisory.json ]; then
+        echo "No advisory found, skipping comment."
+        exit 0
+      fi
+    - |
+      # Build format_comment flags
+      EXTRA_FLAGS=""
+      if [ -f .evo/phase5/investigation_prompt.txt ]; then
+        EXTRA_FLAGS="$EXTRA_FLAGS --prompt .evo/phase5/investigation_prompt.txt"
+      fi
+      if [ -f .evo/sources.json ]; then
+        EXTRA_FLAGS="$EXTRA_FLAGS --sources .evo/sources.json"
+      fi
+      # Choose verification or initial advisory comment
+      if [ -f .evo/phase5/verification.json ]; then
+        RESIDUAL_FLAG=""
+        if [ -f .evo/phase5/residual_prompt.txt ]; then
+          RESIDUAL_FLAG="--residual-prompt .evo/phase5/residual_prompt.txt"
+        elif [ -f .evo/phase5/investigation_prompt.txt ]; then
+          RESIDUAL_FLAG="--residual-prompt .evo/phase5/investigation_prompt.txt"
+        fi
+        python -m evolution.format_comment \
+          --verification .evo/phase5/verification.json \
+          $RESIDUAL_FLAG \
+          --ci-provider gitlab \
+          --output .evo/comment.md
+      else
+        python -m evolution.format_comment \
+          --advisory .evo/phase5/advisory.json \
+          $EXTRA_FLAGS \
+          --ci-provider gitlab \
+          --output .evo/comment.md
+      fi
+    - *evo-find-note
+    - *evo-post-note
