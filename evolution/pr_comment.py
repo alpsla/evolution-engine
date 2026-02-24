@@ -246,24 +246,16 @@ def format_verification_comment(
             lines.append(f"- \U0001f534 {item.get('family', '?')} / {item.get('metric', '?')} — was normal before")
         lines.append("")
 
-    # Continue Fixing section (if there are persisting/new issues and a residual prompt)
-    if residual_prompt and (persisting > 0 or new_issues > 0 or regressions > 0):
-        lines.append("### Continue Fixing")
-        lines.append("")
-        lines.append("<details>")
-        lines.append("<summary>\U0001f4cb Residual Prompt</summary>")
-        lines.append("")
-        lines.append("```text")
-        lines.append(residual_prompt)
-        lines.append("```")
-        lines.append("")
-        lines.append("</details>")
-        lines.append("")
-
     # Report link
     if report_url:
         lines.append(f"\U0001f4ca [View Full Report]({report_url})")
         lines.append("")
+
+    # "What To Do Next" section (if there are unresolved issues)
+    if persisting > 0 or new_issues > 0 or regressions > 0:
+        lines.append("---")
+        lines.append("")
+        lines.extend(_format_next_steps(residual_prompt, report_url, ci_provider=ci_provider))
 
     lines.append(
         f"<sub>Resolution rate: {rate:.0%} | "
