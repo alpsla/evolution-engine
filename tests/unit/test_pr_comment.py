@@ -557,8 +557,8 @@ class TestVerificationResidualPrompt:
         }
         residual = "ITERATION of fix loop...\nStill drifting: git/files_touched"
         result = format_verification_comment(verification, residual_prompt=residual)
-        assert "### Continue Fixing" in result
-        assert "Residual Prompt" in result
+        assert "### What To Do Next" in result
+        assert "Investigation Prompt" in result
         assert "```text" in result
         assert "ITERATION of fix loop" in result
 
@@ -584,7 +584,7 @@ class TestVerificationResidualPrompt:
         }
         residual = "Should not appear"
         result = format_verification_comment(verification, residual_prompt=residual)
-        assert "Continue Fixing" not in result
+        assert "What To Do Next" not in result
         assert "Should not appear" not in result
 
     def test_residual_prompt_none_graceful(self):
@@ -1119,8 +1119,8 @@ class TestFormatCommentScript:
         )
         assert result.returncode == 0, result.stderr
         content = output_path.read_text()
-        assert "Continue Fixing" in content
-        assert "Residual Prompt" in content
+        assert "What To Do Next" in content
+        assert "Investigation Prompt" in content
         assert "git/files_touched still drifting" in content
         assert "View Full Report" in content
 
