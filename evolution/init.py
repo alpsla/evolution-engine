@@ -136,6 +136,7 @@ evo-analyze:
     paths:
       - .evo/
   script:
+    - apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1
     - pip install evolution-engine{version_pin}
     - |
       # Pull permanent acceptances from webhook
@@ -210,6 +211,8 @@ evo-comment:
         RESIDUAL_FLAG=""
         if [ -f .evo/phase5/residual_prompt.txt ]; then
           RESIDUAL_FLAG="--residual-prompt .evo/phase5/residual_prompt.txt"
+        elif [ -f .evo/phase5/investigation_prompt.txt ]; then
+          RESIDUAL_FLAG="--residual-prompt .evo/phase5/investigation_prompt.txt"
         fi
         python -m evolution.format_comment \\
           --verification .evo/phase5/verification.json \\
