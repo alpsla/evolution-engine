@@ -115,11 +115,11 @@ class TestFormatPrComment:
         assert "| Risk | Family | Metric | Now | Usual | Change |" in result
 
     def test_description_truncation(self):
-        long_desc = "A" * 80
+        long_desc = "A" * 100
         changes = [_make_change(description=long_desc)]
         result = format_pr_comment(_make_advisory(changes=changes))
-        assert "A" * 57 + "..." in result
-        assert "A" * 80 not in result
+        assert "A" * 80 + "..." in result
+        assert "A" * 100 not in result
 
     def test_short_description_not_truncated(self):
         short_desc = "Small change"
@@ -238,7 +238,7 @@ class TestSourcesSection:
         changes = [_make_change()]
         result = format_pr_comment(_make_advisory(changes=changes), sources_info=sources)
         assert "\u2705 Git history" in result
-        assert "\u2705 Ci" in result
+        assert "\u2705 CI" in result
 
     def test_sources_shows_missing_families(self):
         sources = _make_sources_info(
@@ -821,7 +821,7 @@ class TestFormatSourcesSection:
         lines = _format_sources_section(sources)
         text = "\n".join(lines)
         # CI connected, so no hint for CI
-        assert "\u2705 Ci" in text
+        assert "\u2705 CI" in text
         # But deployment still hinted
         assert "Deployments" in text
 

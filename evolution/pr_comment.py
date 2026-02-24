@@ -30,6 +30,22 @@ _RISK_BADGES = {
 # Families that EE can detect from git alone (no token needed)
 _BUILTIN_FAMILIES = {"git", "dependency"}
 
+# Human-friendly display names for source families
+_FAMILY_DISPLAY = {
+    "git": "Git",
+    "version_control": "Git",
+    "ci": "CI",
+    "deployment": "Deployments",
+    "dependency": "Dependencies",
+    "testing": "Testing",
+    "coverage": "Coverage",
+    "error_tracking": "Error Tracking",
+    "monitoring": "Monitoring",
+    "security_scan": "Security",
+    "quality_gate": "Quality Gates",
+    "incidents": "Incidents",
+}
+
 
 def format_pr_comment(
     advisory: dict,
@@ -107,8 +123,8 @@ def format_pr_comment(
         normal = _fmt(c.get("normal", {}).get("median", c.get("normal", {}).get("mean", 0)))
         desc = c.get("description", "")
         # Truncate description for table
-        if len(desc) > 60:
-            desc = desc[:57] + "..."
+        if len(desc) > 83:
+            desc = desc[:80] + "..."
         lines.append(
             f"| {badge} {risk['label']} | {family} | {metric} | {current} | {normal} | {desc} |"
         )
@@ -318,8 +334,8 @@ def format_accepted_comment(
             current = _fmt(c.get("current", 0))
             normal = _fmt(c.get("normal", {}).get("median", c.get("normal", {}).get("mean", 0)))
             desc = c.get("description", "")
-            if len(desc) > 60:
-                desc = desc[:57] + "..."
+            if len(desc) > 83:
+                desc = desc[:80] + "..."
             lines.append(
                 f"| {badge} {risk['label']} | {family} | {metric} | {current} | {normal} | {desc} |"
             )
@@ -359,12 +375,17 @@ def _format_sources_section(sources_info: dict, ci_provider: Optional[str] = Non
         # Find git adapter info for baseline count
         lines.append("\u2705 Git history")
 
-    # Show connected non-git families
+    # Show connected non-git families (deduplicate via seen set)
+    seen_display = set()
     for c in connected:
-        if c.get("family") == "git":
-            continue
         family = c.get("family", "?")
-        lines.append(f"\u2705 {family.capitalize()}")
+        if family == "git":
+            continue
+        display = _FAMILY_DISPLAY.get(family, family.replace("_", " ").title())
+        if display in seen_display:
+            continue
+        seen_display.add(display)
+        lines.append(f"\u2705 {display}")
 
     # Show detected-but-not-connected as available to enable
     seen_families = set()
@@ -373,8 +394,12 @@ def _format_sources_section(sources_info: dict, ci_provider: Optional[str] = Non
         if family in connected_families or family in seen_families:
             continue
         seen_families.add(family)
+        display = d.get("display_name", _FAMILY_DISPLAY.get(family, family.replace("_", " ").title()))
+        # Skip if this display name was already shown as connected
+        if display in seen_display:
+            continue
+        seen_display.add(display)
         hint = ""
-        display = d.get("display_name", family.capitalize())
         if family in ("ci", "deployment"):
             hint = f" — add `{token_name}` secret to enable"
         lines.append(f"\u2b1c {display}{hint}")
@@ -414,7 +439,7 @@ def _format_next_steps(
         lines.append("EE will automatically re-analyze and show resolution progress.")
         lines.append("")
         lines.append("<details>")
-        lines.append("<summary>\U0001f4cb Investigation Prompt</summary>")
+        lines.append("<summary>\U0001f4cb Investigation Prompt (expand, then copy)</summary>")
         lines.append("")
         lines.append("```text")
         lines.append(investigation_prompt)
