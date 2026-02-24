@@ -428,3 +428,5 @@ def _strip_evo_block(content: str) -> str:
     while text.endswith("\n\n\n"):
         text = text[:-1]
     return text
+
+# B1 test marker — safe to remove

@@ -1042,3 +1042,5 @@ class Orchestrator:
     @staticmethod
     def _log(msg: str):
         print(msg)
+
+# B1 test marker — safe to remove
