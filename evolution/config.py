@@ -367,3 +367,5 @@ def _format_value(value: Any) -> str:
             return f'"{value}"'
         return value
     return str(value)
+
+# B1 test marker — safe to remove
