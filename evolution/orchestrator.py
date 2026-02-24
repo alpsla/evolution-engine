@@ -1043,5 +1043,3 @@ class Orchestrator:
     def _log(msg: str):
         print(msg)
 
-# B1 test marker — safe to remove
-# B1 re-test
