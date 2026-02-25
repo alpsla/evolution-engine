@@ -363,9 +363,7 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
         mkdir -p .evo
-        echo "Running: evo sources --json"
-        evo sources --json > .evo/sources.json 2>&1 || echo '{}' > .evo/sources.json
-        echo "Sources result: $(cat .evo/sources.json | head -c 500)"
+        evo sources --json > .evo/sources.json 2>/dev/null || echo '{}' > .evo/sources.json
 
     - name: Run analysis
       id: analyze
@@ -386,10 +384,8 @@ runs:
         fi
 
         # Run analysis
-        echo "Running: evo analyze . $ARGS"
-        RESULT=$(evo analyze . $ARGS 2>&1 || echo '{"status":"error"}')
+        RESULT=$(evo analyze . $ARGS 2>/dev/null || echo '{"status":"error"}')
         echo "$RESULT" > .evo/analysis_result.json
-        echo "Analysis result (first 500 chars): $(echo "$RESULT" | head -c 500)"
 
         # Extract outputs
         STATUS=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','error'))")
@@ -455,14 +451,12 @@ runs:
           FORMAT_ARGS="$FORMAT_ARGS --report-url $REPORT_URL"
         fi
 
-        echo "Running: python3 ${{ github.action_path }}/format_comment.py $FORMAT_ARGS"
         python3 "${{ github.action_path }}/format_comment.py" \
           $FORMAT_ARGS \
-          2>&1 || true
+          2>/dev/null || true
 
         if [ ! -f .evo/pr_comment.md ]; then
           echo "No comment to post (analysis may have found no issues)"
-          echo "Advisory exists: $(ls -la .evo/phase5/advisory.json 2>&1)"
           exit 0
         fi
 
