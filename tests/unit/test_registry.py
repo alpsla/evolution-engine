@@ -154,6 +154,9 @@ class TestTier2Detection:
 
     def test_no_token_no_tier2(self, mock_repo, monkeypatch):
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+        monkeypatch.delenv("GITLAB_TOKEN", raising=False)
+        monkeypatch.delenv("GITLAB_PRIVATE_TOKEN", raising=False)
+        monkeypatch.delenv("SENTRY_AUTH_TOKEN", raising=False)
         registry = AdapterRegistry(mock_repo)
         configs = registry.detect()
         tier2 = [c for c in configs if c.tier == 2]
