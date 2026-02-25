@@ -17,6 +17,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+from evolution.phase5_engine import _dedup_and_limit_patterns
 from evolution.friendly import (
     risk_level, relative_change, metric_insight, friendly_pattern,
     pattern_risk_assessment, _severity_rank,
@@ -955,7 +956,7 @@ def _build_pattern_section(matches, candidates):
 
     PATTERN_VISIBLE_LIMIT = 3
 
-    # Assess all patterns to determine overall risk
+    # Assess all patterns to determine overall risk (before dedup for accurate counts)
     all_patterns = list(matches) + list(candidates)
     all_risks = [pattern_risk_assessment(p) for p in all_patterns]
     severity_counts = {}
@@ -966,18 +967,23 @@ def _build_pattern_section(matches, candidates):
         if _severity_rank(sev) > _severity_rank(highest_severity):
             highest_severity = sev
 
+    # Dedup patterns by family+metric (same logic as CLI output)
+    deduped_matches = _dedup_and_limit_patterns(matches, limit=len(matches)) if matches else []
+    deduped_candidates = _dedup_and_limit_patterns(candidates, limit=len(candidates)) if candidates else []
+    deduped_all = list(deduped_matches) + list(deduped_candidates)
+
     # Sort all patterns by severity (most critical first), unified list
-    matches_set = set(id(p) for p in matches)
+    matches_set = set(id(p) for p in deduped_matches)
     all_sorted = sorted(
-        all_patterns,
+        deduped_all,
         key=lambda p: _severity_rank(pattern_risk_assessment(p)["severity"]),
         reverse=True,
     )
 
-    all_cards = []
-    for p in all_sorted:
-        badge = "Known Pattern" if id(p) in matches_set else "New Pattern"
-        all_cards.extend(_grouped_cards([p], badge))
+    # Group all patterns together so _grouped_cards can merge identical impacts
+    known = [p for p in all_sorted if id(p) in matches_set]
+    new = [p for p in all_sorted if id(p) not in matches_set]
+    all_cards = _grouped_cards(known, "Known Pattern") + _grouped_cards(new, "New Pattern")
 
     cards_html = _collapsible_pattern_cards(all_cards, "patterns", PATTERN_VISIBLE_LIMIT)
 
