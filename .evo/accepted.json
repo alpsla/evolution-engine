@@ -2,24 +2,23 @@
   "version": 2,
   "accepted": [
     {
-      "key": "git:cochange_novelty_ratio",
-      "family": "git",
-      "metric": "cochange_novelty_ratio",
-      "reason": "",
-      "accepted_at": "2026-02-24T04:59:21.254414+00:00",
-      "from_advisory": "86090858a123c12b",
-      "scope": {
-        "type": "this-run",
-        "advisory_id": "86090858a123c12b"
-      }
-    },
-    {
       "key": "git:change_locality",
       "family": "git",
       "metric": "change_locality",
       "reason": "",
       "accepted_at": "2026-02-24T05:03:37.855261+00:00",
       "from_advisory": "86090858a123c12b",
+      "scope": {
+        "type": "permanent"
+      }
+    },
+    {
+      "key": "git:cochange_novelty_ratio",
+      "family": "git",
+      "metric": "cochange_novelty_ratio",
+      "reason": "",
+      "accepted_at": "2026-02-25T00:44:53.132200+00:00",
+      "from_advisory": "7bc46d55d7747353",
       "scope": {
         "type": "permanent"
       }

@@ -411,3 +411,4 @@ Evolution Engine uses a dual-license model:
 | Community patterns | CC0-1.0 | — |
 
 The BSL 1.1 license permits non-production use without a commercial license. Production use requires a [Pro subscription](https://codequal.dev/#pricing). On **2029-02-20** the core engine automatically converts to MIT.
+# Performance test
