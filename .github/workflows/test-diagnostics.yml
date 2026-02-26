@@ -1,0 +1,464 @@
+# Test adapter diagnostics across 4 scenarios:
+#   1. GitHub Free  — GITHUB_TOKEN, no Pro → Tier 2 gated (no_license)
+#   2. GitHub Pro   — GITHUB_TOKEN + Pro   → Tier 2 active or no_data
+#   3. GitLab Free  — GITLAB_TOKEN on GitHub remote → platform_mismatch + no_license
+#   4. GitLab Pro   — GITLAB_TOKEN on GitHub remote → platform_mismatch
+#
+# Uses alpsla/codequal as the test target (has both GitHub and GitLab remotes).
+
+name: Test Diagnostics
+
+on:
+  workflow_dispatch:
+    inputs:
+      target-repo:
+        description: "GitHub repo to clone for testing"
+        default: "alpsla/codequal"
+      gitlab-project:
+        description: "GitLab project path (group/project)"
+        default: "alpsla/codequal"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # ────────────────────────────────────────────
+  # Scenario 1: GitHub Free tier
+  # ────────────────────────────────────────────
+  github-free:
+    name: "GitHub Free (no_license expected)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.target-repo || 'alpsla/codequal' }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install EE from source
+        run: |
+          # Clone evolution-engine and install from source
+          git clone --depth 1 https://github.com/alpsla/evolution-engine.git /tmp/ee
+          pip install -e /tmp/ee
+
+      - name: Run analysis (Free tier — no license key)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No EVO_LICENSE_KEY → free tier
+        run: |
+          evo analyze . --quiet || true
+          echo "--- Analysis complete ---"
+
+      - name: Verify diagnostics.json
+        run: |
+          echo "=== diagnostics.json ==="
+          cat .evo/diagnostics.json 2>/dev/null || echo "(not created)"
+          echo ""
+
+          # Validate: ci and deployment should be no_license
+          python3 -c "
+          import json, sys
+          try:
+              d = json.loads(open('.evo/diagnostics.json').read())
+          except FileNotFoundError:
+              print('WARN: diagnostics.json not found')
+              sys.exit(0)
+
+          errors = []
+          for fam in ['ci', 'deployment']:
+              if fam in d:
+                  if d[fam]['status'] != 'no_license':
+                      errors.append(f'{fam}: expected no_license, got {d[fam][\"status\"]}')
+                  else:
+                      print(f'✅ {fam}: {d[fam][\"status\"]} — {d[fam][\"message\"]}')
+              else:
+                  print(f'ℹ️  {fam}: not in diagnostics (not detected)')
+
+          for fam in ['version_control', 'dependency']:
+              if fam in d and d[fam]['status'] == 'active':
+                  print(f'✅ {fam}: active')
+
+          if errors:
+              for e in errors:
+                  print(f'❌ {e}')
+              sys.exit(1)
+          "
+
+      - name: Generate and check report
+        run: |
+          if [ -f .evo/phase5/advisory.json ]; then
+            evo report . --output .evo/report-github-free.html 2>/dev/null || true
+            echo "Report generated: .evo/report-github-free.html"
+          else
+            echo "No advisory — skipping report"
+          fi
+
+      - name: Generate PR comment (dry run)
+        run: |
+          if [ -f .evo/phase5/advisory.json ]; then
+            evo sources --json > .evo/sources.json 2>/dev/null || true
+
+            FORMAT_ARGS="--advisory .evo/phase5/advisory.json --output .evo/comment.md"
+            [ -f .evo/sources.json ] && FORMAT_ARGS="$FORMAT_ARGS --sources .evo/sources.json"
+            [ -f .evo/diagnostics.json ] && FORMAT_ARGS="$FORMAT_ARGS --diagnostics .evo/diagnostics.json"
+
+            python3 -m evolution.format_comment $FORMAT_ARGS 2>/dev/null || true
+
+            echo "=== PR Comment ==="
+            cat .evo/comment.md 2>/dev/null || echo "(no comment generated)"
+          fi
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-free-results
+          path: |
+            .evo/diagnostics.json
+            .evo/phase5/advisory.json
+            .evo/report-github-free.html
+            .evo/comment.md
+          if-no-files-found: ignore
+
+  # ────────────────────────────────────────────
+  # Scenario 2: GitHub Pro tier
+  # ────────────────────────────────────────────
+  github-pro:
+    name: "GitHub Pro (active/no_data expected)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.target-repo || 'alpsla/codequal' }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install EE from source
+        run: |
+          git clone --depth 1 https://github.com/alpsla/evolution-engine.git /tmp/ee
+          pip install -e /tmp/ee
+
+      - name: Run analysis (Pro tier)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVO_LICENSE_KEY: ${{ secrets.EVO_LICENSE_KEY }}
+        run: |
+          evo analyze . --quiet || true
+          echo "--- Analysis complete ---"
+
+      - name: Verify diagnostics.json
+        run: |
+          echo "=== diagnostics.json ==="
+          cat .evo/diagnostics.json 2>/dev/null || echo "(not created)"
+          echo ""
+
+          python3 -c "
+          import json, sys
+          try:
+              d = json.loads(open('.evo/diagnostics.json').read())
+          except FileNotFoundError:
+              print('WARN: diagnostics.json not found')
+              sys.exit(0)
+
+          for fam in ['ci', 'deployment']:
+              if fam in d:
+                  status = d[fam]['status']
+                  if status in ('active', 'no_data'):
+                      print(f'✅ {fam}: {status} — {d[fam].get(\"message\", \"\")}')
+                  elif status == 'no_license':
+                      print(f'❌ {fam}: no_license (should be active/no_data with Pro)')
+                      sys.exit(1)
+                  else:
+                      print(f'ℹ️  {fam}: {status} — {d[fam].get(\"message\", \"\")}')
+
+          for fam in ['version_control', 'dependency']:
+              if fam in d and d[fam]['status'] == 'active':
+                  print(f'✅ {fam}: active')
+          "
+
+      - name: Generate and check report
+        run: |
+          if [ -f .evo/phase5/advisory.json ]; then
+            evo report . --output .evo/report-github-pro.html 2>/dev/null || true
+            # Check for diagnostic badges in report
+            if grep -q 'source-status-warn\|Platform Mismatch\|API Error\|No Data' .evo/report-github-pro.html 2>/dev/null; then
+              echo "✅ Report contains diagnostic badges"
+            else
+              echo "ℹ️  No diagnostic badges (all sources may be active)"
+            fi
+          fi
+
+      - name: Generate PR comment (dry run)
+        run: |
+          if [ -f .evo/phase5/advisory.json ]; then
+            evo sources --json > .evo/sources.json 2>/dev/null || true
+
+            FORMAT_ARGS="--advisory .evo/phase5/advisory.json --output .evo/comment.md"
+            [ -f .evo/sources.json ] && FORMAT_ARGS="$FORMAT_ARGS --sources .evo/sources.json"
+            [ -f .evo/diagnostics.json ] && FORMAT_ARGS="$FORMAT_ARGS --diagnostics .evo/diagnostics.json"
+
+            python3 -m evolution.format_comment $FORMAT_ARGS 2>/dev/null || true
+
+            echo "=== PR Comment ==="
+            cat .evo/comment.md 2>/dev/null || echo "(no comment generated)"
+          fi
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-pro-results
+          path: |
+            .evo/diagnostics.json
+            .evo/phase5/advisory.json
+            .evo/report-github-pro.html
+            .evo/comment.md
+          if-no-files-found: ignore
+
+  # ────────────────────────────────────────────
+  # Scenario 3: GitLab token on GitHub remote (Free)
+  # ────────────────────────────────────────────
+  gitlab-free:
+    name: "GitLab Free on GitHub remote (platform_mismatch expected)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.target-repo || 'alpsla/codequal' }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install EE from source
+        run: |
+          git clone --depth 1 https://github.com/alpsla/evolution-engine.git /tmp/ee
+          pip install -e /tmp/ee
+
+      - name: Run analysis (GitLab token, GitHub remote, Free tier)
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          # No GITHUB_TOKEN → GitHub API won't fire
+          # No EVO_LICENSE_KEY → free tier
+        run: |
+          evo analyze . --quiet || true
+          echo "--- Analysis complete ---"
+
+      - name: Verify diagnostics.json
+        run: |
+          echo "=== diagnostics.json ==="
+          cat .evo/diagnostics.json 2>/dev/null || echo "(not created)"
+          echo ""
+
+          python3 -c "
+          import json, sys
+          try:
+              d = json.loads(open('.evo/diagnostics.json').read())
+          except FileNotFoundError:
+              print('WARN: diagnostics.json not found — Tier 2 not detected (Free tier blocks it)')
+              sys.exit(0)
+
+          # Free tier: Tier 2 families should be gated by license first
+          for fam in ['ci', 'deployment']:
+              if fam in d:
+                  status = d[fam]['status']
+                  # Free tier blocks before platform check, so expect no_license
+                  if status == 'no_license':
+                      print(f'✅ {fam}: no_license (Free tier blocks Tier 2)')
+                  elif status == 'platform_mismatch':
+                      print(f'✅ {fam}: platform_mismatch (GITLAB_TOKEN but GitHub remote)')
+                  else:
+                      print(f'ℹ️  {fam}: {status} — {d[fam].get(\"message\", \"\")}')
+
+          for fam in ['version_control', 'dependency']:
+              if fam in d and d[fam]['status'] == 'active':
+                  print(f'✅ {fam}: active')
+          "
+
+      - name: Generate PR comment (GitLab format, dry run)
+        run: |
+          if [ -f .evo/phase5/advisory.json ]; then
+            evo sources --json > .evo/sources.json 2>/dev/null || true
+
+            FORMAT_ARGS="--advisory .evo/phase5/advisory.json --output .evo/comment.md --ci-provider gitlab"
+            [ -f .evo/sources.json ] && FORMAT_ARGS="$FORMAT_ARGS --sources .evo/sources.json"
+            [ -f .evo/diagnostics.json ] && FORMAT_ARGS="$FORMAT_ARGS --diagnostics .evo/diagnostics.json"
+
+            python3 -m evolution.format_comment $FORMAT_ARGS 2>/dev/null || true
+
+            echo "=== MR Comment (GitLab format) ==="
+            cat .evo/comment.md 2>/dev/null || echo "(no comment generated)"
+          fi
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlab-free-results
+          path: |
+            .evo/diagnostics.json
+            .evo/phase5/advisory.json
+            .evo/comment.md
+          if-no-files-found: ignore
+
+  # ────────────────────────────────────────────
+  # Scenario 4: GitLab token on GitHub remote (Pro)
+  # ────────────────────────────────────────────
+  gitlab-pro:
+    name: "GitLab Pro on GitHub remote (platform_mismatch expected)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.target-repo || 'alpsla/codequal' }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install EE from source
+        run: |
+          git clone --depth 1 https://github.com/alpsla/evolution-engine.git /tmp/ee
+          pip install -e /tmp/ee
+
+      - name: Run analysis (GitLab token, GitHub remote, Pro tier)
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          EVO_LICENSE_KEY: ${{ secrets.EVO_LICENSE_KEY }}
+          # No GITHUB_TOKEN → GitHub API won't fire
+        run: |
+          evo analyze . --quiet || true
+          echo "--- Analysis complete ---"
+
+      - name: Verify diagnostics.json
+        run: |
+          echo "=== diagnostics.json ==="
+          cat .evo/diagnostics.json 2>/dev/null || echo "(not created)"
+          echo ""
+
+          python3 -c "
+          import json, sys
+          try:
+              d = json.loads(open('.evo/diagnostics.json').read())
+          except FileNotFoundError:
+              print('WARN: diagnostics.json not found')
+              sys.exit(0)
+
+          errors = []
+          for fam in ['ci', 'deployment']:
+              if fam in d:
+                  status = d[fam]['status']
+                  if status == 'platform_mismatch':
+                      print(f'✅ {fam}: platform_mismatch — {d[fam][\"message\"]}')
+                  else:
+                      errors.append(f'{fam}: expected platform_mismatch, got {status}')
+
+          for fam in ['version_control', 'dependency']:
+              if fam in d and d[fam]['status'] == 'active':
+                  print(f'✅ {fam}: active')
+
+          if errors:
+              for e in errors:
+                  print(f'❌ {e}')
+              sys.exit(1)
+          "
+
+      - name: Generate report and PR comment (GitLab format)
+        run: |
+          if [ -f .evo/phase5/advisory.json ]; then
+            evo report . --output .evo/report-gitlab-pro.html 2>/dev/null || true
+
+            # Check for Platform Mismatch badge
+            if grep -q 'Platform Mismatch' .evo/report-gitlab-pro.html 2>/dev/null; then
+              echo "✅ Report shows Platform Mismatch badge for Tier 2 families"
+            else
+              echo "⚠️  Platform Mismatch badge not found in report"
+            fi
+
+            evo sources --json > .evo/sources.json 2>/dev/null || true
+
+            FORMAT_ARGS="--advisory .evo/phase5/advisory.json --output .evo/comment.md --ci-provider gitlab"
+            [ -f .evo/sources.json ] && FORMAT_ARGS="$FORMAT_ARGS --sources .evo/sources.json"
+            [ -f .evo/diagnostics.json ] && FORMAT_ARGS="$FORMAT_ARGS --diagnostics .evo/diagnostics.json"
+
+            python3 -m evolution.format_comment $FORMAT_ARGS 2>/dev/null || true
+
+            echo "=== MR Comment (GitLab format) ==="
+            cat .evo/comment.md 2>/dev/null || echo "(no comment generated)"
+
+            # Check for diagnostic hint in comment
+            if grep -q 'token/remote mismatch' .evo/comment.md 2>/dev/null; then
+              echo "✅ PR comment shows (token/remote mismatch) hint"
+            fi
+          fi
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlab-pro-results
+          path: |
+            .evo/diagnostics.json
+            .evo/phase5/advisory.json
+            .evo/report-gitlab-pro.html
+            .evo/comment.md
+          if-no-files-found: ignore
+
+  # ────────────────────────────────────────────
+  # Summary: compare all 4 scenarios
+  # ────────────────────────────────────────────
+  summary:
+    name: "Summary"
+    needs: [github-free, github-pro, gitlab-free, gitlab-pro]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: results/
+
+      - name: Compare diagnostics across scenarios
+        run: |
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║          Adapter Diagnostics — 4-Scenario Summary          ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+          echo ""
+
+          for scenario in github-free github-pro gitlab-free gitlab-pro; do
+            echo "━━━ ${scenario} ━━━"
+            if [ -f "results/${scenario}-results/diagnostics.json" ]; then
+              python3 -c "
+          import json
+          d = json.loads(open('results/${scenario}-results/diagnostics.json').read())
+          for fam in sorted(d.keys()):
+              status = d[fam]['status']
+              msg = d[fam].get('message', '')[:60]
+              icon = {'active':'✅','no_license':'🔒','platform_mismatch':'⚠️','no_data':'📭','api_error':'❌'}.get(status,'❓')
+              print(f'  {icon} {fam:20s} {status:20s} {msg}')
+          "
+            else
+              echo "  (no diagnostics.json)"
+            fi
+            echo ""
+          done
+
+          echo "Expected results:"
+          echo "  github-free:  version_control=active, ci/deployment=no_license"
+          echo "  github-pro:   version_control=active, ci/deployment=active|no_data"
+          echo "  gitlab-free:  version_control=active, ci/deployment=no_license"
+          echo "  gitlab-pro:   version_control=active, ci/deployment=platform_mismatch"

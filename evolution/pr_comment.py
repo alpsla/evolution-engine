@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Optional
 
 from evolution.friendly import metric_insight, risk_level
+from evolution.phase5_engine import _dedup_and_limit_patterns
 
 
 # ─── Risk Badge Emojis ───
@@ -61,6 +62,7 @@ def format_pr_comment(
     investigation_prompt: Optional[str] = None,
     report_url: Optional[str] = None,
     ci_provider: Optional[str] = None,
+    diagnostics: Optional[dict] = None,
 ) -> str:
     """Format a Phase 5 advisory as a PR/MR comment.
 
@@ -87,7 +89,7 @@ def format_pr_comment(
     if significant == 0:
         lines = ["## Evolution Engine Analysis", ""]
         if sources_info:
-            lines.extend(_format_sources_section(sources_info, ci_provider=ci_provider))
+            lines.extend(_format_sources_section(sources_info, ci_provider=ci_provider, diagnostics=diagnostics))
         lines.append("\u2705 **All clear** — no significant deviations detected.")
         lines.append("")
         # Show accepted deviations even in all-clear state
@@ -117,7 +119,7 @@ def format_pr_comment(
 
     # Sources section (What EE Can See)
     if sources_info:
-        lines.extend(_format_sources_section(sources_info, ci_provider=ci_provider))
+        lines.extend(_format_sources_section(sources_info, ci_provider=ci_provider, diagnostics=diagnostics))
 
     # Findings header
     lines.append("### Findings")
@@ -154,21 +156,23 @@ def format_pr_comment(
         lines.append(f"> Manage with `evo accepted list`")
         lines.append("")
 
-    # Pattern matches
-    if patterns or candidates:
+    # Pattern matches (dedup before counting and display)
+    deduped_patterns = _dedup_and_limit_patterns(patterns, limit=len(patterns)) if patterns else []
+    deduped_candidates = _dedup_and_limit_patterns(candidates, limit=len(candidates)) if candidates else []
+    if deduped_patterns or deduped_candidates:
         lines.append("<details>")
-        lines.append(f"<summary><strong>Patterns ({len(patterns)} known, {len(candidates)} candidate)</strong></summary>")
+        lines.append(f"<summary><strong>Patterns ({len(deduped_patterns)} known, {len(deduped_candidates)} candidate)</strong></summary>")
         lines.append("")
 
-        if patterns:
-            for p in patterns[:5]:
+        if deduped_patterns:
+            for p in deduped_patterns[:5]:
                 desc = p.get("description", "")[:200]
                 sources = ", ".join(p.get("sources", []))
                 lines.append(f"- **[{sources}]** {desc}")
 
-        if candidates:
+        if deduped_candidates:
             lines.append("")
-            for p in candidates[:5]:
+            for p in deduped_candidates[:5]:
                 desc = p.get("description", "")[:200]
                 families = ", ".join(p.get("families", []))
                 lines.append(f"- *[{families}]* {desc}")
@@ -373,12 +377,14 @@ def format_accepted_comment(
 # ─── Internal helpers ───
 
 
-def _format_sources_section(sources_info: dict, ci_provider: Optional[str] = None) -> list[str]:
+def _format_sources_section(sources_info: dict, ci_provider: Optional[str] = None,
+                            diagnostics: Optional[dict] = None) -> list[str]:
     """Format the 'What EE Can See' section from sources info.
 
     Args:
         sources_info: Dict from `evo sources --json` with connected/detected keys.
         ci_provider: CI platform — "gitlab" shows GITLAB_TOKEN hint.
+        diagnostics: Optional dict from diagnostics.json with per-family status.
 
     Returns:
         List of markdown lines.
@@ -388,8 +394,17 @@ def _format_sources_section(sources_info: dict, ci_provider: Optional[str] = Non
     connected = sources_info.get("connected", [])
     detected = sources_info.get("detected", [])
     connected_families = set(sources_info.get("current_families", []))
+    diagnostics = diagnostics or {}
 
     token_name = "GITLAB_TOKEN" if ci_provider == "gitlab" else "GITHUB_TOKEN"
+
+    # Diagnostic hint suffixes for PR comments
+    _DIAG_HINTS = {
+        "platform_mismatch": "(token/remote mismatch)",
+        "no_data": "(0 events)",
+        "api_error": "(API error)",
+        "no_license": "(requires Pro)",
+    }
 
     # Always show git (built-in) — sources may report as "git" or "version_control"
     if "git" in connected_families or "version_control" in connected_families:
@@ -407,7 +422,13 @@ def _format_sources_section(sources_info: dict, ci_provider: Optional[str] = Non
         seen_display.add(display)
         tier = c.get("tier", 1)
         pro_badge = " `Pro`" if tier == 2 else ""
-        lines.append(f"\u2705 {display}{pro_badge}")
+
+        # Check diagnostics for this family
+        diag = diagnostics.get(family)
+        diag_hint = ""
+        if diag and diag.get("status") in _DIAG_HINTS:
+            diag_hint = f" {_DIAG_HINTS[diag['status']]}"
+        lines.append(f"\u2705 {display}{pro_badge}{diag_hint}")
 
     # Track detected families (only show CI/deployment as actionable hints)
     seen_families = set()
