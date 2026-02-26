@@ -63,13 +63,13 @@
       evo <span>by CodeQual</span>
     </a>
     <ul class="nav-links">
-      <li><a href="/#features">Features</a></li>
-      <li><a href="/#pricing">Pricing</a></li>
-      <li><a href="/adapters">Adapters</a></li>
-      <li><a href="/docs/integrations">Data Sources</a></li>
-      <li><a href="/docs" style="color: var(--text)">Docs</a></li>
-      <li><a href="/privacy">Privacy</a></li>
-      <li><a href="/#install" class="btn btn-primary btn-sm">Get Started</a></li>
+      <li><a href="/#features" data-i18n="nav.features">Features</a></li>
+      <li><a href="/#pricing" data-i18n="nav.pricing">Pricing</a></li>
+      <li><a href="/adapters" data-i18n="nav.adapters">Adapters</a></li>
+      <li><a href="/docs/integrations" data-i18n="nav.data_sources">Data Sources</a></li>
+      <li><a href="/docs" style="color: var(--text)" data-i18n="nav.docs">Docs</a></li>
+      <li><a href="/privacy" data-i18n="nav.privacy">Privacy</a></li>
+      <li><a href="/#install" class="btn btn-primary btn-sm" data-i18n="nav.get_started">Get Started</a></li>
       <li class="lang-switcher">
         <button class="lang-btn active" data-lang="en" onclick="switchLanguage('en')">EN</button>
         <button class="lang-btn" data-lang="de" onclick="switchLanguage('de')">DE</button>
@@ -81,53 +81,53 @@
 </nav>
 
 <div class="docs container">
-  <h1>Documentation</h1>
-  <p class="lead">Everything you need to get started with Evolution Engine.</p>
+  <h1 data-i18n="docs_page.title">Documentation</h1>
+  <p class="lead" data-i18n="docs_page.lead">Everything you need to get started with Evolution Engine.</p>
 
   <div class="toc">
     <ul>
-      <li><a href="#quickstart">Quickstart</a></li>
-      <li><a href="#integration-paths">Integration Paths</a></li>
-      <li><a href="#commands">CLI Commands</a></li>
-      <li><a href="#discovery-updates">Discovery & Updates</a></li>
-      <li><a href="#build-adapter">Build Your Own Adapter</a></li>
-      <li><a href="#adapter-contract">Adapter Contract</a></li>
-      <li><a href="#submit-adapter">Submit Your Adapter</a></li>
+      <li><a href="#quickstart" data-i18n="docs_page.toc_quickstart">Quickstart</a></li>
+      <li><a href="#integration-paths" data-i18n="docs_page.toc_integration_paths">Integration Paths</a></li>
+      <li><a href="#commands" data-i18n="docs_page.toc_commands">CLI Commands</a></li>
+      <li><a href="#discovery-updates" data-i18n="docs_page.toc_discovery_updates">Discovery & Updates</a></li>
+      <li><a href="#build-adapter" data-i18n="docs_page.toc_build_adapter">Build Your Own Adapter</a></li>
+      <li><a href="#adapter-contract" data-i18n="docs_page.toc_adapter_contract">Adapter Contract</a></li>
+      <li><a href="#submit-adapter" data-i18n="docs_page.toc_submit_adapter">Submit Your Adapter</a></li>
     </ul>
   </div>
 
   <!-- Quickstart -->
-  <h2 id="quickstart">Quickstart</h2>
+  <h2 id="quickstart" data-i18n="docs_page.quickstart_title">Quickstart</h2>
 
-  <h3>Install</h3>
+  <h3 data-i18n="docs_page.quickstart_install">Install</h3>
   <pre><code>pip install evolution-engine</code></pre>
 
-  <h3>Analyze a repository</h3>
+  <h3 data-i18n="docs_page.quickstart_analyze">Analyze a repository</h3>
   <pre><code>cd your-repo
 evo analyze .</code></pre>
-  <p>EE auto-detects your tools (git history, lockfiles, CI configs) and runs the full 5-phase pipeline: events, signals, explanations, patterns, and advisory.</p>
+  <p data-i18n="docs_page.quickstart_analyze_desc">EE auto-detects your tools (git history, lockfiles, CI configs) and runs the full 5-phase pipeline: events, signals, explanations, patterns, and advisory.</p>
 
-  <h3>See what data sources are available</h3>
+  <h3 data-i18n="docs_page.quickstart_sources">See what data sources are available</h3>
   <pre><code>evo sources .</code></pre>
-  <p>Shows connected adapters and tools detected in your repo that could provide additional signals.</p>
+  <p data-i18n="docs_page.quickstart_sources_desc">Shows connected adapters and tools detected in your repo that could provide additional signals.</p>
 
-  <h3>Unlock CI and deployment data (Pro)</h3>
+  <h3 data-i18n="docs_page.quickstart_pro">Unlock CI and deployment data (Pro)</h3>
   <pre><code>evo analyze . --token ghp_your_github_token</code></pre>
 
   <!-- Integration Paths -->
-  <h2 id="integration-paths">Integration Paths</h2>
+  <h2 id="integration-paths" data-i18n="docs_page.integration_title">Integration Paths</h2>
 
-  <p>EE supports three integration paths. Start with the CLI, graduate to hooks when you trust the output, and add the GitHub Action for team-wide coverage.</p>
+  <p data-i18n="docs_page.integration_desc">EE supports three integration paths. Start with the CLI, graduate to hooks when you trust the output, and add the GitHub Action for team-wide coverage.</p>
 
   <pre><code>Path 1: CLI             Path 2: Git Hooks          Path 3: GitHub Action
   evo analyze .    -->    evo init --path hooks  -->  evo init --path action
   (manual)                (every commit)              (every PR)</code></pre>
 
-  <h3>Path 1: CLI (manual)</h3>
-  <p>Already covered above. Run <code>evo analyze .</code> whenever you want to check on your repo.</p>
+  <h3 data-i18n="docs_page.path1_title">Path 1: CLI (manual)</h3>
+  <p data-i18n="docs_page.path1_desc">Already covered above. Run <code>evo analyze .</code> whenever you want to check on your repo.</p>
 
-  <h3 id="git-hooks">Path 2: Git Hooks (automatic, local)</h3>
-  <p>Git hooks run analysis on every commit or push automatically. The hook runs in the background and never blocks your commit.</p>
+  <h3 id="git-hooks" data-i18n="docs_page.path2_title">Path 2: Git Hooks (automatic, local)</h3>
+  <p data-i18n="docs_page.path2_desc">Git hooks run analysis on every commit or push automatically. The hook runs in the background and never blocks your commit.</p>
 
   <pre><code># Set up in one command
 evo init . --path hooks
@@ -138,15 +138,15 @@ evo hooks install .
 # Use pre-push instead of post-commit
 evo hooks install . --trigger pre-push</code></pre>
 
-  <p>When the hook detects significant changes, it:</p>
+  <p data-i18n="docs_page.path2_hook_intro">When the hook detects significant changes, it:</p>
   <ul>
-    <li>Sends a desktop notification (macOS and Linux)</li>
-    <li>Opens the HTML report in your browser</li>
-    <li>Saves a history snapshot for later comparison</li>
+    <li data-i18n="docs_page.path2_hook_notify">Sends a desktop notification (macOS and Linux)</li>
+    <li data-i18n="docs_page.path2_hook_report">Opens the HTML report in your browser</li>
+    <li data-i18n="docs_page.path2_hook_snapshot">Saves a history snapshot for later comparison</li>
   </ul>
 
-  <h4>Configuration</h4>
-  <p>Customize hook behavior with <code>evo config set</code>:</p>
+  <h4 data-i18n="docs_page.path2_config_title">Configuration</h4>
+  <p data-i18n="docs_page.path2_config_desc">Customize hook behavior with <code>evo config set</code>:</p>
   <pre><code># Only notify on critical findings (default: concern)
 evo config set hooks.min_severity critical
 
@@ -162,25 +162,25 @@ evo config set hooks.background false
 # Only analyze specific families
 evo config set hooks.families "git,ci"</code></pre>
 
-  <p>All hook settings:</p>
+  <p data-i18n="docs_page.path2_settings_intro">All hook settings:</p>
   <ul>
-    <li><code>hooks.trigger</code> — <code>post-commit</code> (default) or <code>pre-push</code></li>
-    <li><code>hooks.min_severity</code> — Notification threshold: <code>info</code>, <code>watch</code>, <code>concern</code> (default), <code>critical</code></li>
-    <li><code>hooks.notify</code> — Desktop notifications (default: <code>true</code>)</li>
-    <li><code>hooks.auto_open</code> — Open report in browser (default: <code>true</code>)</li>
-    <li><code>hooks.background</code> — Non-blocking execution (default: <code>true</code>)</li>
-    <li><code>hooks.families</code> — Filter families (default: auto-detect all)</li>
+    <li data-i18n="docs_page.path2_setting_trigger"><code>hooks.trigger</code> — <code>post-commit</code> (default) or <code>pre-push</code></li>
+    <li data-i18n="docs_page.path2_setting_severity"><code>hooks.min_severity</code> — Notification threshold: <code>info</code>, <code>watch</code>, <code>concern</code> (default), <code>critical</code></li>
+    <li data-i18n="docs_page.path2_setting_notify"><code>hooks.notify</code> — Desktop notifications (default: <code>true</code>)</li>
+    <li data-i18n="docs_page.path2_setting_auto_open"><code>hooks.auto_open</code> — Open report in browser (default: <code>true</code>)</li>
+    <li data-i18n="docs_page.path2_setting_background"><code>hooks.background</code> — Non-blocking execution (default: <code>true</code>)</li>
+    <li data-i18n="docs_page.path2_setting_families"><code>hooks.families</code> — Filter families (default: auto-detect all)</li>
   </ul>
 
-  <h4>Management</h4>
+  <h4 data-i18n="docs_page.path2_management_title">Management</h4>
   <pre><code># Check hook status
 evo hooks status .
 
 # Remove hooks
 evo hooks uninstall .</code></pre>
 
-  <h4>Commit Watcher (alternative)</h4>
-  <p>For repos where git hooks aren't practical, use the commit watcher:</p>
+  <h4 data-i18n="docs_page.path2_watcher_title">Commit Watcher (alternative)</h4>
+  <p data-i18n="docs_page.path2_watcher_desc">For repos where git hooks aren't practical, use the commit watcher:</p>
   <pre><code># Foreground mode (Ctrl+C to stop)
 evo watch .
 
@@ -189,19 +189,19 @@ evo watch . --daemon
 evo watch . --status
 evo watch . --stop</code></pre>
 
-  <h3 id="github-action">Path 3: GitHub Action (CI)</h3>
-  <p>Add Evolution Engine to your pull request workflow. Every PR gets an analysis comment with risk badges.</p>
+  <h3 id="github-action" data-i18n="docs_page.path3_title">Path 3: GitHub Action (CI)</h3>
+  <p data-i18n="docs_page.path3_desc">Add Evolution Engine to your pull request workflow. Every PR gets an analysis comment with risk badges.</p>
 
   <pre><code># Generate workflow file
 evo init . --path action</code></pre>
 
-  <p>This creates <code>.github/workflows/evolution.yml</code>. The action:</p>
+  <p data-i18n="docs_page.path3_creates">This creates <code>.github/workflows/evolution.yml</code>. The action:</p>
   <ul>
-    <li>Runs <code>evo analyze</code> on every PR</li>
-    <li>Posts a summary comment with risk levels and evidence</li>
-    <li>Optionally runs AI investigation on High/Critical findings</li>
-    <li>Compares against previous analysis on subsequent pushes</li>
-    <li>Posts inline fix suggestions as review comments</li>
+    <li data-i18n="docs_page.path3_action_analyze">Runs <code>evo analyze</code> on every PR</li>
+    <li data-i18n="docs_page.path3_action_comment">Posts a summary comment with risk levels and evidence</li>
+    <li data-i18n="docs_page.path3_action_investigate">Optionally runs AI investigation on High/Critical findings</li>
+    <li data-i18n="docs_page.path3_action_compare">Compares against previous analysis on subsequent pushes</li>
+    <li data-i18n="docs_page.path3_action_inline">Posts inline fix suggestions as review comments</li>
   </ul>
 
   <pre><code># Sample workflow (generated by evo init)
@@ -213,115 +213,115 @@ evo init . --path action</code></pre>
     validate-on-push: true  # Compare on subsequent pushes</code></pre>
 
   <div class="callout">
-    <p><strong>All three paths work together.</strong> Use hooks for instant local feedback, the Action for team-wide PR coverage, and the CLI for ad-hoc deep dives. Run <code>evo init . --path all</code> to set up everything at once.</p>
+    <p data-i18n="docs_page.callout_paths"><strong>All three paths work together.</strong> Use hooks for instant local feedback, the Action for team-wide PR coverage, and the CLI for ad-hoc deep dives. Run <code>evo init . --path all</code> to set up everything at once.</p>
   </div>
 
   <!-- Commands -->
-  <h2 id="commands">CLI Commands</h2>
+  <h2 id="commands" data-i18n="docs_page.commands_title">CLI Commands</h2>
 
-  <h3>Core</h3>
+  <h3 data-i18n="docs_page.commands_core">Core</h3>
   <ul>
-    <li><code>evo analyze [path]</code> — Run the full pipeline (detect adapters, compute signals, generate advisory)</li>
-    <li><code>evo sources [path]</code> — Show connected and detected data sources</li>
-    <li><code>evo sources --what-if datadog</code> — Estimate impact of adding an adapter</li>
-    <li><code>evo status [path]</code> — Show detected adapters and last run info</li>
-    <li><code>evo report [path]</code> — Generate an HTML report</li>
+    <li data-i18n="docs_page.cmd_analyze"><code>evo analyze [path]</code> — Run the full pipeline (detect adapters, compute signals, generate advisory)</li>
+    <li data-i18n="docs_page.cmd_sources"><code>evo sources [path]</code> — Show connected and detected data sources</li>
+    <li data-i18n="docs_page.cmd_sources_whatif"><code>evo sources --what-if datadog</code> — Estimate impact of adding an adapter</li>
+    <li data-i18n="docs_page.cmd_status"><code>evo status [path]</code> — Show detected adapters and last run info</li>
+    <li data-i18n="docs_page.cmd_report"><code>evo report [path]</code> — Generate an HTML report</li>
   </ul>
 
-  <h3>AI Investigation (Pro)</h3>
+  <h3 data-i18n="docs_page.commands_investigate">AI Investigation (Pro)</h3>
   <ul>
-    <li><code>evo investigate [path]</code> — AI investigation of advisory findings</li>
-    <li><code>evo investigate . --show-prompt</code> — Print the prompt for manual use</li>
-    <li><code>evo fix [path]</code> — AI fix loop (iterate until advisory clears)</li>
-    <li><code>evo fix . --dry-run</code> — Preview fix prompt without modifying files</li>
+    <li data-i18n="docs_page.cmd_investigate"><code>evo investigate [path]</code> — AI investigation of advisory findings</li>
+    <li data-i18n="docs_page.cmd_investigate_prompt"><code>evo investigate . --show-prompt</code> — Print the prompt for manual use</li>
+    <li data-i18n="docs_page.cmd_fix"><code>evo fix [path]</code> — AI fix loop (iterate until advisory clears)</li>
+    <li data-i18n="docs_page.cmd_fix_dry"><code>evo fix . --dry-run</code> — Preview fix prompt without modifying files</li>
   </ul>
 
-  <h3>Adapters</h3>
+  <h3 data-i18n="docs_page.commands_adapters">Adapters</h3>
   <ul>
-    <li><code>evo adapter list</code> — List detected adapters with trust badges</li>
-    <li><code>evo adapter discover [path]</code> — Find available adapters for tools in your repo</li>
-    <li><code>evo adapter new &lt;name&gt; --family ci</code> — Scaffold a new adapter package</li>
-    <li><code>evo adapter validate &lt;path&gt;</code> — Validate an adapter against the contract</li>
-    <li><code>evo adapter validate &lt;path&gt; --security</code> — Validate + security scan</li>
-    <li><code>evo adapter security-check &lt;target&gt;</code> — Standalone security scan</li>
-    <li><code>evo adapter guide</code> — Show the full adapter building guide</li>
-    <li><code>evo adapter prompt &lt;name&gt; --family ci</code> — Generate an AI prompt to build an adapter</li>
-    <li><code>evo adapter block &lt;name&gt; -r "reason"</code> — Block an adapter locally</li>
-    <li><code>evo adapter unblock &lt;name&gt;</code> — Unblock a blocked adapter</li>
-    <li><code>evo adapter check-updates</code> — Check PyPI for plugin updates</li>
-    <li><code>evo adapter report &lt;name&gt;</code> — Report a broken/malicious adapter</li>
+    <li data-i18n="docs_page.cmd_adapter_list"><code>evo adapter list</code> — List detected adapters with trust badges</li>
+    <li data-i18n="docs_page.cmd_adapter_discover"><code>evo adapter discover [path]</code> — Find available adapters for tools in your repo</li>
+    <li data-i18n="docs_page.cmd_adapter_new"><code>evo adapter new &lt;name&gt; --family ci</code> — Scaffold a new adapter package</li>
+    <li data-i18n="docs_page.cmd_adapter_validate"><code>evo adapter validate &lt;path&gt;</code> — Validate an adapter against the contract</li>
+    <li data-i18n="docs_page.cmd_adapter_validate_security"><code>evo adapter validate &lt;path&gt; --security</code> — Validate + security scan</li>
+    <li data-i18n="docs_page.cmd_adapter_security"><code>evo adapter security-check &lt;target&gt;</code> — Standalone security scan</li>
+    <li data-i18n="docs_page.cmd_adapter_guide"><code>evo adapter guide</code> — Show the full adapter building guide</li>
+    <li data-i18n="docs_page.cmd_adapter_prompt"><code>evo adapter prompt &lt;name&gt; --family ci</code> — Generate an AI prompt to build an adapter</li>
+    <li data-i18n="docs_page.cmd_adapter_block"><code>evo adapter block &lt;name&gt; -r "reason"</code> — Block an adapter locally</li>
+    <li data-i18n="docs_page.cmd_adapter_unblock"><code>evo adapter unblock &lt;name&gt;</code> — Unblock a blocked adapter</li>
+    <li data-i18n="docs_page.cmd_adapter_updates"><code>evo adapter check-updates</code> — Check PyPI for plugin updates</li>
+    <li data-i18n="docs_page.cmd_adapter_report"><code>evo adapter report &lt;name&gt;</code> — Report a broken/malicious adapter</li>
   </ul>
 
-  <h3>Notifications</h3>
+  <h3 data-i18n="docs_page.commands_notifications">Notifications</h3>
   <ul>
-    <li><code>evo notifications list</code> — Show pending update notifications</li>
-    <li><code>evo notifications dismiss</code> — Dismiss all notifications</li>
-    <li><code>evo notifications check [path]</code> — Force a notification check (ignores 24h cache)</li>
+    <li data-i18n="docs_page.cmd_notif_list"><code>evo notifications list</code> — Show pending update notifications</li>
+    <li data-i18n="docs_page.cmd_notif_dismiss"><code>evo notifications dismiss</code> — Dismiss all notifications</li>
+    <li data-i18n="docs_page.cmd_notif_check"><code>evo notifications check [path]</code> — Force a notification check (ignores 24h cache)</li>
   </ul>
 
-  <h3>Patterns &amp; Knowledge Base</h3>
+  <h3 data-i18n="docs_page.commands_patterns">Patterns &amp; Knowledge Base</h3>
   <ul>
-    <li><code>evo patterns list</code> — Show patterns in the knowledge base</li>
-    <li><code>evo patterns packages</code> — List pattern packages and cache status</li>
-    <li><code>evo patterns new &lt;name&gt;</code> — Scaffold a new pattern package</li>
-    <li><code>evo patterns validate &lt;path&gt;</code> — Validate a pattern package</li>
-    <li><code>evo patterns publish &lt;path&gt;</code> — Publish pattern package to PyPI</li>
-    <li><code>evo patterns add &lt;package&gt;</code> — Subscribe to a pattern package</li>
-    <li><code>evo patterns remove &lt;package&gt;</code> — Unsubscribe from a pattern package</li>
-    <li><code>evo patterns block &lt;name&gt;</code> — Block a pattern package</li>
-    <li><code>evo patterns unblock &lt;name&gt;</code> — Unblock a pattern package</li>
-    <li><code>evo patterns pull [path]</code> — Fetch community patterns from the registry</li>
-    <li><code>evo patterns push [path]</code> — Share anonymized patterns (requires privacy_level &ge; 1)</li>
-    <li><code>evo patterns export</code> — Export anonymized pattern digests</li>
-    <li><code>evo patterns import &lt;file&gt;</code> — Import community patterns</li>
+    <li data-i18n="docs_page.cmd_patterns_list"><code>evo patterns list</code> — Show patterns in the knowledge base</li>
+    <li data-i18n="docs_page.cmd_patterns_packages"><code>evo patterns packages</code> — List pattern packages and cache status</li>
+    <li data-i18n="docs_page.cmd_patterns_new"><code>evo patterns new &lt;name&gt;</code> — Scaffold a new pattern package</li>
+    <li data-i18n="docs_page.cmd_patterns_validate"><code>evo patterns validate &lt;path&gt;</code> — Validate a pattern package</li>
+    <li data-i18n="docs_page.cmd_patterns_publish"><code>evo patterns publish &lt;path&gt;</code> — Publish pattern package to PyPI</li>
+    <li data-i18n="docs_page.cmd_patterns_add"><code>evo patterns add &lt;package&gt;</code> — Subscribe to a pattern package</li>
+    <li data-i18n="docs_page.cmd_patterns_remove"><code>evo patterns remove &lt;package&gt;</code> — Unsubscribe from a pattern package</li>
+    <li data-i18n="docs_page.cmd_patterns_block"><code>evo patterns block &lt;name&gt;</code> — Block a pattern package</li>
+    <li data-i18n="docs_page.cmd_patterns_unblock"><code>evo patterns unblock &lt;name&gt;</code> — Unblock a pattern package</li>
+    <li data-i18n="docs_page.cmd_patterns_pull"><code>evo patterns pull [path]</code> — Fetch community patterns from the registry</li>
+    <li data-i18n="docs_page.cmd_patterns_push"><code>evo patterns push [path]</code> — Share anonymized patterns (requires privacy_level &ge; 1)</li>
+    <li data-i18n="docs_page.cmd_patterns_export"><code>evo patterns export</code> — Export anonymized pattern digests</li>
+    <li data-i18n="docs_page.cmd_patterns_import"><code>evo patterns import &lt;file&gt;</code> — Import community patterns</li>
   </ul>
 
-  <h3>History</h3>
+  <h3 data-i18n="docs_page.commands_history">History</h3>
   <ul>
-    <li><code>evo history list [path]</code> — Show past run snapshots</li>
-    <li><code>evo history show &lt;run&gt;</code> — View a specific run's advisory</li>
-    <li><code>evo history diff [r1 r2]</code> — Compare two runs</li>
-    <li><code>evo history clean --keep N</code> — Delete old snapshots</li>
+    <li data-i18n="docs_page.cmd_history_list"><code>evo history list [path]</code> — Show past run snapshots</li>
+    <li data-i18n="docs_page.cmd_history_show"><code>evo history show &lt;run&gt;</code> — View a specific run's advisory</li>
+    <li data-i18n="docs_page.cmd_history_diff"><code>evo history diff [r1 r2]</code> — Compare two runs</li>
+    <li data-i18n="docs_page.cmd_history_clean"><code>evo history clean --keep N</code> — Delete old snapshots</li>
   </ul>
 
-  <h3>Adapter Safety</h3>
-  <p>Every adapter is assigned a trust badge automatically:</p>
+  <h3 data-i18n="docs_page.commands_safety">Adapter Safety</h3>
+  <p data-i18n="docs_page.safety_desc">Every adapter is assigned a trust badge automatically:</p>
   <ul>
-    <li><strong>[built-in]</strong> — Ships with Evolution Engine, maintained by the core team</li>
-    <li><strong>[verified]</strong> — Published on PyPI and reviewed by EE maintainers</li>
-    <li><strong>[community]</strong> — Published on PyPI, not yet reviewed</li>
-    <li><strong>[local]</strong> — Development mode, editable install only</li>
+    <li data-i18n="docs_page.safety_builtin"><strong>[built-in]</strong> — Ships with Evolution Engine, maintained by the core team</li>
+    <li data-i18n="docs_page.safety_verified"><strong>[verified]</strong> — Published on PyPI and reviewed by EE maintainers</li>
+    <li data-i18n="docs_page.safety_community"><strong>[community]</strong> — Published on PyPI, not yet reviewed</li>
+    <li data-i18n="docs_page.safety_local"><strong>[local]</strong> — Development mode, editable install only</li>
   </ul>
-  <p>Adapters can be blocked locally (<code>evo adapter block</code>) or globally via the bundled blocklist. Use <code>evo adapter report</code> to flag broken or malicious adapters.</p>
+  <p data-i18n="docs_page.safety_block_desc">Adapters can be blocked locally (<code>evo adapter block</code>) or globally via the bundled blocklist. Use <code>evo adapter report</code> to flag broken or malicious adapters.</p>
 
-  <h3>Setup & Hooks</h3>
+  <h3 data-i18n="docs_page.commands_setup">Setup & Hooks</h3>
   <ul>
-    <li><code>evo init [path] --path cli|hooks|action|all</code> — Guided project setup</li>
-    <li><code>evo hooks install [path]</code> — Install git hooks for auto-analysis</li>
-    <li><code>evo hooks uninstall [path]</code> — Remove git hooks</li>
-    <li><code>evo hooks status [path]</code> — Show hook installation status and config</li>
-    <li><code>evo watch [path]</code> — Poll for new commits (foreground)</li>
-    <li><code>evo watch [path] --daemon</code> — Background commit watcher</li>
-    <li><code>evo setup [path]</code> — Interactive setup assistant</li>
-    <li><code>evo setup --ui</code> — Open settings page in browser</li>
+    <li data-i18n="docs_page.cmd_init"><code>evo init [path] --path cli|hooks|action|all</code> — Guided project setup</li>
+    <li data-i18n="docs_page.cmd_hooks_install"><code>evo hooks install [path]</code> — Install git hooks for auto-analysis</li>
+    <li data-i18n="docs_page.cmd_hooks_uninstall"><code>evo hooks uninstall [path]</code> — Remove git hooks</li>
+    <li data-i18n="docs_page.cmd_hooks_status"><code>evo hooks status [path]</code> — Show hook installation status and config</li>
+    <li data-i18n="docs_page.cmd_watch"><code>evo watch [path]</code> — Poll for new commits (foreground)</li>
+    <li data-i18n="docs_page.cmd_watch_daemon"><code>evo watch [path] --daemon</code> — Background commit watcher</li>
+    <li data-i18n="docs_page.cmd_setup"><code>evo setup [path]</code> — Interactive setup assistant</li>
+    <li data-i18n="docs_page.cmd_setup_ui"><code>evo setup --ui</code> — Open settings page in browser</li>
   </ul>
 
-  <h3>Configuration</h3>
+  <h3 data-i18n="docs_page.commands_config">Configuration</h3>
   <ul>
-    <li><code>evo config list</code> — Show all settings</li>
-    <li><code>evo config set &lt;key&gt; &lt;value&gt;</code> — Set a config value</li>
-    <li><code>evo license status</code> — Show current license tier</li>
-    <li><code>evo license activate &lt;key&gt;</code> — Activate a Pro license</li>
-    <li><code>evo telemetry on|off|status</code> — Manage anonymous usage telemetry</li>
+    <li data-i18n="docs_page.cmd_config_list"><code>evo config list</code> — Show all settings</li>
+    <li data-i18n="docs_page.cmd_config_set"><code>evo config set &lt;key&gt; &lt;value&gt;</code> — Set a config value</li>
+    <li data-i18n="docs_page.cmd_license_status"><code>evo license status</code> — Show current license tier</li>
+    <li data-i18n="docs_page.cmd_license_activate"><code>evo license activate &lt;key&gt;</code> — Activate a Pro license</li>
+    <li data-i18n="docs_page.cmd_telemetry"><code>evo telemetry on|off|status</code> — Manage anonymous usage telemetry</li>
   </ul>
 
   <!-- Discovery & Updates -->
-  <h2 id="discovery-updates">Discovery & Updates</h2>
+  <h2 id="discovery-updates" data-i18n="docs_page.discovery_title">Discovery & Updates</h2>
 
-  <p>EE includes a lightweight notification system that keeps you informed about available adapters, updates, and community patterns. All checks are privacy-respecting — they only read public PyPI metadata and never send data from your machine.</p>
+  <p data-i18n="docs_page.discovery_desc">EE includes a lightweight notification system that keeps you informed about available adapters, updates, and community patterns. All checks are privacy-respecting — they only read public PyPI metadata and never send data from your machine.</p>
 
-  <h3>Adapter Discovery</h3>
-  <p>EE scans your repo for known tools (via config files, lockfiles, and import statements) and checks PyPI for matching adapter packages:</p>
+  <h3 data-i18n="docs_page.discovery_adapter_title">Adapter Discovery</h3>
+  <p data-i18n="docs_page.discovery_adapter_desc">EE scans your repo for known tools (via config files, lockfiles, and import statements) and checks PyPI for matching adapter packages:</p>
   <pre><code>evo adapter discover .
 # Available adapters (install via pip):
 #   evo-adapter-datadog       v1.0.0   ← Datadog (monitoring)
@@ -331,31 +331,31 @@ evo init . --path action</code></pre>
 #   evo-adapter-pagerduty     ← PagerDuty (incidents)
 #     Scaffold: evo adapter new pagerduty --family incidents</code></pre>
 
-  <h3>Automatic Notifications</h3>
-  <p>After <code>evo analyze</code> completes, EE checks for adapter updates and new adapters matching detected tools. Notifications appear at the end of the output:</p>
+  <h3 data-i18n="docs_page.discovery_notif_title">Automatic Notifications</h3>
+  <p data-i18n="docs_page.discovery_notif_desc">After <code>evo analyze</code> completes, EE checks for adapter updates and new adapters matching detected tools. Notifications appear at the end of the output:</p>
   <pre><code># After evo analyze output:
 Notifications:
   Update available: evo-adapter-jenkins 0.1.0 → 0.2.0
   Adapter available: evo-adapter-datadog v1.0.0 (detected Datadog in repo)
   Run `evo notifications dismiss` to clear.</code></pre>
-  <p>Manage notifications with:</p>
+  <p data-i18n="docs_page.discovery_notif_manage">Manage notifications with:</p>
   <pre><code>evo notifications list              # View all pending
 evo notifications dismiss            # Clear all
 evo notifications check .            # Force check now</code></pre>
 
-  <h3>Community Patterns</h3>
-  <p>Patterns accumulate organically as users analyze repos and share discoveries. EE distributes community patterns through two redundant channels:</p>
+  <h3 data-i18n="docs_page.discovery_patterns_title">Community Patterns</h3>
+  <p data-i18n="docs_page.discovery_patterns_desc">Patterns accumulate organically as users analyze repos and share discoveries. EE distributes community patterns through two redundant channels:</p>
   <ul>
-    <li><strong>Registry</strong> (real-time) — patterns pushed by users are immediately available to all other users on their next <code>evo analyze</code></li>
-    <li><strong>PyPI packages</strong> (durable) — periodic snapshots published as pip packages, auto-fetched without <code>pip install</code></li>
+    <li data-i18n="docs_page.discovery_patterns_registry"><strong>Registry</strong> (real-time) — patterns pushed by users are immediately available to all other users on their next <code>evo analyze</code></li>
+    <li data-i18n="docs_page.discovery_patterns_pypi"><strong>PyPI packages</strong> (durable) — periodic snapshots published as pip packages, auto-fetched without <code>pip install</code></li>
   </ul>
-  <p>If the registry is unavailable, PyPI packages still work. Both channels are checked automatically.</p>
+  <p data-i18n="docs_page.discovery_patterns_fallback">If the registry is unavailable, PyPI packages still work. Both channels are checked automatically.</p>
 
-  <h4>Default Package: evo-patterns-community</h4>
-  <p>The canonical community pattern package is <a href="https://pypi.org/project/evo-patterns-community/">evo-patterns-community</a>, published using CalVer (e.g. <code>2026.2.15</code>). It contains aggregated patterns from the community registry and is auto-fetched on every <code>evo analyze</code>.</p>
+  <h4 data-i18n="docs_page.discovery_default_pkg_title">Default Package: evo-patterns-community</h4>
+  <p data-i18n="docs_page.discovery_default_pkg_desc">The canonical community pattern package is <a href="https://pypi.org/project/evo-patterns-community/">evo-patterns-community</a>, published using CalVer (e.g. <code>2026.2.15</code>). It contains aggregated patterns from the community registry and is auto-fetched on every <code>evo analyze</code>.</p>
 
-  <h4>Pattern Packages (auto-fetch from PyPI)</h4>
-  <p>Pattern packages are pip packages on PyPI containing pure data (no executable code). EE downloads the wheel directly, extracts <code>patterns.json</code>, validates it, and imports relevant patterns automatically — no <code>pip install</code> required.</p>
+  <h4 data-i18n="docs_page.discovery_autofetch_title">Pattern Packages (auto-fetch from PyPI)</h4>
+  <p data-i18n="docs_page.discovery_autofetch_desc">Pattern packages are pip packages on PyPI containing pure data (no executable code). EE downloads the wheel directly, extracts <code>patterns.json</code>, validates it, and imports relevant patterns automatically — no <code>pip install</code> required.</p>
   <pre><code># Auto-fetch happens on every evo analyze
 evo analyze .
 #   Imported 25 pattern(s) from community registry
@@ -368,63 +368,63 @@ evo patterns add evo-patterns-web-security
 evo patterns new my-patterns
 evo patterns validate evo-patterns-my-patterns
 evo patterns publish evo-patterns-my-patterns</code></pre>
-  <p>Pattern packages are cached at <code>~/.evo/pattern_cache.json</code> with a 24-hour TTL. Only patterns matching your locally-detected families are imported.</p>
+  <p data-i18n="docs_page.discovery_autofetch_cache">Pattern packages are cached at <code>~/.evo/pattern_cache.json</code> with a 24-hour TTL. Only patterns matching your locally-detected families are imported.</p>
 
-  <h4>Registry Push &amp; Pull</h4>
-  <p>Share your anonymized patterns with the community and pull patterns from others:</p>
+  <h4 data-i18n="docs_page.discovery_push_pull_title">Registry Push &amp; Pull</h4>
+  <p data-i18n="docs_page.discovery_push_pull_desc">Share your anonymized patterns with the community and pull patterns from others:</p>
   <pre><code># Pull community patterns (always allowed)
 evo patterns pull .
 
 # Share your patterns (requires opt-in)
 evo config set sync.privacy_level 2
 evo patterns push .</code></pre>
-  <p>The registry (<code>codequal.dev/api/patterns</code>) validates all submissions server-side. Patterns require attestations from 2+ independent instances before they are fully trusted.</p>
+  <p data-i18n="docs_page.discovery_push_pull_validation">The registry (<code>codequal.dev/api/patterns</code>) validates all submissions server-side. Patterns require attestations from 2+ independent instances before they are fully trusted.</p>
 
-  <h4>Pattern Blocklist</h4>
-  <p>Block unwanted pattern packages from being imported:</p>
+  <h4 data-i18n="docs_page.discovery_blocklist_title">Pattern Blocklist</h4>
+  <p data-i18n="docs_page.discovery_blocklist_desc">Block unwanted pattern packages from being imported:</p>
   <pre><code># Block a package
 evo patterns block evo-patterns-untrusted
 
 # Unblock
 evo patterns unblock evo-patterns-untrusted</code></pre>
-  <p>Blocked packages are stored at <code>~/.evo/pattern_blocklist.json</code>. A bundled blocklist ships with EE for known-bad packages.</p>
+  <p data-i18n="docs_page.discovery_blocklist_storage">Blocked packages are stored at <code>~/.evo/pattern_blocklist.json</code>. A bundled blocklist ships with EE for known-bad packages.</p>
 
-  <h3>Configuration</h3>
-  <p>All update and notification behavior is configurable:</p>
+  <h3 data-i18n="docs_page.discovery_config_title">Configuration</h3>
+  <p data-i18n="docs_page.discovery_config_desc">All update and notification behavior is configurable:</p>
   <ul>
-    <li><code>adapter.check_updates</code> — Enable/disable update notifications (default: <code>true</code>)</li>
-    <li><code>sync.auto_pull</code> — Auto-pull community patterns on analyze (default: <code>false</code>)</li>
-    <li><code>sync.privacy_level</code> — Pattern sharing level: 0=off, 1=metadata, 2=anonymized digests (default: <code>0</code>)</li>
-    <li><code>sync.registry_url</code> — Pattern registry endpoint (default: <code>https://codequal.dev/api</code>)</li>
+    <li data-i18n="docs_page.discovery_config_updates"><code>adapter.check_updates</code> — Enable/disable update notifications (default: <code>true</code>)</li>
+    <li data-i18n="docs_page.discovery_config_auto_pull"><code>sync.auto_pull</code> — Auto-pull community patterns on analyze (default: <code>false</code>)</li>
+    <li data-i18n="docs_page.discovery_config_privacy"><code>sync.privacy_level</code> — Pattern sharing level: 0=off, 1=metadata, 2=anonymized digests (default: <code>0</code>)</li>
+    <li data-i18n="docs_page.discovery_config_registry"><code>sync.registry_url</code> — Pattern registry endpoint (default: <code>https://codequal.dev/api</code>)</li>
   </ul>
-  <p>Set <code>DO_NOT_TRACK=1</code> in your environment to disable all network checks.</p>
+  <p data-i18n="docs_page.discovery_config_dnt">Set <code>DO_NOT_TRACK=1</code> in your environment to disable all network checks.</p>
 
   <div class="callout">
-    <p><strong>How PyPI discovery works:</strong> EE queries the public PyPI JSON API (<code>https://pypi.org/pypi/{package}/json</code>) using Python's stdlib <code>urllib.request</code>. No API keys or authentication needed. Results are cached for 24 hours at <code>~/.evo/version_cache.json</code>.</p>
+    <p data-i18n="docs_page.callout_pypi"><strong>How PyPI discovery works:</strong> EE queries the public PyPI JSON API (<code>https://pypi.org/pypi/{package}/json</code>) using Python's stdlib <code>urllib.request</code>. No API keys or authentication needed. Results are cached for 24 hours at <code>~/.evo/version_cache.json</code>.</p>
   </div>
 
   <!-- Build Your Own Adapter -->
-  <h2 id="build-adapter">Build Your Own Adapter</h2>
+  <h2 id="build-adapter" data-i18n="docs_page.build_adapter_title">Build Your Own Adapter</h2>
 
-  <p>Adapters read from external data sources and feed events into the Evolution Engine pipeline. Each adapter produces <strong>events</strong> that EE processes through its 5-phase analysis. You can build an adapter for any tool — CI systems, monitoring platforms, issue trackers, deployment tools, etc.</p>
+  <p data-i18n="docs_page.build_adapter_desc">Adapters read from external data sources and feed events into the Evolution Engine pipeline. Each adapter produces <strong>events</strong> that EE processes through its 5-phase analysis. You can build an adapter for any tool — CI systems, monitoring platforms, issue trackers, deployment tools, etc.</p>
 
   <div class="callout">
-    <p>Adapters you build and submit are reviewed by the EE team and, if approved, bundled for all users in future releases.</p>
+    <p data-i18n="docs_page.callout_review">Adapters you build and submit are reviewed by the EE team and, if approved, bundled for all users in future releases.</p>
   </div>
 
-  <h3>Step 1: Scaffold</h3>
-  <p>Use the built-in scaffold tool to create a ready-to-publish pip package:</p>
+  <h3 data-i18n="docs_page.build_step1_title">Step 1: Scaffold</h3>
+  <p data-i18n="docs_page.build_step1_desc">Use the built-in scaffold tool to create a ready-to-publish pip package:</p>
   <pre><code>evo adapter new jenkins --family ci</code></pre>
-  <p>This creates a package directory with:</p>
+  <p data-i18n="docs_page.build_step1_creates">This creates a package directory with:</p>
   <ul>
-    <li><code>evo_jenkins/adapter.py</code> — Your adapter class (fill in the logic)</li>
-    <li><code>pyproject.toml</code> — Package metadata with the EE plugin entry point</li>
-    <li><code>tests/</code> — Test scaffolding</li>
-    <li><code>README.md</code> — Documentation template</li>
+    <li data-i18n="docs_page.build_step1_adapter"><code>evo_jenkins/adapter.py</code> — Your adapter class (fill in the logic)</li>
+    <li data-i18n="docs_page.build_step1_toml"><code>pyproject.toml</code> — Package metadata with the EE plugin entry point</li>
+    <li data-i18n="docs_page.build_step1_tests"><code>tests/</code> — Test scaffolding</li>
+    <li data-i18n="docs_page.build_step1_readme"><code>README.md</code> — Documentation template</li>
   </ul>
 
-  <h3>Step 2: Implement</h3>
-  <p>Your adapter must implement the <a href="#adapter-contract">Adapter Contract</a>. The key method is <code>fetch_events()</code>, which yields event dicts:</p>
+  <h3 data-i18n="docs_page.build_step2_title">Step 2: Implement</h3>
+  <p data-i18n="docs_page.build_step2_desc">Your adapter must implement the <a href="#adapter-contract">Adapter Contract</a>. The key method is <code>fetch_events()</code>, which yields event dicts:</p>
   <pre><code>class JenkinsAdapter:
     FAMILY = "ci"
     ADAPTER_NAME = "jenkins"
@@ -455,7 +455,7 @@ evo patterns unblock evo-patterns-untrusted</code></pre>
                 },
             }</code></pre>
 
-  <h3>Step 3: Test locally</h3>
+  <h3 data-i18n="docs_page.build_step3_title">Step 3: Test locally</h3>
   <pre><code># Install your adapter in development mode
 cd evo-adapter-jenkins
 pip install -e .
@@ -469,7 +469,7 @@ evo adapter security-check evo_jenkins
 # Run EE — your adapter will be auto-detected
 evo analyze /path/to/repo-with-jenkinsfile</code></pre>
 
-  <h3>Step 4: Publish</h3>
+  <h3 data-i18n="docs_page.build_step4_title">Step 4: Publish</h3>
   <pre><code># Build the package
 pip install build
 python -m build
@@ -477,32 +477,32 @@ python -m build
 # Upload to PyPI
 pip install twine
 twine upload dist/*</code></pre>
-  <p>Once published, anyone can install it with <code>pip install evo-adapter-jenkins</code> and EE will auto-detect it via the plugin entry point.</p>
+  <p data-i18n="docs_page.build_step4_desc">Once published, anyone can install it with <code>pip install evo-adapter-jenkins</code> and EE will auto-detect it via the plugin entry point.</p>
 
-  <h3>Need help? Use AI</h3>
-  <p>Generate a complete prompt for your AI coding assistant:</p>
+  <h3 data-i18n="docs_page.build_ai_title">Need help? Use AI</h3>
+  <p data-i18n="docs_page.build_ai_desc">Generate a complete prompt for your AI coding assistant:</p>
   <pre><code>evo adapter prompt jenkins --family ci -d "Fetch builds from Jenkins REST API"</code></pre>
-  <p>This produces a detailed prompt with the full adapter contract, examples, and a validation checklist. Paste it into Claude, ChatGPT, Cursor, or any AI tool.</p>
+  <p data-i18n="docs_page.build_ai_detail">This produces a detailed prompt with the full adapter contract, examples, and a validation checklist. Paste it into Claude, ChatGPT, Cursor, or any AI tool.</p>
 
   <!-- Adapter Contract -->
-  <h2 id="adapter-contract">Adapter Contract</h2>
+  <h2 id="adapter-contract" data-i18n="docs_page.contract_title">Adapter Contract</h2>
 
-  <p>Every adapter must satisfy these requirements to pass <code>evo adapter validate</code>:</p>
+  <p data-i18n="docs_page.contract_desc">Every adapter must satisfy these requirements to pass <code>evo adapter validate</code>:</p>
 
-  <h3>Required class attributes</h3>
+  <h3 data-i18n="docs_page.contract_attrs_title">Required class attributes</h3>
   <ul>
-    <li><code>FAMILY</code> — One of: <code>ci</code>, <code>testing</code>, <code>dependency</code>, <code>schema</code>, <code>deployment</code>, <code>config</code>, <code>security</code></li>
-    <li><code>ADAPTER_NAME</code> — Unique identifier (e.g. <code>"jenkins"</code>, <code>"datadog"</code>)</li>
+    <li data-i18n="docs_page.contract_attr_family"><code>FAMILY</code> — One of: <code>ci</code>, <code>testing</code>, <code>dependency</code>, <code>schema</code>, <code>deployment</code>, <code>config</code>, <code>security</code></li>
+    <li data-i18n="docs_page.contract_attr_name"><code>ADAPTER_NAME</code> — Unique identifier (e.g. <code>"jenkins"</code>, <code>"datadog"</code>)</li>
   </ul>
 
-  <h3>Required methods</h3>
+  <h3 data-i18n="docs_page.contract_methods_title">Required methods</h3>
   <ul>
-    <li><code>__init__(self, repo_path, **kwargs)</code> — Constructor. Must accept <code>repo_path</code> as first argument.</li>
-    <li><code>detect(self) -&gt; bool</code> — Returns True if this adapter's data source is available in the repo.</li>
-    <li><code>fetch_events(self, since=None, limit=100) -&gt; Iterator[dict]</code> — Yields event dicts.</li>
+    <li data-i18n="docs_page.contract_method_init"><code>__init__(self, repo_path, **kwargs)</code> — Constructor. Must accept <code>repo_path</code> as first argument.</li>
+    <li data-i18n="docs_page.contract_method_detect"><code>detect(self) -&gt; bool</code> — Returns True if this adapter's data source is available in the repo.</li>
+    <li data-i18n="docs_page.contract_method_fetch"><code>fetch_events(self, since=None, limit=100) -&gt; Iterator[dict]</code> — Yields event dicts.</li>
   </ul>
 
-  <h3>Event dict format</h3>
+  <h3 data-i18n="docs_page.contract_event_title">Event dict format</h3>
   <pre><code>{
     "event_type": str,       # e.g. "ci_run", "deploy", "alert"
     "source_type": str,      # matches ADAPTER_NAME
@@ -515,30 +515,24 @@ twine upload dist/*</code></pre>
     }
 }</code></pre>
 
-  <h3>Plugin entry point</h3>
-  <p>In your <code>pyproject.toml</code>, register the entry point so EE can auto-discover your adapter:</p>
+  <h3 data-i18n="docs_page.contract_entrypoint_title">Plugin entry point</h3>
+  <p data-i18n="docs_page.contract_entrypoint_desc">In your <code>pyproject.toml</code>, register the entry point so EE can auto-discover your adapter:</p>
   <pre><code>[project.entry-points."evolution.adapters"]
 jenkins = "evo_jenkins.adapter:JenkinsAdapter"</code></pre>
 
   <!-- Submit -->
-  <h2 id="submit-adapter">Submit Your Adapter</h2>
+  <h2 id="submit-adapter" data-i18n="docs_page.submit_title">Submit Your Adapter</h2>
 
-  <p>Once your adapter passes validation and is published on PyPI:</p>
+  <p data-i18n="docs_page.submit_desc">Once your adapter passes validation and is published on PyPI:</p>
   <ol>
-    <li>Test it on at least one real repository</li>
-    <li>Ensure <code>evo adapter validate</code> passes with no errors</li>
-    <li>Email us at <strong>info@codequal.dev</strong> with:
-      <ul>
-        <li>Your PyPI package name</li>
-        <li>A brief description of what it does</li>
-        <li>Which family it belongs to</li>
-      </ul>
-    </li>
-    <li>We review the adapter, run our test suite against it, and if approved, bundle it in a future EE release for all users</li>
+    <li data-i18n="docs_page.submit_step1">Test it on at least one real repository</li>
+    <li data-i18n="docs_page.submit_step2">Ensure <code>evo adapter validate</code> passes with no errors</li>
+    <li data-i18n="docs_page.submit_step3">Email us at <strong>info@codequal.dev</strong> with: your PyPI package name, a brief description, and which family it belongs to</li>
+    <li data-i18n="docs_page.submit_step4">We review the adapter, run our test suite against it, and if approved, bundle it in a future EE release for all users</li>
   </ol>
 
   <div class="callout">
-    <p>Accepted adapters get a "Community" badge in the adapter catalog and credit in the release notes.</p>
+    <p data-i18n="docs_page.callout_accepted">Accepted adapters get a "Community" badge in the adapter catalog and credit in the release notes.</p>
   </div>
 
 </div>
@@ -547,13 +541,13 @@ jenkins = "evo_jenkins.adapter:JenkinsAdapter"</code></pre>
   <div class="container">
     <ul class="footer-links">
       <li><a href="/">Home</a></li>
-      <li><a href="docs.html">Docs</a></li>
-      <li><a href="privacy.html">Privacy</a></li>
+      <li><a href="docs.html" data-i18n="footer.docs">Docs</a></li>
+      <li><a href="privacy.html" data-i18n="footer.privacy">Privacy</a></li>
       <li><a href="terms.html">Terms</a></li>
       <li>info@codequal.dev</li>
     </ul>
-    <p class="footer-tagline">Your code never leaves your machine.</p>
-    <p class="footer-brand">Evolution Engine by CodeQual</p>
+    <p class="footer-tagline" data-i18n="footer.tagline">Your code never leaves your machine.</p>
+    <p class="footer-brand" data-i18n="footer.brand">Evolution Engine by CodeQual</p>
     <p style="color: var(--text-dim); font-size: 0.7rem; max-width: 600px; margin: 16px auto 0; line-height: 1.5; opacity: 0.7;">All third-party product names, logos, and brands are property of their respective owners. All company, product, and service names used on this website are for identification purposes only. Use of these names does not imply endorsement.</p>
   </div>
 </footer>

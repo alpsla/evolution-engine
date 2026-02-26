@@ -93,13 +93,13 @@
       evo <span>by CodeQual</span>
     </a>
     <ul class="nav-links">
-      <li><a href="/#features">Features</a></li>
-      <li><a href="/#pricing">Pricing</a></li>
-      <li><a href="/adapters">Adapters</a></li>
-      <li><a href="/docs/integrations" style="color: var(--text)">Data Sources</a></li>
-      <li><a href="/docs">Docs</a></li>
-      <li><a href="/privacy">Privacy</a></li>
-      <li><a href="/#install" class="btn btn-primary btn-sm">Get Started</a></li>
+      <li><a href="/#features" data-i18n="nav.features">Features</a></li>
+      <li><a href="/#pricing" data-i18n="nav.pricing">Pricing</a></li>
+      <li><a href="/adapters" data-i18n="nav.adapters">Adapters</a></li>
+      <li><a href="/docs/integrations" style="color: var(--text)" data-i18n="nav.data_sources">Data Sources</a></li>
+      <li><a href="/docs" data-i18n="nav.docs">Docs</a></li>
+      <li><a href="/privacy" data-i18n="nav.privacy">Privacy</a></li>
+      <li><a href="/#install" class="btn btn-primary btn-sm" data-i18n="nav.get_started">Get Started</a></li>
       <li class="lang-switcher">
         <button class="lang-btn active" data-lang="en" onclick="switchLanguage('en')">EN</button>
         <button class="lang-btn" data-lang="de" onclick="switchLanguage('de')">DE</button>
@@ -111,11 +111,11 @@
 </nav>
 
 <div class="docs container">
-  <h1>Data Sources &amp; Adapters</h1>
-  <p class="lead">The more sources connected, the richer the pattern detection. Every tool your team already uses can feed into Evolution Engine.</p>
+  <h1 data-i18n="datasources.title">Data Sources &amp; Adapters</h1>
+  <p class="lead" data-i18n="datasources.lead">The more sources connected, the richer the pattern detection. Every tool your team already uses can feed into Evolution Engine.</p>
 
-  <h2>How It Works</h2>
-  <p>Evolution Engine monitors your development process by analyzing <strong>signals</strong> from multiple sources and detecting <strong>cross-family patterns</strong> that no single tool can see.</p>
+  <h2 data-i18n="datasources.how_it_works_title">How It Works</h2>
+  <p data-i18n="datasources.how_it_works_desc">Evolution Engine monitors your development process by analyzing <strong>signals</strong> from multiple sources and detecting <strong>cross-family patterns</strong> that no single tool can see.</p>
   <pre><code>Your existing tools          Evolution Engine              What you get
 &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;           &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;             &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
 Git history          &#9472;&#9472;&#10132;    &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;
@@ -126,92 +126,92 @@ Deployments          &#9472;&#9472;&#10132;    &#9474;  Pattern Engine  &#9474;&
 Monitoring           &#9472;&#9472;&#10132;    &#9474;  (Phase 4)       &#9474;&#9472;&#9472;&#10132;  Investigation prompts
 Quality gates        &#9472;&#9472;&#10132;    &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;</code></pre>
 
-  <h2>Integration Levels</h2>
-  <p>Evolution Engine delivers value at every level. Each additional data source unlocks new pattern families.</p>
+  <h2 data-i18n="datasources.integration_levels_title">Integration Levels</h2>
+  <p data-i18n="datasources.integration_levels_desc">Evolution Engine delivers value at every level. Each additional data source unlocks new pattern families.</p>
 
   <div class="level-card">
-    <h3>Level 1 &mdash; Git Only <span class="level-badge badge-free">Free</span></h3>
-    <p><strong>What you need:</strong> A git repository. That's it.</p>
-    <p><strong>What you get:</strong></p>
+    <h3 data-i18n="datasources.level1_title">Level 1 &mdash; Git Only <span class="level-badge badge-free" data-i18n="datasources.level1_badge">Free</span></h3>
+    <p data-i18n="datasources.level1_what_you_need"><strong>What you need:</strong> A git repository. That's it.</p>
+    <p data-i18n="datasources.level1_what_you_get"><strong>What you get:</strong></p>
     <ul>
-      <li>Commit-level signals: files touched, file dispersion, change locality, co-change novelty</li>
-      <li>Baseline comparison: &ldquo;This commit touched 12 files &mdash; about 3x more than usual&rdquo;</li>
-      <li>Risk advisories for unusually large, scattered, or novel changes</li>
+      <li data-i18n="datasources.level1_item1">Commit-level signals: files touched, file dispersion, change locality, co-change novelty</li>
+      <li data-i18n="datasources.level1_item2">Baseline comparison: &ldquo;This commit touched 12 files &mdash; about 3x more than usual&rdquo;</li>
+      <li data-i18n="datasources.level1_item3">Risk advisories for unusually large, scattered, or novel changes</li>
     </ul>
     <pre><code>evo analyze .</code></pre>
   </div>
 
   <div class="level-card">
-    <h3>Level 2 &mdash; Git + Dependencies <span class="level-badge badge-free">Free</span></h3>
-    <p><strong>What you need:</strong> A supported lockfile (package-lock.json, go.sum, Cargo.lock, Gemfile.lock, etc.).</p>
-    <p><strong>What you get:</strong> Everything in Level 1, plus:</p>
+    <h3 data-i18n="datasources.level2_title">Level 2 &mdash; Git + Dependencies <span class="level-badge badge-free" data-i18n="datasources.level2_badge">Free</span></h3>
+    <p data-i18n="datasources.level2_what_you_need"><strong>What you need:</strong> A supported lockfile (package-lock.json, go.sum, Cargo.lock, Gemfile.lock, etc.).</p>
+    <p data-i18n="datasources.level2_what_you_get"><strong>What you get:</strong> Everything in Level 1, plus:</p>
     <ul>
-      <li>Dependency count and depth tracking</li>
-      <li><strong>Cross-family pattern:</strong> &ldquo;Commits that change dependencies tend to touch 40% more spread-out files&rdquo;</li>
-      <li>Supply chain drift detection</li>
+      <li data-i18n="datasources.level2_item1">Dependency count and depth tracking</li>
+      <li data-i18n="datasources.level2_item2"><strong>Cross-family pattern:</strong> &ldquo;Commits that change dependencies tend to touch 40% more spread-out files&rdquo;</li>
+      <li data-i18n="datasources.level2_item3">Supply chain drift detection</li>
     </ul>
   </div>
 
   <div class="level-card">
-    <h3>Level 3 &mdash; Git + CI Pipeline <span class="level-badge badge-pro">Pro</span></h3>
-    <p><strong>What you need:</strong> GitHub Actions, GitLab CI, or CircleCI.</p>
-    <p><strong>Setup:</strong></p>
+    <h3 data-i18n="datasources.level3_title">Level 3 &mdash; Git + CI Pipeline <span class="level-badge badge-pro" data-i18n="datasources.level3_badge">Pro</span></h3>
+    <p data-i18n="datasources.level3_what_you_need"><strong>What you need:</strong> GitHub Actions, GitLab CI, or CircleCI.</p>
+    <p data-i18n="datasources.level3_setup"><strong>Setup:</strong></p>
     <pre><code># GitHub Actions
 export GITHUB_TOKEN=$(gh auth token)
 
 # GitLab CI
 export GITLAB_TOKEN=glpat-...</code></pre>
-    <p><strong>What you get:</strong> Everything in Level 2, plus:</p>
+    <p data-i18n="datasources.level3_what_you_get"><strong>What you get:</strong> Everything in Level 2, plus:</p>
     <ul>
-      <li>Build duration and failure rate tracking</li>
-      <li>Cross-family patterns: CI-triggering commits vs. code dispersion</li>
-      <li>Correlation between change size and build time trends</li>
+      <li data-i18n="datasources.level3_item1">Build duration and failure rate tracking</li>
+      <li data-i18n="datasources.level3_item2">Cross-family patterns: CI-triggering commits vs. code dispersion</li>
+      <li data-i18n="datasources.level3_item3">Correlation between change size and build time trends</li>
     </ul>
   </div>
 
   <div class="level-card">
-    <h3>Level 4 &mdash; Git + CI + Deployments <span class="level-badge badge-pro">Pro</span></h3>
-    <p><strong>What you need:</strong> GitHub Releases or GitLab Releases.</p>
-    <p><strong>What you get:</strong> Everything in Level 3, plus:</p>
+    <h3 data-i18n="datasources.level4_title">Level 4 &mdash; Git + CI + Deployments <span class="level-badge badge-pro" data-i18n="datasources.level4_badge">Pro</span></h3>
+    <p data-i18n="datasources.level4_what_you_need"><strong>What you need:</strong> GitHub Releases or GitLab Releases.</p>
+    <p data-i18n="datasources.level4_what_you_get"><strong>What you get:</strong> Everything in Level 3, plus:</p>
     <ul>
-      <li>Release cadence, pre-release tracking, asset count monitoring</li>
-      <li>Cross-family patterns: release commits vs. file dispersion</li>
-      <li>Deployment velocity drift detection</li>
+      <li data-i18n="datasources.level4_item1">Release cadence, pre-release tracking, asset count monitoring</li>
+      <li data-i18n="datasources.level4_item2">Cross-family patterns: release commits vs. file dispersion</li>
+      <li data-i18n="datasources.level4_item3">Deployment velocity drift detection</li>
     </ul>
   </div>
 
   <div class="level-card">
-    <h3>Level 5 &mdash; Full Stack <span class="level-badge badge-pro">Pro + Adapters</span></h3>
-    <p><strong>What you need:</strong> Any combination of the adapters below.</p>
+    <h3 data-i18n="datasources.level5_title">Level 5 &mdash; Full Stack <span class="level-badge badge-pro" data-i18n="datasources.level5_badge">Pro + Adapters</span></h3>
+    <p data-i18n="datasources.level5_what_you_need"><strong>What you need:</strong> Any combination of the adapters below.</p>
     <table>
-      <thead><tr><th>Adapter</th><th>Signal Family</th><th>Example Cross-Pattern</th></tr></thead>
+      <thead><tr><th data-i18n="datasources.level5_th_adapter">Adapter</th><th data-i18n="datasources.level5_th_signal_family">Signal Family</th><th data-i18n="datasources.level5_th_example">Example Cross-Pattern</th></tr></thead>
       <tbody>
-        <tr><td>Sentry</td><td>Error Tracking</td><td>&ldquo;Dependency updates correlate with error spikes&rdquo;</td></tr>
-        <tr><td>Snyk / Semgrep</td><td>Security</td><td>&ldquo;High-dispersion commits introduce more vulnerabilities&rdquo;</td></tr>
-        <tr><td>SonarQube</td><td>Quality Gate</td><td>&ldquo;Low locality commits have more code smells&rdquo;</td></tr>
-        <tr><td>Datadog</td><td>Monitoring</td><td>&ldquo;High-dispersion deploys correlate with latency spikes&rdquo;</td></tr>
-        <tr><td>Jira / Linear</td><td>Work Items</td><td>&ldquo;Rework items have higher co-change novelty&rdquo;</td></tr>
+        <tr><td>Sentry</td><td data-i18n="datasources.level5_sentry_family">Error Tracking</td><td data-i18n="datasources.level5_sentry_example">&ldquo;Dependency updates correlate with error spikes&rdquo;</td></tr>
+        <tr><td>Snyk / Semgrep</td><td data-i18n="datasources.level5_snyk_family">Security</td><td data-i18n="datasources.level5_snyk_example">&ldquo;High-dispersion commits introduce more vulnerabilities&rdquo;</td></tr>
+        <tr><td>SonarQube</td><td data-i18n="datasources.level5_sonarqube_family">Quality Gate</td><td data-i18n="datasources.level5_sonarqube_example">&ldquo;Low locality commits have more code smells&rdquo;</td></tr>
+        <tr><td>Datadog</td><td data-i18n="datasources.level5_datadog_family">Monitoring</td><td data-i18n="datasources.level5_datadog_example">&ldquo;High-dispersion deploys correlate with latency spikes&rdquo;</td></tr>
+        <tr><td>Jira / Linear</td><td data-i18n="datasources.level5_jira_family">Work Items</td><td data-i18n="datasources.level5_jira_example">&ldquo;Rework items have higher co-change novelty&rdquo;</td></tr>
       </tbody>
     </table>
   </div>
 
-  <h2>The Value Equation</h2>
-  <p>Each new source doesn't add linearly &mdash; it multiplies the pattern space.</p>
+  <h2 data-i18n="datasources.value_equation_title">The Value Equation</h2>
+  <p data-i18n="datasources.value_equation_desc">Each new source doesn't add linearly &mdash; it multiplies the pattern space.</p>
   <table>
-    <thead><tr><th>Connected Sources</th><th>Families</th><th>Cross-Family Combinations</th></tr></thead>
+    <thead><tr><th data-i18n="datasources.value_th_sources">Connected Sources</th><th data-i18n="datasources.value_th_families">Families</th><th data-i18n="datasources.value_th_combinations">Cross-Family Combinations</th></tr></thead>
     <tbody>
-      <tr><td>Git only</td><td>1</td><td>0 (single-family trends only)</td></tr>
-      <tr><td>Git + deps</td><td>2</td><td>1</td></tr>
-      <tr><td>Git + deps + CI</td><td>3</td><td>3</td></tr>
-      <tr><td>Git + deps + CI + deploy</td><td>4</td><td>6</td></tr>
-      <tr><td>Full stack (6+)</td><td>6+</td><td>15+</td></tr>
+      <tr><td data-i18n="datasources.value_row1_sources">Git only</td><td>1</td><td data-i18n="datasources.value_row1_combinations">0 (single-family trends only)</td></tr>
+      <tr><td data-i18n="datasources.value_row2_sources">Git + deps</td><td>2</td><td>1</td></tr>
+      <tr><td data-i18n="datasources.value_row3_sources">Git + deps + CI</td><td>3</td><td>3</td></tr>
+      <tr><td data-i18n="datasources.value_row4_sources">Git + deps + CI + deploy</td><td>4</td><td>6</td></tr>
+      <tr><td data-i18n="datasources.value_row5_sources">Full stack (6+)</td><td>6+</td><td>15+</td></tr>
     </tbody>
   </table>
 
-  <h2>Setting Up Tokens</h2>
-  <p>Token-based adapters (CI, deployments, security) need an API token to fetch data. Set these as environment variables before running <code>evo analyze</code>.</p>
+  <h2 data-i18n="datasources.tokens_title">Setting Up Tokens</h2>
+  <p data-i18n="datasources.tokens_desc">Token-based adapters (CI, deployments, security) need an API token to fetch data. Set these as environment variables before running <code>evo analyze</code>.</p>
 
-  <h3>GitHub</h3>
+  <h3 data-i18n="datasources.tokens_github_title">GitHub</h3>
   <pre><code># Use the GitHub CLI to get your token (easiest)
 export GITHUB_TOKEN=$(gh auth token)
 
@@ -219,94 +219,94 @@ export GITHUB_TOKEN=$(gh auth token)
 # Required scopes: repo (read), actions (read)
 export GITHUB_TOKEN=ghp_...</code></pre>
 
-  <h3>GitLab</h3>
+  <h3 data-i18n="datasources.tokens_gitlab_title">GitLab</h3>
   <pre><code># Create a personal access token at gitlab.com/-/user_settings/personal_access_tokens
 # Required scopes: read_api
 export GITLAB_TOKEN=glpat-...</code></pre>
 
-  <h3>Sentry</h3>
+  <h3 data-i18n="datasources.tokens_sentry_title">Sentry</h3>
   <pre><code># Create an auth token at sentry.io/settings/auth-tokens/
 export SENTRY_AUTH_TOKEN=sntrys_...
 export SENTRY_ORG=your-org
 export SENTRY_PROJECT=your-project</code></pre>
 
-  <h3>Verify your setup</h3>
+  <h3 data-i18n="datasources.tokens_verify_title">Verify your setup</h3>
   <pre><code># See what's connected and what could be added
 evo sources</code></pre>
 
-  <h2>Troubleshooting: Token Set but No Data?</h2>
-  <p>If your report shows "Token set but no data collected" or "Connected — No Data", here's what to check for each adapter.</p>
+  <h2 data-i18n="datasources.troubleshooting_title">Troubleshooting: Token Set but No Data?</h2>
+  <p data-i18n="datasources.troubleshooting_desc">If your report shows "Token set but no data collected" or "Connected — No Data", here's what to check for each adapter.</p>
 
-  <h3>CI / Build (GitHub Actions, GitLab CI, CircleCI)</h3>
+  <h3 data-i18n="datasources.troubleshooting_ci_title">CI / Build (GitHub Actions, GitLab CI, CircleCI)</h3>
   <ul>
-    <li><strong>Need pipeline runs.</strong> EE reads the last 90 days of CI runs. If the repo has no workflow runs in that window, there's nothing to analyze.</li>
-    <li><strong>Check:</strong> Go to your repo's Actions tab (GitHub) or CI/CD &rarr; Pipelines (GitLab) and confirm runs exist.</li>
-    <li><strong>Token scopes:</strong> GitHub needs <code>actions:read</code>. GitLab needs <code>read_api</code>.</li>
-    <li><strong>Requires Pro</strong> for API-based CI adapters. <a href="/#pricing">See pricing</a>.</li>
+    <li data-i18n="datasources.troubleshooting_ci_item1"><strong>Need pipeline runs.</strong> EE reads the last 90 days of CI runs. If the repo has no workflow runs in that window, there's nothing to analyze.</li>
+    <li data-i18n="datasources.troubleshooting_ci_item2"><strong>Check:</strong> Go to your repo's Actions tab (GitHub) or CI/CD &rarr; Pipelines (GitLab) and confirm runs exist.</li>
+    <li data-i18n="datasources.troubleshooting_ci_item3"><strong>Token scopes:</strong> GitHub needs <code>actions:read</code>. GitLab needs <code>read_api</code>.</li>
+    <li data-i18n="datasources.troubleshooting_ci_item4"><strong>Requires Pro</strong> for API-based CI adapters. <a href="/#pricing">See pricing</a>.</li>
   </ul>
 
-  <h3>Deployments (GitHub Releases, GitLab Releases)</h3>
+  <h3 data-i18n="datasources.troubleshooting_deploy_title">Deployments (GitHub Releases, GitLab Releases)</h3>
   <ul>
-    <li><strong>Need published releases.</strong> Git tags alone are not enough — you need actual Releases with release notes.</li>
-    <li><strong>Check:</strong> Go to your repo's Releases page and confirm published releases exist.</li>
-    <li><strong>Requires Pro.</strong></li>
+    <li data-i18n="datasources.troubleshooting_deploy_item1"><strong>Need published releases.</strong> Git tags alone are not enough — you need actual Releases with release notes.</li>
+    <li data-i18n="datasources.troubleshooting_deploy_item2"><strong>Check:</strong> Go to your repo's Releases page and confirm published releases exist.</li>
+    <li data-i18n="datasources.troubleshooting_deploy_item3"><strong>Requires Pro.</strong></li>
   </ul>
 
-  <h3>Security (Dependabot)</h3>
+  <h3 data-i18n="datasources.troubleshooting_security_title">Security (Dependabot)</h3>
   <ul>
-    <li><strong>Need Dependabot enabled.</strong> Go to repo Settings &rarr; Code security and analysis &rarr; enable Dependabot alerts.</li>
-    <li><strong>No alerts = no data.</strong> If Dependabot is enabled but finds no vulnerabilities, there's nothing to report (which is good!).</li>
-    <li><strong>Requires Pro.</strong></li>
+    <li data-i18n="datasources.troubleshooting_security_item1"><strong>Need Dependabot enabled.</strong> Go to repo Settings &rarr; Code security and analysis &rarr; enable Dependabot alerts.</li>
+    <li data-i18n="datasources.troubleshooting_security_item2"><strong>No alerts = no data.</strong> If Dependabot is enabled but finds no vulnerabilities, there's nothing to report (which is good!).</li>
+    <li data-i18n="datasources.troubleshooting_security_item3"><strong>Requires Pro.</strong></li>
   </ul>
 
-  <h3>Error Tracking (Sentry)</h3>
+  <h3 data-i18n="datasources.troubleshooting_sentry_title">Error Tracking (Sentry)</h3>
   <ul>
-    <li><strong>Need events in the project.</strong> EE queries the last 90 days of Sentry issues.</li>
-    <li><strong>Check env vars:</strong> All three are required: <code>SENTRY_AUTH_TOKEN</code>, <code>SENTRY_ORG</code>, <code>SENTRY_PROJECT</code>.</li>
-    <li><strong>Requires Pro.</strong></li>
+    <li data-i18n="datasources.troubleshooting_sentry_item1"><strong>Need events in the project.</strong> EE queries the last 90 days of Sentry issues.</li>
+    <li data-i18n="datasources.troubleshooting_sentry_item2"><strong>Check env vars:</strong> All three are required: <code>SENTRY_AUTH_TOKEN</code>, <code>SENTRY_ORG</code>, <code>SENTRY_PROJECT</code>.</li>
+    <li data-i18n="datasources.troubleshooting_sentry_item3"><strong>Requires Pro.</strong></li>
   </ul>
 
-  <h3>Testing &amp; Coverage (JUnit XML, Cobertura XML)</h3>
+  <h3 data-i18n="datasources.troubleshooting_testing_title">Testing &amp; Coverage (JUnit XML, Cobertura XML)</h3>
   <ul>
-    <li><strong>File-based — no token needed.</strong> These adapters look for report files in your repo.</li>
-    <li><strong>Common paths:</strong> <code>**/TEST-*.xml</code>, <code>**/junit.xml</code>, <code>**/coverage.xml</code>, <code>**/cobertura.xml</code>.</li>
-    <li><strong>CI artifacts:</strong> If your test/coverage reports are generated during CI but not committed, they won't be found locally. Either commit them or run <code>evo analyze</code> in CI where the files exist.</li>
+    <li data-i18n="datasources.troubleshooting_testing_item1"><strong>File-based — no token needed.</strong> These adapters look for report files in your repo.</li>
+    <li data-i18n="datasources.troubleshooting_testing_item2"><strong>Common paths:</strong> <code>**/TEST-*.xml</code>, <code>**/junit.xml</code>, <code>**/coverage.xml</code>, <code>**/cobertura.xml</code>.</li>
+    <li data-i18n="datasources.troubleshooting_testing_item3"><strong>CI artifacts:</strong> If your test/coverage reports are generated during CI but not committed, they won't be found locally. Either commit them or run <code>evo analyze</code> in CI where the files exist.</li>
   </ul>
 
-  <h3>Platform Mismatch</h3>
-  <p>If you see "Platform Mismatch", it means your token doesn't match the git remote. For example, <code>GITLAB_TOKEN</code> is set but the repo's remote points to <code>github.com</code>. Set the correct token for your hosting platform, or unset the mismatched one.</p>
+  <h3 data-i18n="datasources.troubleshooting_platform_title">Platform Mismatch</h3>
+  <p data-i18n="datasources.troubleshooting_platform_desc">If you see "Platform Mismatch", it means your token doesn't match the git remote. For example, <code>GITLAB_TOKEN</code> is set but the repo's remote points to <code>github.com</code>. Set the correct token for your hosting platform, or unset the mismatched one.</p>
 
   <div class="callout">
-    <p><strong>Quick diagnostic:</strong> Run <code>evo sources</code> to see exactly which adapters are connected, which need tokens, and which need a Pro license.</p>
+    <p data-i18n="datasources.callout_diagnostic"><strong>Quick diagnostic:</strong> Run <code>evo sources</code> to see exactly which adapters are connected, which need tokens, and which need a Pro license.</p>
   </div>
 
-  <h2>Check What More Sources Would Add</h2>
-  <p>Entirely optional. Evolution Engine works standalone with just git. But if you're curious:</p>
+  <h2 data-i18n="datasources.what_if_title">Check What More Sources Would Add</h2>
+  <p data-i18n="datasources.what_if_desc">Entirely optional. Evolution Engine works standalone with just git. But if you're curious:</p>
   <pre><code>evo sources --what-if datadog sentry</code></pre>
   <div class="callout">
-    <p>You can compare reports side by side &mdash; run once without adapters, once with &mdash; and see if the additional patterns are worth it for your team.</p>
+    <p data-i18n="datasources.callout_what_if">You can compare reports side by side &mdash; run once without adapters, once with &mdash; and see if the additional patterns are worth it for your team.</p>
   </div>
 
-  <h2>FAQ</h2>
+  <h2 data-i18n="datasources.faq_title">FAQ</h2>
 
   <div class="faq-item">
-    <p><strong>Do I need to replace my existing tools?</strong></p>
-    <p>No. Evolution Engine sits alongside your tools, not instead of them. It ingests their output as signals and finds patterns across all of them.</p>
-  </div>
-
-  <div class="faq-item">
-    <p><strong>What if I only have git?</strong></p>
-    <p>That's enough to start. Git-only analysis detects commit-level anomalies. Many teams start here and add sources over time.</p>
+    <p><strong data-i18n="datasources.faq_q1">Do I need to replace my existing tools?</strong></p>
+    <p data-i18n="datasources.faq_a1">No. Evolution Engine sits alongside your tools, not instead of them. It ingests their output as signals and finds patterns across all of them.</p>
   </div>
 
   <div class="faq-item">
-    <p><strong>Does my code leave my machine?</strong></p>
-    <p>No. Evolution Engine runs locally. Code, events, and signals stay on your machine. The only optional network calls are for API-based adapters and the opt-in community knowledge base.</p>
+    <p><strong data-i18n="datasources.faq_q2">What if I only have git?</strong></p>
+    <p data-i18n="datasources.faq_a2">That's enough to start. Git-only analysis detects commit-level anomalies. Many teams start here and add sources over time.</p>
   </div>
 
   <div class="faq-item">
-    <p><strong>How is this different from Snyk / SonarQube / Datadog?</strong></p>
-    <p>Those tools analyze individual events at a point in time. Evolution Engine analyzes the <strong>process over time</strong> &mdash; detecting gradual drift, cross-family correlations, and patterns that only emerge across hundreds of commits. Their output can feed into EE as additional signal families.</p>
+    <p><strong data-i18n="datasources.faq_q3">Does my code leave my machine?</strong></p>
+    <p data-i18n="datasources.faq_a3">No. Evolution Engine runs locally. Code, events, and signals stay on your machine. The only optional network calls are for API-based adapters and the opt-in community knowledge base.</p>
+  </div>
+
+  <div class="faq-item">
+    <p><strong data-i18n="datasources.faq_q4">How is this different from Snyk / SonarQube / Datadog?</strong></p>
+    <p data-i18n="datasources.faq_a4">Those tools analyze individual events at a point in time. Evolution Engine analyzes the <strong>process over time</strong> &mdash; detecting gradual drift, cross-family correlations, and patterns that only emerge across hundreds of commits. Their output can feed into EE as additional signal families.</p>
   </div>
 </div>
 
