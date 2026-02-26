@@ -150,6 +150,62 @@ FAMILY_ICONS = {
     "feature_flags": "\U0001f6a9",
 }
 
+# Human-readable adapter display names for the "What EE Can See" section.
+ADAPTER_DISPLAY = {
+    "git": "Git",
+    "pip": "pip",
+    "npm": "npm",
+    "pnpm": "pnpm",
+    "go": "Go Modules",
+    "cargo": "Cargo",
+    "bundler": "Bundler",
+    "composer": "Composer",
+    "gradle": "Gradle",
+    "maven": "Maven",
+    "swift": "Swift PM",
+    "cmake": "CMake",
+    "github_actions_local": "GitHub Actions",
+    "github_actions": "GitHub Actions",
+    "gitlab_pipelines": "GitLab CI/CD",
+    "circleci": "CircleCI",
+    "github_releases": "GitHub Releases",
+    "gitlab_releases": "GitLab Releases",
+    "github_security": "GitHub Security",
+    "pytest_cov": "pytest",
+    "jest_cov": "Jest",
+    "coverage_xml": "Cobertura XML",
+    "sentry": "Sentry",
+}
+
+
+def _best_adapter_display(connected: list, family: str) -> str:
+    """Pick the best adapter display name for a family.
+
+    Prefers the highest-tier adapter (Tier 2 > Tier 1) since that's
+    the one providing the most valuable data.
+    """
+    candidates = [c for c in connected if c.get("family") == family]
+    if not candidates:
+        return ""
+    best = max(candidates, key=lambda c: c.get("tier", 1))
+    adapter = best.get("adapter", "")
+    return ADAPTER_DISPLAY.get(adapter, adapter)
+
+
+def _load_diagnostics(evo_dir: Path) -> dict:
+    """Load adapter diagnostics from .evo/diagnostics.json.
+
+    Returns an empty dict if the file doesn't exist (backward compat).
+    """
+    if evo_dir is None:
+        return {}
+    diag_path = evo_dir / "diagnostics.json"
+    if not diag_path.exists():
+        return {}
+    try:
+        return json.loads(diag_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
 
 
 def _detect_sources(repo_dir: Path) -> dict:
@@ -242,12 +298,16 @@ def generate_report(
     # Detect sources for the "What EE Can See" section
     sources_info = _detect_sources(repo_dir)
 
+    # Load adapter diagnostics (why Tier 2 families have 0 signals)
+    diagnostics = _load_diagnostics(evo_dir)
+
     return _render_html(advisory, evidence, title, calibration_result, remote_url,
-                        verification, sources_info, evo_dir)
+                        verification, sources_info, evo_dir, diagnostics)
 
 
 def _render_html(advisory, evidence, title, cal=None, remote_url="",
-                  verification=None, sources_info=None, evo_dir=None):
+                  verification=None, sources_info=None, evo_dir=None,
+                  diagnostics=None):
     scope = advisory.get("scope", "Unknown")
     summary = advisory.get("summary", {})
     changes = advisory.get("changes", [])
@@ -273,7 +333,7 @@ def _render_html(advisory, evidence, title, cal=None, remote_url="",
 
     cover = _build_cover_page(scope, period_from, period_to, advisory_id, generated)
     exec_summary = _build_executive_summary(summary, families_affected, cal, n_commits, total_patterns)
-    sources_html = _build_sources_section(sources_info, families_affected, evo_dir) if sources_info else ""
+    sources_html = _build_sources_section(sources_info, families_affected, evo_dir, diagnostics) if sources_info else ""
     verify_html = _build_verification_banner(verification) if verification else ""
     findings_html = _build_key_findings(changes, pattern_matches, candidate_patterns, families_affected)
     # Accepted deviations — from the advisory summary (filtered by Phase 5)
@@ -287,7 +347,24 @@ def _render_html(advisory, evidence, title, cal=None, remote_url="",
         if sha:
             commits_by_sha[sha] = cm
     changes_html = _build_changes_section(changes, remote_url, commits_by_sha, commits, deps_changed, accepted_keys, accepted_metrics)
-    patterns_html = _build_pattern_section(pattern_matches, candidate_patterns)
+
+    # Filter out patterns whose metrics are all accepted
+    accepted_metric_names = set(m.split("/")[-1] for m in accepted_metrics)
+    def _pattern_not_accepted(p):
+        metrics = p.get("metrics") or []
+        return not metrics or not all(m in accepted_metric_names for m in metrics)
+    filtered_matches = [p for p in pattern_matches if _pattern_not_accepted(p)]
+    filtered_candidates = [p for p in candidate_patterns if _pattern_not_accepted(p)]
+    n_accepted_patterns = (len(pattern_matches) - len(filtered_matches)
+                           + len(candidate_patterns) - len(filtered_candidates))
+
+    patterns_html = _build_pattern_section(
+        filtered_matches, filtered_candidates,
+        accepted_pattern_count=n_accepted_patterns,
+        accepted_metric_labels=[
+            METRIC_LABELS.get(m, m) for m in sorted(accepted_metric_names)
+        ],
+    )
     all_patterns = list(pattern_matches) + list(candidate_patterns)
     invest_html = _build_investigation_section(
         scope, period_from, period_to, changes, commits, files_affected, timeline,
@@ -1061,27 +1138,26 @@ def _grouped_cards(patterns, badge_label):
     return cards
 
 
-def _build_pattern_section(matches, candidates):
-    if not matches and not candidates:
+def _build_pattern_section(matches, candidates, accepted_pattern_count=0,
+                           accepted_metric_labels=None):
+    if not matches and not candidates and not accepted_pattern_count:
         return ""
 
     PATTERN_VISIBLE_LIMIT = 3
-
-    # Assess all patterns to determine overall risk (before dedup for accurate counts)
-    all_patterns = list(matches) + list(candidates)
-    all_risks = [pattern_risk_assessment(p) for p in all_patterns]
-    severity_counts = {}
-    highest_severity = "info"
-    for r in all_risks:
-        sev = r["severity"]
-        severity_counts[sev] = severity_counts.get(sev, 0) + 1
-        if _severity_rank(sev) > _severity_rank(highest_severity):
-            highest_severity = sev
 
     # Dedup patterns by family+metric (same logic as CLI output)
     deduped_matches = _dedup_and_limit_patterns(matches, limit=len(matches)) if matches else []
     deduped_candidates = _dedup_and_limit_patterns(candidates, limit=len(candidates)) if candidates else []
     deduped_all = list(deduped_matches) + list(deduped_candidates)
+
+    # Severity counts from deduped patterns (matches what user sees in cards)
+    severity_counts = {}
+    highest_severity = "info"
+    for p in deduped_all:
+        sev = pattern_risk_assessment(p)["severity"]
+        severity_counts[sev] = severity_counts.get(sev, 0) + 1
+        if _severity_rank(sev) > _severity_rank(highest_severity):
+            highest_severity = sev
 
     # Sort all patterns by severity (most critical first), unified list
     matches_set = set(id(p) for p in deduped_matches)
@@ -1099,7 +1175,7 @@ def _build_pattern_section(matches, candidates):
     cards_html = _collapsible_pattern_cards(all_cards, "patterns", PATTERN_VISIBLE_LIMIT)
 
     # Build overall risk banner
-    banner_html = _build_pattern_risk_banner(highest_severity, severity_counts, len(all_patterns))
+    banner_html = _build_pattern_risk_banner(highest_severity, severity_counts, len(deduped_all))
 
     # User guidance
     guidance = (
@@ -1120,9 +1196,50 @@ def _build_pattern_section(matches, candidates):
         '</div>\n'
     )
 
+    # Build dedup note explaining which metrics were merged
+    # Uses the same canonical mapping as _dedup_and_limit_patterns
+    _METRIC_CANONICAL = {"change_locality": "dispersion"}
+    dedup_note = ""
+    all_raw = list(matches or []) + list(candidates or [])
+    # Collect raw metrics that were canonicalized into another metric
+    merged_pairs = []
+    for p in all_raw:
+        for m in (p.get("metrics") or []):
+            canon = _METRIC_CANONICAL.get(m)
+            if canon:
+                alias_label = METRIC_LABELS.get(m, m)
+                canon_label = METRIC_LABELS.get(canon, canon)
+                pair = (alias_label, canon_label)
+                if pair not in merged_pairs:
+                    merged_pairs.append(pair)
+    if merged_pairs:
+        merges = ", ".join(
+            f'{a} and {b} are treated as related metrics'
+            for a, b in merged_pairs
+        )
+        dedup_note = (
+            f'<p class="patterns-dedup-note">'
+            f'{merges} &mdash; shown as a single pattern.'
+            f'</p>\n'
+        )
+
+    # Note for patterns hidden because their metrics were accepted
+    accepted_note = ""
+    if accepted_pattern_count and accepted_metric_labels:
+        labels = ", ".join(accepted_metric_labels)
+        accepted_note = (
+            f'<p class="patterns-dedup-note">'
+            f'{accepted_pattern_count} pattern{"s" if accepted_pattern_count != 1 else ""} '
+            f'not shown (accepted metric{"s" if len(accepted_metric_labels) != 1 else ""}: '
+            f'{_esc(labels)}).'
+            f'</p>\n'
+        )
+
     return (
         '<section class="patterns page-break-before">\n'
         '  <h2>Patterns</h2>\n'
+        f'  {dedup_note}'
+        f'  {accepted_note}'
         f'  {banner_html}\n'
         f'  {guidance}\n'
         f'  {cards_html}\n'
@@ -1279,7 +1396,7 @@ def _build_investigation_section(scope, period_from, period_to, changes,
     )
 
 
-_INTEGRATIONS_LINK = '<a href="docs/guides/INTEGRATIONS.md" class="source-doc-link">Setup guide &rarr;</a>'
+_INTEGRATIONS_LINK = '<a href="https://codequal.dev/docs/integrations" class="source-doc-link">Setup guide &rarr;</a>'
 
 _SOURCE_HINTS = {
     "ci": {
@@ -1357,7 +1474,7 @@ def _get_ci_hint(connected: list) -> str:
 
 
 def _build_sources_section(sources_info: dict, families_affected: list,
-                            evo_dir: Path = None) -> str:
+                            evo_dir: Path = None, diagnostics: dict = None) -> str:
     """Build the 'What EE Can See' section showing all connected families."""
     if not sources_info:
         return ""
@@ -1392,6 +1509,7 @@ def _build_sources_section(sources_info: dict, families_affected: list,
         icon = FAMILY_ICONS.get(fam, "")
         label = FAMILY_LABELS.get(fam, fam)
         color = FAMILY_COLORS.get(fam, "#64748b")
+        adapter_display = _best_adapter_display(connected, fam)
         has_findings = fam in findings_set
 
         # Check adapter tier — Tier 2+ means a token is present
@@ -1415,32 +1533,75 @@ def _build_sources_section(sources_info: dict, families_affected: list,
                     f'</div>'
                 )
             elif has_api_adapter:
-                # Token is set (Tier 2) but no signal data
-                # Check if user has Pro — Tier 2 adapters require it
-                try:
-                    from evolution.license import is_pro
-                    user_is_pro = is_pro(str(evo_dir.parent) if evo_dir else None)
-                except Exception:
-                    user_is_pro = False
-
-                if user_is_pro:
-                    badge = '<div class="source-status source-status-quiet">Connected</div>'
+                # Token is set (Tier 2) but no signal data — check diagnostics
+                diag = (diagnostics or {}).get(fam)
+                if diag and diag.get("status") == "platform_mismatch":
+                    badge = '<div class="source-status source-status-warn">Platform Mismatch</div>'
+                    detail = (
+                        f'<div class="source-detail">'
+                        f'{_esc(diag["message"])} '
+                        f'{_INTEGRATIONS_LINK}'
+                        f'</div>'
+                    )
+                elif diag and diag.get("status") == "no_license":
+                    badge = '<div class="source-status source-status-pro">Pro</div>'
                     detail = (
                         '<div class="source-detail">'
-                        'Token set. This data is analyzed automatically when running '
-                        'via GitHub Action or GitLab CI. '
+                        'Token set but no data collected in this period. '
+                        f'{_INTEGRATIONS_LINK}'
+                        '</div>'
+                    )
+                elif diag and diag.get("status") == "api_error":
+                    badge = '<div class="source-status source-status-warn">API Error</div>'
+                    detail = (
+                        f'<div class="source-detail">'
+                        f'{_esc(diag["message"])} '
+                        f'{_INTEGRATIONS_LINK}'
+                        f'</div>'
+                    )
+                elif diag and diag.get("status") == "no_data":
+                    badge = '<div class="source-status source-status-quiet">Connected &mdash; No Data</div>'
+                    detail = (
+                        f'<div class="source-detail">'
+                        f'{_esc(diag["message"])} '
+                        f'{_INTEGRATIONS_LINK}'
+                        f'</div>'
+                    )
+                elif diag and diag.get("status") == "active":
+                    # Adapter ran successfully but produced no signals
+                    badge = '<div class="source-status source-status-quiet">Connected &mdash; No Data</div>'
+                    detail = (
+                        '<div class="source-detail">'
+                        'Adapter connected but no events found in this period. '
                         f'{_INTEGRATIONS_LINK}'
                         '</div>'
                     )
                 else:
-                    badge = '<div class="source-status source-status-pro">Pro</div>'
-                    detail = (
-                        '<div class="source-detail">'
-                        'Token set. CI, deployment, and security analysis requires '
-                        '<a href="https://codequal.dev/#pricing" class="source-doc-link">'
-                        'Evolution Engine Pro</a>.'
-                        '</div>'
-                    )
+                    # Fallback: no diagnostics file — use existing logic
+                    try:
+                        from evolution.license import is_pro
+                        user_is_pro = is_pro(str(evo_dir.parent) if evo_dir else None)
+                    except Exception:
+                        user_is_pro = False
+
+                    if user_is_pro:
+                        badge = '<div class="source-status source-status-quiet">Connected</div>'
+                        detail = (
+                            '<div class="source-detail">'
+                            'Token set. This data is analyzed automatically when running '
+                            'via GitHub Action or GitLab CI. '
+                            f'{_INTEGRATIONS_LINK}'
+                            '</div>'
+                        )
+                    else:
+                        # Fallback: no diagnostics
+                        badge = '<div class="source-status source-status-pro">Pro</div>'
+                        detail = (
+                            '<div class="source-detail">'
+                            'Token set but no data collected in this period. '
+                            f'{_INTEGRATIONS_LINK}'
+                            '</div>'
+                        )
             else:
                 # Tier 1 only (config file found, no token) — show actionable hint
                 badge = '<div class="source-status source-status-hint">Config Detected</div>'
@@ -1452,12 +1613,17 @@ def _build_sources_section(sources_info: dict, families_affected: list,
                     hint_text = "Connected but no data yet. Re-run analysis after setup."
                 detail = f'<div class="source-detail">{hint_text}</div>'
 
+        adapter_html = (
+            f'<div class="source-adapter">via {_esc(adapter_display)}</div>'
+            if adapter_display else ""
+        )
         cards.append(
             f'<div class="source-card">'
             f'<div class="source-card-header">'
             f'<span class="source-icon" style="color: {color}">{icon}</span>'
             f'<div>'
             f'<div class="source-name">{_esc(label)}</div>'
+            f'{adapter_html}'
             f'{badge}'
             f'</div>'
             f'</div>'
@@ -2022,6 +2188,7 @@ pre { background: var(--color-bg-subtle); padding: 1em; border-radius: 8px;
 .risk-banner-positive { background: #f0fdf4; border: 2px solid #16a34a;
   border-left: 6px solid #16a34a; }
 .risk-banner-positive .risk-banner-title { color: #166534; }
+.patterns-dedup-note { font-size: 9pt; color: var(--color-text-muted); margin-bottom: 0.75em; }
 .pattern-guidance { background: var(--color-bg-subtle); padding: 1.25em 1.5em;
   border-radius: 8px; margin-bottom: 1.5em; border: 1px solid var(--color-border);
   font-size: 10pt; line-height: 1.7; }
@@ -2211,12 +2378,14 @@ footer strong { color: var(--color-secondary); }
 .source-card-header { display: flex; align-items: flex-start; gap: 0.75em; }
 .source-icon { font-size: 20pt; line-height: 1; }
 .source-name { font-weight: 600; font-size: 11pt; color: var(--color-primary); }
+.source-adapter { font-size: 8.5pt; color: var(--color-text-muted); margin-top: 1px; }
 .source-status { display: inline-block; padding: 0.15em 0.6em; border-radius: 12px;
   font-size: 8pt; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
   margin-top: 0.2em; }
 .source-status-active { background: #d1fae5; color: #065f46; }
 .source-status-quiet { background: #dbeafe; color: #1e40af; }
 .source-status-hint { background: #fef3c7; color: #92400e; }
+.source-status-warn { background: #fed7aa; color: #9a3412; }
 .source-status-disconnected { background: #f1f5f9; color: #64748b; }
 .source-status-pro { background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; }
 .source-detail { margin-top: 0.75em; font-size: 9pt; color: var(--color-text-muted);

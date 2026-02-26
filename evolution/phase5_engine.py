@@ -653,22 +653,20 @@ class Phase5Engine:
                 self._append_change_lines(lines, change, indent="")
                 lines.append("")
 
-        # Known patterns (from KB, top 5)
+        # Known patterns (from KB, top 5 after dedup)
         if advisory.get("pattern_matches"):
             shown = _dedup_and_limit_patterns(advisory["pattern_matches"])
-            total = len(advisory["pattern_matches"])
-            lines.append(f"KNOWN PATTERNS ({len(shown)} of {total})")
+            lines.append(f"KNOWN PATTERNS ({len(shown)})")
             lines.append("")
             for pm in shown:
                 desc = friendly_pattern(pm)
                 lines.append(f"  {desc}")
                 lines.append("")
 
-        # New patterns (discovered locally, top 5)
+        # New patterns (discovered locally, top 5 after dedup)
         if advisory.get("candidate_patterns"):
             shown = _dedup_and_limit_patterns(advisory["candidate_patterns"])
-            total = len(advisory["candidate_patterns"])
-            lines.append(f"NEW PATTERNS ({len(shown)} of {total})")
+            lines.append(f"NEW PATTERNS ({len(shown)})")
             lines.append("")
             for cp in shown:
                 desc = friendly_pattern(cp)
@@ -1151,7 +1149,71 @@ class Phase5Engine:
             filtered_changes.append(c)
         changes = filtered_changes
 
+        # Filter patterns to exclude those that ONLY reference accepted metrics.
+        # A pattern is relevant if at least one of its metrics is still active.
+        if accepted_changes:
+            accepted_metrics_set = {c["metric"] for c in accepted_changes}
+            active_metrics_set = {c["metric"] for c in changes}
+
+            def _pattern_relevant(p):
+                p_metrics = set(p.get("metrics", []))
+                # Keep if any pattern metric is in the active (non-accepted) set
+                return bool(p_metrics & active_metrics_set)
+
+            pattern_matches = [p for p in pattern_matches if _pattern_relevant(p)]
+            candidate_patterns = [p for p in candidate_patterns if _pattern_relevant(p)]
+
         if not changes:
+            # All deviations were accepted — write a minimal advisory so the
+            # report can render the all-clear state with accepted info.
+            if accepted_changes:
+                all_clear = {
+                    "advisory_id": _content_hash({
+                        "scope": scope, "accepted": len(accepted_changes),
+                    }),
+                    "scope": scope,
+                    "generated_at": now,
+                    "period": {"from": period_from, "to": period_to},
+                    "summary": {
+                        "significant_changes": 0,
+                        "accepted_changes": len(accepted_changes),
+                        "accepted_metrics": [f"{c['family']}/{c['metric']}" for c in accepted_changes],
+                        "families_affected": [],
+                        "known_patterns_matched": 0,
+                        "candidate_patterns_matched": 0,
+                        "event_groups": 0,
+                        "new_observations": 0,
+                    },
+                    "changes": [],
+                    "event_groups": [],
+                    "pattern_matches": [],
+                    "candidate_patterns": [],
+                }
+                from evolution.friendly import advisory_status as _compute_status_ac
+                all_clear["status"] = _compute_status_ac(all_clear)
+
+                self.output_path.mkdir(parents=True, exist_ok=True)
+                with open(self.output_path / "advisory.json", "w", encoding="utf-8") as f:
+                    json.dump(all_clear, f, indent=2)
+                with open(self.output_path / "evidence.json", "w", encoding="utf-8") as f:
+                    json.dump(evidence, f, indent=2)
+                human_summary = (
+                    f"All clear — {len(accepted_changes)} accepted deviation(s), "
+                    f"no new issues detected."
+                )
+                with open(self.output_path / "summary.txt", "w", encoding="utf-8") as f:
+                    f.write(human_summary)
+
+                return {
+                    "status": "complete",
+                    "advisory": all_clear,
+                    "human_summary": human_summary,
+                    "formats": {
+                        "json": str(self.output_path / "advisory.json"),
+                        "human": str(self.output_path / "summary.txt"),
+                    },
+                }
+
             return {"status": "no_significant_changes", "advisory": None,
                     "accepted_count": len(accepted_changes)}
 

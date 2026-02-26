@@ -78,6 +78,7 @@
     { "src": "/script.js", "dest": "/script.js" },
     { "src": "/i18n.js", "dest": "/i18n.js" },
     { "src": "/i18n/(.*)", "dest": "/i18n/$1" },
+    { "src": "/docs/integrations", "dest": "/integrations.html" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

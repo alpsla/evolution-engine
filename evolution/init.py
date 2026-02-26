@@ -183,6 +183,7 @@ evo-analyze:
     paths:
       - .evo/phase5/
       - .evo/sources.json
+      - .evo/diagnostics.json
     expire_in: 7 days
 
 # ── Stage 2: Post/update MR comment ──
@@ -209,6 +210,9 @@ evo-comment:
       fi
       if [ -f .evo/sources.json ]; then
         EXTRA_FLAGS="$EXTRA_FLAGS --sources .evo/sources.json"
+      fi
+      if [ -f .evo/diagnostics.json ]; then
+        EXTRA_FLAGS="$EXTRA_FLAGS --diagnostics .evo/diagnostics.json"
       fi
       # Choose verification or initial advisory comment
       if [ -f .evo/phase5/verification.json ]; then
