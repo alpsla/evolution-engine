@@ -60,6 +60,9 @@
       } else if (el.tagName === 'OPTION') {
         // <option> elements: use textContent to avoid HTML parsing issues
         el.textContent = value;
+      } else if (el.tagName === 'CODE' && el.parentElement && el.parentElement.tagName === 'PRE') {
+        // <code> inside <pre>: use textContent to preserve newlines and whitespace
+        el.textContent = value;
       } else {
         // Default: set innerHTML (allows inline <code> tags in translations)
         el.innerHTML = value;
