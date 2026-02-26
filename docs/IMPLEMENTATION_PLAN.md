@@ -35,7 +35,7 @@ All core engine work is done. Summary of shipped features:
 | Sentry error tracking adapter — error_tracking family (#51b) | ✅ | `evolution/adapters/error_tracking/sentry_adapter.py` |
 | Calibration v3 — 48/51 repos, 44 patterns, parallel runner | ✅ | `.calibration/`, `scripts/aggregate_calibration.py` |
 | HTML report adapter cards — "Expand Your Coverage" section | ✅ | `evolution/report_generator.py` |
-| Website Pro tier — pricing, adapter catalog, i18n (en/de/es) | ✅ | `website/` |
+| Website Pro tier — pricing, adapter catalog, i18n (en/de/es) for all pages | ✅ | `website/` |
 | UX overhaul — 15 fixes (§13 of v1 plan) + sources/config/adapter UX (#46-48) | ✅ | Multiple files |
 | Historical trend detection — three-category classification | ✅ | `evolution/phase5_engine.py` |
 | Pre-launch hardening — security fixes, signing key deployment | ✅ | Multiple files |
@@ -509,6 +509,9 @@ All pending work across the plan, ordered by priority.
 | Integrations guide — troubleshooting section, family-specific no-data hints | Feb 26 |
 | Website nav — Integrations link added to all pages | Feb 26 |
 | Diagnostic card messages — no_license → "Available with Pro", active → family-specific hints | Feb 26 |
+| Website i18n — DE/ES translations for Data Sources (113 elements) and Docs (199 elements) pages | Feb 26 |
+| Website nav — unified nav across all 6 pages, lang switcher removed from legal pages | Feb 26 |
+| i18n.js fix — textContent for pre>code blocks to preserve diagram whitespace | Feb 26 |
 | Manual Testing B1-B4 — all blockers verified (GitHub Action, webhook, GitLab CI, GitLab CLI) | Feb 24-25 |
 | PyPI v0.2.2 published — all 6 flows tested (3 GitHub + 3 GitLab) | Feb 25 |
 
