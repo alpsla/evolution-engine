@@ -1547,7 +1547,7 @@ def _build_sources_section(sources_info: dict, families_affected: list,
                     badge = '<div class="source-status source-status-pro">Pro</div>'
                     detail = (
                         '<div class="source-detail">'
-                        'Token set but no data collected in this period. '
+                        'Token detected &mdash; requires Evolution Engine Pro to collect data. '
                         f'{_INTEGRATIONS_LINK}'
                         '</div>'
                     )
@@ -1598,7 +1598,7 @@ def _build_sources_section(sources_info: dict, families_affected: list,
                         badge = '<div class="source-status source-status-pro">Pro</div>'
                         detail = (
                             '<div class="source-detail">'
-                            'Token set but no data collected in this period. '
+                            'Token detected &mdash; requires Evolution Engine Pro to collect data. '
                             f'{_INTEGRATIONS_LINK}'
                             '</div>'
                         )
