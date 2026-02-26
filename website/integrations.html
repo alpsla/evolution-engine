@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integrations &amp; Data Sources — Evolution Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="/assets/codequal-logo.svg" type="image/svg+xml">
+  <style>
+    .docs { padding: 120px 0 80px; max-width: 800px; margin: 0 auto; }
+    .docs h1 { font-size: 2.2rem; margin-bottom: 8px; }
+    .docs .lead { color: var(--text-muted); font-size: 1.1rem; margin-bottom: 48px; }
+    .docs h2 { font-size: 1.5rem; margin-top: 48px; margin-bottom: 16px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .docs h2:first-of-type { border-top: none; margin-top: 0; }
+    .docs h3 { font-size: 1.1rem; margin-top: 32px; margin-bottom: 12px; }
+    .docs p { color: var(--text-muted); margin-bottom: 16px; line-height: 1.7; }
+    .docs ul, .docs ol { color: var(--text-muted); margin-bottom: 16px; padding-left: 24px; line-height: 1.8; }
+    .docs li { margin-bottom: 4px; }
+    .docs code {
+      background: var(--surface);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--secondary);
+    }
+    .docs pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+    .docs pre code { background: none; padding: 0; }
+    .docs .callout {
+      background: rgba(44, 165, 141, 0.08);
+      border-left: 3px solid var(--secondary);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    }
+    .docs .callout p { margin-bottom: 0; }
+    .level-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .level-card h3 { margin-top: 0; color: var(--text); }
+    .level-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 12px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .badge-free { background: rgba(44, 165, 141, 0.15); color: var(--secondary); }
+    .badge-pro { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+    .docs table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+      font-size: 0.9rem;
+    }
+    .docs th, .docs td {
+      text-align: left;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .docs th { color: var(--text); font-weight: 600; }
+    .faq-item { margin-bottom: 24px; }
+    .faq-item strong { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">
+      <img src="/assets/codequal-logo.svg" alt="CodeQual" width="28" height="32">
+      evo <span>by CodeQual</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="/#features">Features</a></li>
+      <li><a href="/#pricing">Pricing</a></li>
+      <li><a href="/adapters">Adapters</a></li>
+      <li><a href="/docs">Docs</a></li>
+    </ul>
+    <button class="mobile-toggle" aria-label="Menu">&#9776;</button>
+  </div>
+</nav>
+
+<div class="docs container">
+  <h1>Integrations &amp; Data Sources</h1>
+  <p class="lead">The more sources connected, the richer the pattern detection. Every tool your team already uses can feed into Evolution Engine.</p>
+
+  <h2>How It Works</h2>
+  <p>Evolution Engine monitors your development process by analyzing <strong>signals</strong> from multiple sources and detecting <strong>cross-family patterns</strong> that no single tool can see.</p>
+  <pre><code>Your existing tools          Evolution Engine              What you get
+&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;           &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;             &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+Git history          &#9472;&#9472;&#10132;    &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;
+CI/CD (Actions)      &#9472;&#9472;&#10132;    &#9474;  Signal Engine   &#9474;&#9472;&#9472;&#10132;  Cross-family patterns
+Dependencies (npm)   &#9472;&#9472;&#10132;    &#9474;  (Phase 2)       &#9474;&#9472;&#9472;&#10132;  Risk advisories
+Security (Snyk)      &#9472;&#9472;&#10132;    &#9474;                  &#9474;&#9472;&#9472;&#10132;  Drift detection
+Deployments          &#9472;&#9472;&#10132;    &#9474;  Pattern Engine  &#9474;&#9472;&#9472;&#10132;  Trend reports
+Monitoring           &#9472;&#9472;&#10132;    &#9474;  (Phase 4)       &#9474;&#9472;&#9472;&#10132;  Investigation prompts
+Quality gates        &#9472;&#9472;&#10132;    &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;</code></pre>
+
+  <h2>Integration Levels</h2>
+  <p>Evolution Engine delivers value at every level. Each additional data source unlocks new pattern families.</p>
+
+  <div class="level-card">
+    <h3>Level 1 &mdash; Git Only <span class="level-badge badge-free">Free</span></h3>
+    <p><strong>What you need:</strong> A git repository. That's it.</p>
+    <p><strong>What you get:</strong></p>
+    <ul>
+      <li>Commit-level signals: files touched, file dispersion, change locality, co-change novelty</li>
+      <li>Baseline comparison: &ldquo;This commit touched 12 files &mdash; about 3x more than usual&rdquo;</li>
+      <li>Risk advisories for unusually large, scattered, or novel changes</li>
+    </ul>
+    <pre><code>evo analyze .</code></pre>
+  </div>
+
+  <div class="level-card">
+    <h3>Level 2 &mdash; Git + Dependencies <span class="level-badge badge-free">Free</span></h3>
+    <p><strong>What you need:</strong> A supported lockfile (package-lock.json, go.sum, Cargo.lock, Gemfile.lock, etc.).</p>
+    <p><strong>What you get:</strong> Everything in Level 1, plus:</p>
+    <ul>
+      <li>Dependency count and depth tracking</li>
+      <li><strong>Cross-family pattern:</strong> &ldquo;Commits that change dependencies tend to touch 40% more spread-out files&rdquo;</li>
+      <li>Supply chain drift detection</li>
+    </ul>
+  </div>
+
+  <div class="level-card">
+    <h3>Level 3 &mdash; Git + CI Pipeline <span class="level-badge badge-pro">Pro</span></h3>
+    <p><strong>What you need:</strong> GitHub Actions, GitLab CI, or CircleCI.</p>
+    <p><strong>Setup:</strong></p>
+    <pre><code># GitHub Actions
+export GITHUB_TOKEN=$(gh auth token)
+
+# GitLab CI
+export GITLAB_TOKEN=glpat-...</code></pre>
+    <p><strong>What you get:</strong> Everything in Level 2, plus:</p>
+    <ul>
+      <li>Build duration and failure rate tracking</li>
+      <li>Cross-family patterns: CI-triggering commits vs. code dispersion</li>
+      <li>Correlation between change size and build time trends</li>
+    </ul>
+  </div>
+
+  <div class="level-card">
+    <h3>Level 4 &mdash; Git + CI + Deployments <span class="level-badge badge-pro">Pro</span></h3>
+    <p><strong>What you need:</strong> GitHub Releases or GitLab Releases.</p>
+    <p><strong>What you get:</strong> Everything in Level 3, plus:</p>
+    <ul>
+      <li>Release cadence, pre-release tracking, asset count monitoring</li>
+      <li>Cross-family patterns: release commits vs. file dispersion</li>
+      <li>Deployment velocity drift detection</li>
+    </ul>
+  </div>
+
+  <div class="level-card">
+    <h3>Level 5 &mdash; Full Stack <span class="level-badge badge-pro">Pro + Adapters</span></h3>
+    <p><strong>What you need:</strong> Any combination of the adapters below.</p>
+    <table>
+      <thead><tr><th>Adapter</th><th>Signal Family</th><th>Example Cross-Pattern</th></tr></thead>
+      <tbody>
+        <tr><td>Sentry</td><td>Error Tracking</td><td>&ldquo;Dependency updates correlate with error spikes&rdquo;</td></tr>
+        <tr><td>Snyk / Semgrep</td><td>Security</td><td>&ldquo;High-dispersion commits introduce more vulnerabilities&rdquo;</td></tr>
+        <tr><td>SonarQube</td><td>Quality Gate</td><td>&ldquo;Low locality commits have more code smells&rdquo;</td></tr>
+        <tr><td>Datadog</td><td>Monitoring</td><td>&ldquo;High-dispersion deploys correlate with latency spikes&rdquo;</td></tr>
+        <tr><td>Jira / Linear</td><td>Work Items</td><td>&ldquo;Rework items have higher co-change novelty&rdquo;</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>The Value Equation</h2>
+  <p>Each new source doesn't add linearly &mdash; it multiplies the pattern space.</p>
+  <table>
+    <thead><tr><th>Connected Sources</th><th>Families</th><th>Cross-Family Combinations</th></tr></thead>
+    <tbody>
+      <tr><td>Git only</td><td>1</td><td>0 (single-family trends only)</td></tr>
+      <tr><td>Git + deps</td><td>2</td><td>1</td></tr>
+      <tr><td>Git + deps + CI</td><td>3</td><td>3</td></tr>
+      <tr><td>Git + deps + CI + deploy</td><td>4</td><td>6</td></tr>
+      <tr><td>Full stack (6+)</td><td>6+</td><td>15+</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Setting Up Tokens</h2>
+  <p>Token-based adapters (CI, deployments, security) need an API token to fetch data. Set these as environment variables before running <code>evo analyze</code>.</p>
+
+  <h3>GitHub</h3>
+  <pre><code># Use the GitHub CLI to get your token (easiest)
+export GITHUB_TOKEN=$(gh auth token)
+
+# Or create a personal access token at github.com/settings/tokens
+# Required scopes: repo (read), actions (read)
+export GITHUB_TOKEN=ghp_...</code></pre>
+
+  <h3>GitLab</h3>
+  <pre><code># Create a personal access token at gitlab.com/-/user_settings/personal_access_tokens
+# Required scopes: read_api
+export GITLAB_TOKEN=glpat-...</code></pre>
+
+  <h3>Sentry</h3>
+  <pre><code># Create an auth token at sentry.io/settings/auth-tokens/
+export SENTRY_AUTH_TOKEN=sntrys_...
+export SENTRY_ORG=your-org
+export SENTRY_PROJECT=your-project</code></pre>
+
+  <h3>Verify your setup</h3>
+  <pre><code># See what's connected and what could be added
+evo sources</code></pre>
+
+  <h2>Check What More Sources Would Add</h2>
+  <p>Entirely optional. Evolution Engine works standalone with just git. But if you're curious:</p>
+  <pre><code>evo sources --what-if datadog sentry</code></pre>
+  <div class="callout">
+    <p>You can compare reports side by side &mdash; run once without adapters, once with &mdash; and see if the additional patterns are worth it for your team.</p>
+  </div>
+
+  <h2>FAQ</h2>
+
+  <div class="faq-item">
+    <p><strong>Do I need to replace my existing tools?</strong></p>
+    <p>No. Evolution Engine sits alongside your tools, not instead of them. It ingests their output as signals and finds patterns across all of them.</p>
+  </div>
+
+  <div class="faq-item">
+    <p><strong>What if I only have git?</strong></p>
+    <p>That's enough to start. Git-only analysis detects commit-level anomalies. Many teams start here and add sources over time.</p>
+  </div>
+
+  <div class="faq-item">
+    <p><strong>Does my code leave my machine?</strong></p>
+    <p>No. Evolution Engine runs locally. Code, events, and signals stay on your machine. The only optional network calls are for API-based adapters and the opt-in community knowledge base.</p>
+  </div>
+
+  <div class="faq-item">
+    <p><strong>How is this different from Snyk / SonarQube / Datadog?</strong></p>
+    <p>Those tools analyze individual events at a point in time. Evolution Engine analyzes the <strong>process over time</strong> &mdash; detecting gradual drift, cross-family correlations, and patterns that only emerge across hundreds of commits. Their output can feed into EE as additional signal families.</p>
+  </div>
+</div>
+
+<script src="/i18n.js"></script>
+<script src="/script.js"></script>
+</body>
+</html>

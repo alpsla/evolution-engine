@@ -782,7 +782,10 @@ def status(path, token):
             s = advisory.get("summary", {})
             click.echo(f"  Significant changes: {s.get('significant_changes', 0)}")
             click.echo(f"  Families: {', '.join(s.get('families_affected', []))}")
-            click.echo(f"  Patterns matched: {s.get('known_patterns_matched', 0)}")
+            from evolution.phase5_engine import _dedup_and_limit_patterns
+            raw = advisory.get("pattern_matches", [])
+            deduped = _dedup_and_limit_patterns(raw, limit=len(raw)) if raw else []
+            click.echo(f"  Patterns matched: {len(deduped)}")
         except (json.JSONDecodeError, KeyError):
             pass
 
@@ -1030,6 +1033,32 @@ def sources(path, token, what_if_adapters, json_output):
         for hint in token_hints:
             click.echo(hint)
         click.echo("  See docs/guides/INTEGRATIONS.md for setup details")
+
+    # Diagnostics: show why Tier 2 families have 0 signals
+    evo_dir = Path(path).resolve() / ".evo"
+    diag_path = evo_dir / "diagnostics.json"
+    if diag_path.exists():
+        try:
+            diagnostics = json.loads(diag_path.read_text())
+            issues = {
+                k: v for k, v in diagnostics.items()
+                if v.get("status") not in ("active", None)
+            }
+            if issues:
+                click.echo()
+                click.echo("DIAGNOSTICS (from last analysis):")
+                _status_icons = {
+                    "platform_mismatch": "\u26a0\ufe0f",
+                    "no_license": "\U0001f512",
+                    "api_error": "\u274c",
+                    "no_data": "\U0001f4ed",
+                    "no_token": "\U0001f511",
+                }
+                for fam, diag in issues.items():
+                    icon = _status_icons.get(diag["status"], "\u2753")
+                    click.echo(f"  {icon} {fam:20s} {diag.get('message', diag['status'])}")
+        except (json.JSONDecodeError, OSError):
+            pass
 
     # Summary
     click.echo()

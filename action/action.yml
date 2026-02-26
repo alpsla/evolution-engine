@@ -447,6 +447,9 @@ runs:
         if [ -f .evo/phase5/investigation_prompt.txt ]; then
           FORMAT_ARGS="$FORMAT_ARGS --prompt .evo/phase5/investigation_prompt.txt"
         fi
+        if [ -f .evo/diagnostics.json ]; then
+          FORMAT_ARGS="$FORMAT_ARGS --diagnostics .evo/diagnostics.json"
+        fi
         if [ -n "$REPORT_URL" ]; then
           FORMAT_ARGS="$FORMAT_ARGS --report-url $REPORT_URL"
         fi

@@ -36,6 +36,7 @@ def main():
     parser.add_argument("--report-url", help="URL to the HTML report artifact")
     parser.add_argument("--accepted-by", help="Username who accepted findings")
     parser.add_argument("--scope", help="Acceptance scope: this-pr or permanent", default="this-pr")
+    parser.add_argument("--diagnostics", help="Path to diagnostics.json (adapter diagnostics)")
     parser.add_argument("--ci-provider", help="CI platform: github or gitlab", default="github")
     parser.add_argument("--output", required=True, help="Output markdown file")
     args = parser.parse_args()
@@ -56,6 +57,12 @@ def main():
         return
 
     # Load optional data files
+    diagnostics = None
+    if args.diagnostics:
+        diag_path = Path(args.diagnostics)
+        if diag_path.exists():
+            diagnostics = json.loads(diag_path.read_text())
+
     sources_info = None
     if args.sources:
         sources_path = Path(args.sources)
@@ -106,6 +113,7 @@ def main():
             investigation_prompt=investigation_prompt,
             report_url=report_url,
             ci_provider=args.ci_provider,
+            diagnostics=diagnostics,
         )
     else:
         print("Either --advisory or --verification is required", file=sys.stderr)

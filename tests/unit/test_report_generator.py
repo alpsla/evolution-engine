@@ -336,6 +336,105 @@ class TestGenerateReport:
         assert "fetch('/api/accepted')" in html
 
 
+class TestDiagnostics:
+    """Tests for adapter diagnostics in HTML report."""
+
+    def test_load_diagnostics_from_file(self, advisory_dir):
+        """_load_diagnostics reads diagnostics.json when present."""
+        from evolution.report_generator import _load_diagnostics
+        diag = {"ci": {"status": "platform_mismatch", "message": "GITHUB_TOKEN set but remote points to gitlab."}}
+        (advisory_dir / "diagnostics.json").write_text(json.dumps(diag))
+        loaded = _load_diagnostics(advisory_dir)
+        assert loaded["ci"]["status"] == "platform_mismatch"
+
+    def test_load_diagnostics_missing_file(self, advisory_dir):
+        """_load_diagnostics returns empty dict when file is missing."""
+        from evolution.report_generator import _load_diagnostics
+        loaded = _load_diagnostics(advisory_dir)
+        assert loaded == {}
+
+    def test_load_diagnostics_none_evo_dir(self):
+        """_load_diagnostics handles None evo_dir gracefully."""
+        from evolution.report_generator import _load_diagnostics
+        assert _load_diagnostics(None) == {}
+
+    def test_platform_mismatch_badge_in_source_card(self, advisory_dir):
+        """Platform mismatch diagnostic shows 'Platform Mismatch' badge."""
+        from evolution.report_generator import _build_sources_section
+        sources_info = {
+            "connected": [
+                {"family": "version_control", "adapter": "git_adapter", "tier": 1},
+                {"family": "ci", "adapter": "github_actions", "tier": 2},
+            ],
+            "detected": [],
+            "connected_families": ["version_control", "ci"],
+        }
+        diagnostics = {
+            "ci": {"status": "platform_mismatch", "message": "GITHUB_TOKEN is set but remote points to gitlab."}
+        }
+        html = _build_sources_section(sources_info, ["version_control"], advisory_dir, diagnostics)
+        assert "Platform Mismatch" in html
+        assert "source-status-warn" in html
+        assert "GITHUB_TOKEN is set but remote points to gitlab." in html
+
+    def test_api_error_badge_in_source_card(self, advisory_dir):
+        """API error diagnostic shows 'API Error' badge."""
+        from evolution.report_generator import _build_sources_section
+        sources_info = {
+            "connected": [
+                {"family": "version_control", "adapter": "git_adapter", "tier": 1},
+                {"family": "ci", "adapter": "github_actions", "tier": 2},
+            ],
+            "detected": [],
+            "connected_families": ["version_control", "ci"],
+        }
+        diagnostics = {
+            "ci": {"status": "api_error", "message": "GitHub API returned 403 Forbidden."}
+        }
+        html = _build_sources_section(sources_info, ["version_control"], advisory_dir, diagnostics)
+        assert "API Error" in html
+        assert "source-status-warn" in html
+
+    def test_no_data_badge_in_source_card(self, advisory_dir):
+        """no_data diagnostic shows 'Connected — No Data' badge."""
+        from evolution.report_generator import _build_sources_section
+        sources_info = {
+            "connected": [
+                {"family": "version_control", "adapter": "git_adapter", "tier": 1},
+                {"family": "deployment", "adapter": "github_releases", "tier": 2},
+            ],
+            "detected": [],
+            "connected_families": ["version_control", "deployment"],
+        }
+        diagnostics = {
+            "deployment": {"status": "no_data", "message": "Connected to API but no events returned."}
+        }
+        html = _build_sources_section(sources_info, ["version_control"], advisory_dir, diagnostics)
+        assert "No Data" in html
+        assert "Connected to API but no events returned." in html
+
+    def test_no_diagnostics_falls_back(self, advisory_dir):
+        """Without diagnostics, existing behavior is preserved."""
+        from evolution.report_generator import _build_sources_section
+        sources_info = {
+            "connected": [
+                {"family": "version_control", "adapter": "git_adapter", "tier": 1},
+                {"family": "ci", "adapter": "github_actions", "tier": 2},
+            ],
+            "detected": [],
+            "connected_families": ["version_control", "ci"],
+        }
+        html = _build_sources_section(sources_info, ["version_control"], advisory_dir)
+        # Should fall back to existing Pro / Connected logic
+        assert "Platform Mismatch" not in html
+        assert "API Error" not in html
+
+    def test_warn_css_class_in_report(self, advisory_dir):
+        """source-status-warn CSS class should be in the report stylesheet."""
+        html = generate_report(advisory_dir)
+        assert "source-status-warn" in html
+
+
 class TestHelpers:
     def test_esc_html(self):
         assert _esc('<script>alert("xss")</script>') == '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'

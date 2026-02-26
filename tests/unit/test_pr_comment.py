@@ -143,7 +143,7 @@ class TestFormatPrComment:
     def test_patterns_limited_to_5(self):
         changes = [_make_change()]
         patterns = [
-            {"description": f"Pattern {i}", "sources": ["git"]}
+            {"description": f"Pattern {i}", "sources": ["git"], "families": ["git"], "metrics": [f"metric_{i}"]}
             for i in range(10)
         ]
         result = format_pr_comment(_make_advisory(changes=changes, patterns=patterns))
@@ -1305,3 +1305,124 @@ class TestDocLinks:
         lines = _format_sources_section(sources)
         text = "\n".join(lines)
         assert "Setup guide" not in text
+
+
+class TestDiagnosticHints:
+    """Tests for diagnostic hints in sources section."""
+
+    def test_platform_mismatch_hint(self):
+        """Platform mismatch diagnostic appends hint to source line."""
+        sources = _make_sources_info(
+            connected=[
+                {"family": "git", "adapter": "builtin", "tier": 1},
+                {"family": "ci", "adapter": "github_actions", "tier": 2},
+            ],
+            families=["git", "ci"],
+        )
+        diagnostics = {
+            "ci": {"status": "platform_mismatch", "message": "GITHUB_TOKEN is set but remote points to gitlab."}
+        }
+        lines = _format_sources_section(sources, diagnostics=diagnostics)
+        text = "\n".join(lines)
+        assert "(token/remote mismatch)" in text
+        assert "CI" in text
+
+    def test_no_data_hint(self):
+        """no_data diagnostic appends (0 events) hint."""
+        sources = _make_sources_info(
+            connected=[
+                {"family": "git", "adapter": "builtin", "tier": 1},
+                {"family": "deployment", "adapter": "github_releases", "tier": 2},
+            ],
+            families=["git", "deployment"],
+        )
+        diagnostics = {
+            "deployment": {"status": "no_data", "message": "Connected to API but no events returned."}
+        }
+        lines = _format_sources_section(sources, diagnostics=diagnostics)
+        text = "\n".join(lines)
+        assert "(0 events)" in text
+
+    def test_api_error_hint(self):
+        """api_error diagnostic appends (API error) hint."""
+        sources = _make_sources_info(
+            connected=[
+                {"family": "git", "adapter": "builtin", "tier": 1},
+                {"family": "ci", "adapter": "github_actions", "tier": 2},
+            ],
+            families=["git", "ci"],
+        )
+        diagnostics = {
+            "ci": {"status": "api_error", "message": "GitHub API returned 403 Forbidden."}
+        }
+        lines = _format_sources_section(sources, diagnostics=diagnostics)
+        text = "\n".join(lines)
+        assert "(API error)" in text
+
+    def test_no_license_hint(self):
+        """no_license diagnostic appends (requires Pro) hint."""
+        sources = _make_sources_info(
+            connected=[
+                {"family": "git", "adapter": "builtin", "tier": 1},
+                {"family": "ci", "adapter": "github_actions", "tier": 2},
+            ],
+            families=["git", "ci"],
+        )
+        diagnostics = {
+            "ci": {"status": "no_license", "message": "Requires Evolution Engine Pro."}
+        }
+        lines = _format_sources_section(sources, diagnostics=diagnostics)
+        text = "\n".join(lines)
+        assert "(requires Pro)" in text
+
+    def test_active_diagnostic_no_hint(self):
+        """Active diagnostic should not add any hint suffix."""
+        sources = _make_sources_info(
+            connected=[
+                {"family": "git", "adapter": "builtin", "tier": 1},
+                {"family": "ci", "adapter": "github_actions", "tier": 2},
+            ],
+            families=["git", "ci"],
+        )
+        diagnostics = {"ci": {"status": "active", "message": ""}}
+        lines = _format_sources_section(sources, diagnostics=diagnostics)
+        text = "\n".join(lines)
+        assert "(token/remote mismatch)" not in text
+        assert "(0 events)" not in text
+        assert "(API error)" not in text
+        assert "(requires Pro)" not in text
+
+    def test_no_diagnostics_backward_compat(self):
+        """Without diagnostics param, no hints are added (backward compat)."""
+        sources = _make_sources_info(
+            connected=[
+                {"family": "git", "adapter": "builtin", "tier": 1},
+                {"family": "ci", "adapter": "github_actions", "tier": 2},
+            ],
+            families=["git", "ci"],
+        )
+        lines = _format_sources_section(sources)
+        text = "\n".join(lines)
+        assert "(token/remote mismatch)" not in text
+        assert "(0 events)" not in text
+
+    def test_diagnostics_in_format_pr_comment(self):
+        """Diagnostics should propagate through format_pr_comment."""
+        advisory = _make_advisory(
+            changes=[_make_change()],
+            families_affected=["git"],
+        )
+        sources = _make_sources_info(
+            connected=[
+                {"family": "git", "adapter": "builtin", "tier": 1},
+                {"family": "ci", "adapter": "github_actions", "tier": 2},
+            ],
+            families=["git", "ci"],
+        )
+        diagnostics = {
+            "ci": {"status": "platform_mismatch", "message": "GITHUB_TOKEN set but remote points to gitlab."}
+        }
+        comment = format_pr_comment(
+            advisory, sources_info=sources, diagnostics=diagnostics,
+        )
+        assert "(token/remote mismatch)" in comment
