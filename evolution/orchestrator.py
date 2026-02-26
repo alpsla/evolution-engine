@@ -66,6 +66,9 @@ class Orchestrator:
             os.environ.setdefault("PHASE31_ENABLED", "false")
             os.environ.setdefault("PHASE4B_ENABLED", "false")
 
+        # Diagnostics: track why Tier 2 adapters have 0 signals
+        self._diagnostics: dict = {}
+
         # Detect adapters
         self.registry = AdapterRegistry(self.repo_path)
 
@@ -161,6 +164,8 @@ class Orchestrator:
             f in families_to_run for f in ["ci", "deployment", "security", "error_tracking"]
         ):
             _gated_families = [f for f in ["ci", "deployment", "security", "error_tracking"] if f in families_to_run]
+            for gf in _gated_families:
+                self._set_diagnostic(gf, "no_license", "Requires Evolution Engine Pro.")
         else:
             if "ci" in families_to_run and self._has_tier2("ci"):
                 api_families.append("ci")
@@ -189,6 +194,11 @@ class Orchestrator:
 
         total_events = sum(family_counts.values())
         active_families = [f for f, c in family_counts.items() if c > 0]
+
+        # Mark active families in diagnostics
+        for fam in active_families:
+            self._set_diagnostic(fam, "active", "")
+        self._persist_diagnostics()
 
         # Simplified progress: show what was analyzed
         _family_labels = {
@@ -306,13 +316,15 @@ class Orchestrator:
 
         if p5_result["status"] == "complete":
             advisory = p5_result["advisory"]
+            from evolution.phase5_engine import _dedup_and_limit_patterns
+            known = advisory.get("pattern_matches", [])
+            candidates = advisory.get("candidate_patterns", [])
+            deduped_known = _dedup_and_limit_patterns(known, limit=len(known)) if known else []
+            deduped_cands = _dedup_and_limit_patterns(candidates, limit=len(candidates)) if candidates else []
             result["advisory"] = {
                 "significant_changes": advisory["summary"]["significant_changes"],
                 "families_affected": advisory["summary"]["families_affected"],
-                "patterns_matched": (
-                    advisory["summary"]["known_patterns_matched"]
-                    + advisory["summary"]["candidate_patterns_matched"]
-                ),
+                "patterns_matched": len(deduped_known) + len(deduped_cands),
                 "status": advisory.get("status", {}),
                 "accepted_changes": advisory["summary"].get("accepted_changes", 0),
                 "accepted_metrics": advisory["summary"].get("accepted_metrics", []),
@@ -345,6 +357,62 @@ class Orchestrator:
 
         log(f"\nDone in {elapsed}s")
         return result
+
+    # ─────────────────── Diagnostics ───────────────────
+
+    def _set_diagnostic(self, family: str, status: str, message: str, **extras):
+        """Record a diagnostic status for a signal family.
+
+        Args:
+            family: Signal family name (e.g. "ci", "deployment").
+            status: One of "active", "no_data", "platform_mismatch",
+                    "no_license", "api_error", "no_token".
+            message: Human-readable explanation.
+            **extras: Additional context (e.g. token_key, platform).
+        """
+        entry = {"status": status, "message": message}
+        if extras:
+            entry.update(extras)
+        self._diagnostics[family] = entry
+
+    def _detect_remote_platform(self) -> str:
+        """Detect git remote platform from origin URL.
+
+        Returns:
+            "github", "gitlab", "bitbucket", or "unknown".
+        """
+        try:
+            import git
+            repo = git.Repo(self.repo_path)
+            for remote in repo.remotes:
+                url = remote.url.lower()
+                if "github.com" in url:
+                    return "github"
+                if "gitlab" in url:
+                    return "gitlab"
+                if "bitbucket" in url:
+                    return "bitbucket"
+        except Exception:
+            pass
+        return "unknown"
+
+    def _persist_diagnostics(self):
+        """Write diagnostics dict to .evo/diagnostics.json.
+
+        Called at the end of Phase 1 ingestion, after all families have been
+        processed. Each family entry contains a status and human-readable
+        message explaining why signals were or were not produced.
+
+        The file is consumed by three output layers:
+        - HTML report (_build_sources_section): diagnostic badge per family
+        - CLI (evo sources): DIAGNOSTICS section with icons
+        - PR comment (_format_sources_section): inline hint suffixes
+        """
+        if not self._diagnostics:
+            return
+        self.evo_dir.mkdir(parents=True, exist_ok=True)
+        diag_path = self.evo_dir / "diagnostics.json"
+        diag_path.write_text(json.dumps(self._diagnostics, indent=2))
 
     # ─────────────────── Shareable Pattern Count ───────────────────
 
@@ -592,6 +660,11 @@ class Orchestrator:
             for future in as_completed(futures):
                 name, events, error = future.result()
                 if error:
+                    if name not in self._diagnostics:
+                        self._set_diagnostic(
+                            name, "api_error",
+                            f"API error: {error}",
+                        )
                     continue
                 if events:
                     class _ListAdapter:
@@ -602,6 +675,12 @@ class Orchestrator:
                     count = phase1.ingest(_ListAdapter(events))
                     if count > 0:
                         counts[name] = count
+                else:
+                    if name not in self._diagnostics:
+                        self._set_diagnostic(
+                            name, "no_data",
+                            f"Connected to API but no events returned.",
+                        )
         return counts
 
     def _ingest_github_api(self, phase1, families: list[str]) -> dict[str, int]:
@@ -614,6 +693,14 @@ class Orchestrator:
 
         owner, repo = self._infer_github_remote()
         if not owner or not repo:
+            platform = self._detect_remote_platform()
+            if platform != "github" and platform != "unknown":
+                for f in families:
+                    self._set_diagnostic(
+                        f, "platform_mismatch",
+                        f"GITHUB_TOKEN is set but remote points to {platform}.",
+                        token_key="GITHUB_TOKEN", detected_platform=platform,
+                    )
             return {}
 
         client = GitHubClient(
@@ -642,6 +729,14 @@ class Orchestrator:
 
         project_id = self._infer_gitlab_project()
         if not project_id:
+            platform = self._detect_remote_platform()
+            if platform != "gitlab" and platform != "unknown":
+                for f in families:
+                    self._set_diagnostic(
+                        f, "platform_mismatch",
+                        f"GITLAB_TOKEN is set but remote points to {platform}.",
+                        token_key="GITLAB_TOKEN", detected_platform=platform,
+                    )
             return {}
 
         from evolution.adapters.gitlab_client import GitLabClient
@@ -669,6 +764,11 @@ class Orchestrator:
 
         project_slug = self._infer_circleci_slug()
         if not project_slug:
+            self._set_diagnostic(
+                "ci", "platform_mismatch",
+                "CIRCLECI_TOKEN is set but could not infer CircleCI project slug from remote.",
+                token_key="CIRCLECI_TOKEN",
+            )
             return {}
 
         from evolution.adapters.ci.circleci_adapter import CircleCIAdapter
@@ -689,8 +789,12 @@ class Orchestrator:
                 count = phase1.ingest(_ListAdapter(events))
                 if count > 0:
                     return {"ci": count}
-        except Exception:
-            pass
+        except Exception as e:
+            self._set_diagnostic(
+                "ci", "api_error",
+                f"CircleCI API error: {e}",
+                token_key="CIRCLECI_TOKEN",
+            )
         return {}
 
     def _ingest_sentry_api(self, phase1) -> dict[str, int]:
@@ -701,6 +805,12 @@ class Orchestrator:
 
         org, project = self._infer_sentry_org_project()
         if not org or not project:
+            self._set_diagnostic(
+                "error_tracking", "platform_mismatch",
+                "SENTRY_AUTH_TOKEN is set but no Sentry org/project configured "
+                "(set SENTRY_ORG + SENTRY_PROJECT or add .sentryclirc).",
+                token_key="SENTRY_AUTH_TOKEN",
+            )
             return {}
 
         from evolution.adapters.error_tracking.sentry_adapter import SentryAdapter
@@ -722,8 +832,12 @@ class Orchestrator:
                 count = phase1.ingest(_ListAdapter(events))
                 if count > 0:
                     return {"error_tracking": count}
-        except Exception:
-            pass
+        except Exception as e:
+            self._set_diagnostic(
+                "error_tracking", "api_error",
+                f"Sentry API error: {e}",
+                token_key="SENTRY_AUTH_TOKEN",
+            )
         return {}
 
     def _infer_sentry_org_project(self) -> tuple[Optional[str], Optional[str]]:
