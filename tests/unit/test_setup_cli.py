@@ -101,7 +101,8 @@ class TestSmartWizard:
 
     def test_github_token_prompt_shown(self, runner, tmp_path, isolated_config, monkeypatch):
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
-        result = runner.invoke(main, ["setup", str(tmp_path)], input="\n\n\n\n")
+        with patch("dotenv.load_dotenv", return_value=None):
+            result = runner.invoke(main, ["setup", str(tmp_path)], input="\n\n\n\n")
         assert "GitHub token" in result.output
 
     def test_github_token_detected(self, runner, tmp_path, isolated_config, monkeypatch):

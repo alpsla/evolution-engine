@@ -89,6 +89,7 @@ _GITLAB_CI_TEMPLATE = """\
 #   GITLAB_TOKEN — project access token with api scope (Settings > CI/CD > Variables)
 #
 # Optional CI/CD variables:
+#   EVO_LICENSE_KEY — Pro license key (enables CI/deployment analysis)
 #   EVO_WEBHOOK_URL — acceptance webhook (e.g. https://codequal.dev/api/accept)
 
 stages:
