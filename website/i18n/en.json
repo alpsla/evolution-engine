@@ -304,7 +304,8 @@
     "faq_q3": "Does my code leave my machine?",
     "faq_a3": "No. Evolution Engine runs locally. Code, events, and signals stay on your machine. The only optional network calls are for API-based adapters and the opt-in community knowledge base.",
     "faq_q4": "How is this different from Snyk / SonarQube / Datadog?",
-    "faq_a4": "Those tools analyze individual events at a point in time. Evolution Engine analyzes the <strong>process over time</strong> — detecting gradual drift, cross-family correlations, and patterns that only emerge across hundreds of commits. Their output can feed into EE as additional signal families."
+    "faq_a4": "Those tools analyze individual events at a point in time. Evolution Engine analyzes the <strong>process over time</strong> — detecting gradual drift, cross-family correlations, and patterns that only emerge across hundreds of commits. Their output can feed into EE as additional signal families.",
+    "diagram": "Your existing tools          Evolution Engine              What you get\n─────────────────           ─────────────────             ──────────────\nGit history          ──➤    ┌─────────────────┐\nCI/CD (Actions)      ──➤    │  Signal Engine   │──➤  Cross-family patterns\nDependencies (npm)   ──➤    │  (Phase 2)       │──➤  Risk advisories\nSecurity (Snyk)      ──➤    │                  │──➤  Drift detection\nDeployments          ──➤    │  Pattern Engine  │──➤  Trend reports\nMonitoring           ──➤    │  (Phase 4)       │──➤  Investigation prompts\nQuality gates        ──➤    └─────────────────┘"
   },
   "docs_page": {
     "title": "Documentation",
