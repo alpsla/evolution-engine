@@ -1547,8 +1547,8 @@ def _build_sources_section(sources_info: dict, families_affected: list,
                     badge = '<div class="source-status source-status-pro">Pro</div>'
                     detail = (
                         '<div class="source-detail">'
-                        'Token detected &mdash; requires Evolution Engine Pro to collect data. '
-                        f'{_INTEGRATIONS_LINK}'
+                        'Available with Evolution Engine Pro. '
+                        '<a href="https://codequal.dev/#pricing" class="source-doc-link">See plans &rarr;</a>'
                         '</div>'
                     )
                 elif diag and diag.get("status") == "api_error":
@@ -1570,11 +1570,20 @@ def _build_sources_section(sources_info: dict, families_affected: list,
                 elif diag and diag.get("status") == "active":
                     # Adapter ran successfully but produced no signals
                     badge = '<div class="source-status source-status-quiet">Connected &mdash; No Data</div>'
+                    _active_hints = {
+                        "ci": "No pipeline runs found in the analysis window.",
+                        "deployment": "No published releases found in the analysis window.",
+                        "security": "No security alerts found &mdash; your dependencies look clean.",
+                        "error_tracking": "No error events found in the analysis window.",
+                        "testing": "No test result files (JUnit XML) found.",
+                        "coverage": "No coverage files (Cobertura XML) found.",
+                    }
+                    hint = _active_hints.get(fam, "No events found in the analysis window.")
                     detail = (
-                        '<div class="source-detail">'
-                        'Adapter connected but no events found in this period. '
+                        f'<div class="source-detail">'
+                        f'{hint} '
                         f'{_INTEGRATIONS_LINK}'
-                        '</div>'
+                        f'</div>'
                     )
                 else:
                     # Fallback: no diagnostics file — use existing logic
@@ -1598,8 +1607,8 @@ def _build_sources_section(sources_info: dict, families_affected: list,
                         badge = '<div class="source-status source-status-pro">Pro</div>'
                         detail = (
                             '<div class="source-detail">'
-                            'Token detected &mdash; requires Evolution Engine Pro to collect data. '
-                            f'{_INTEGRATIONS_LINK}'
+                            'Available with Evolution Engine Pro. '
+                            '<a href="https://codequal.dev/#pricing" class="source-doc-link">See plans &rarr;</a>'
                             '</div>'
                         )
             else:
