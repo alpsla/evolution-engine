@@ -23,7 +23,8 @@ from typing import Any, Optional
 
 
 _TELEMETRY_URL = "https://codequal.dev/api/telemetry"
-_TIMEOUT = 2  # seconds
+_TIMEOUT = 3  # seconds (increased for slower networks)
+_MAX_RETRIES = 2  # retry failed sends
 
 
 def _is_enabled() -> bool:

@@ -4,7 +4,7 @@ Rejects any output that violates Phase 3/3.1 invariants.
 import re
 
 FORBIDDEN_TERMS = re.compile(
-    r"\b(risk|risky|danger|warning|should|needs|consider|recommend|problematic|bad|good)\b",
+    r"\b(risk|risky|danger|warning|should|needs|consider|recommend|problematic|bad|good|unsafe|vulnerable)\b",
     re.IGNORECASE,
 )
 

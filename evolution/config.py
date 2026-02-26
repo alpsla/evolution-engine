@@ -29,6 +29,7 @@ _DEFAULTS = {
     "analyze.json_output": False,
     "telemetry.enabled": False,        # opt-in anonymous usage stats
     "telemetry.prompted": False,       # whether we've asked the user
+    "telemetry.max_retries": 2,        # max retry attempts for failed sends
     "adapter.check_blocklist": True,   # check blocklist during adapter detection
     "adapter.check_updates": True,     # show update reminders for adapters
     "adapter.last_version_check": "",  # ISO timestamp of last PyPI version check
