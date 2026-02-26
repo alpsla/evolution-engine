@@ -226,6 +226,52 @@ export SENTRY_PROJECT=your-project</code></pre>
   <pre><code># See what's connected and what could be added
 evo sources</code></pre>
 
+  <h2>Troubleshooting: Token Set but No Data?</h2>
+  <p>If your report shows "Token set but no data collected" or "Connected — No Data", here's what to check for each adapter.</p>
+
+  <h3>CI / Build (GitHub Actions, GitLab CI, CircleCI)</h3>
+  <ul>
+    <li><strong>Need pipeline runs.</strong> EE reads the last 90 days of CI runs. If the repo has no workflow runs in that window, there's nothing to analyze.</li>
+    <li><strong>Check:</strong> Go to your repo's Actions tab (GitHub) or CI/CD &rarr; Pipelines (GitLab) and confirm runs exist.</li>
+    <li><strong>Token scopes:</strong> GitHub needs <code>actions:read</code>. GitLab needs <code>read_api</code>.</li>
+    <li><strong>Requires Pro</strong> for API-based CI adapters. <a href="/#pricing">See pricing</a>.</li>
+  </ul>
+
+  <h3>Deployments (GitHub Releases, GitLab Releases)</h3>
+  <ul>
+    <li><strong>Need published releases.</strong> Git tags alone are not enough — you need actual Releases with release notes.</li>
+    <li><strong>Check:</strong> Go to your repo's Releases page and confirm published releases exist.</li>
+    <li><strong>Requires Pro.</strong></li>
+  </ul>
+
+  <h3>Security (Dependabot)</h3>
+  <ul>
+    <li><strong>Need Dependabot enabled.</strong> Go to repo Settings &rarr; Code security and analysis &rarr; enable Dependabot alerts.</li>
+    <li><strong>No alerts = no data.</strong> If Dependabot is enabled but finds no vulnerabilities, there's nothing to report (which is good!).</li>
+    <li><strong>Requires Pro.</strong></li>
+  </ul>
+
+  <h3>Error Tracking (Sentry)</h3>
+  <ul>
+    <li><strong>Need events in the project.</strong> EE queries the last 90 days of Sentry issues.</li>
+    <li><strong>Check env vars:</strong> All three are required: <code>SENTRY_AUTH_TOKEN</code>, <code>SENTRY_ORG</code>, <code>SENTRY_PROJECT</code>.</li>
+    <li><strong>Requires Pro.</strong></li>
+  </ul>
+
+  <h3>Testing &amp; Coverage (JUnit XML, Cobertura XML)</h3>
+  <ul>
+    <li><strong>File-based — no token needed.</strong> These adapters look for report files in your repo.</li>
+    <li><strong>Common paths:</strong> <code>**/TEST-*.xml</code>, <code>**/junit.xml</code>, <code>**/coverage.xml</code>, <code>**/cobertura.xml</code>.</li>
+    <li><strong>CI artifacts:</strong> If your test/coverage reports are generated during CI but not committed, they won't be found locally. Either commit them or run <code>evo analyze</code> in CI where the files exist.</li>
+  </ul>
+
+  <h3>Platform Mismatch</h3>
+  <p>If you see "Platform Mismatch", it means your token doesn't match the git remote. For example, <code>GITLAB_TOKEN</code> is set but the repo's remote points to <code>github.com</code>. Set the correct token for your hosting platform, or unset the mismatched one.</p>
+
+  <div class="callout">
+    <p><strong>Quick diagnostic:</strong> Run <code>evo sources</code> to see exactly which adapters are connected, which need tokens, and which need a Pro license.</p>
+  </div>
+
   <h2>Check What More Sources Would Add</h2>
   <p>Entirely optional. Evolution Engine works standalone with just git. But if you're curious:</p>
   <pre><code>evo sources --what-if datadog sentry</code></pre>
