@@ -1,6 +1,6 @@
 # Evolution Engine — Implementation Plan
 
-> **Last updated:** February 23, 2026 | 1667 tests passing | v0.2.0 on PyPI | 44 universal patterns | 7 signal families
+> **Last updated:** February 26, 2026 | 1703 tests passing | v0.2.2 on PyPI | 44 universal patterns | 7 signal families
 >
 > This document tracks remaining work before public beta.
 > For completed implementation history, see `IMPLEMENTATION_PLAN_v1.md`.
@@ -39,6 +39,8 @@ All core engine work is done. Summary of shipped features:
 | UX overhaul — 15 fixes (§13 of v1 plan) + sources/config/adapter UX (#46-48) | ✅ | Multiple files |
 | Historical trend detection — three-category classification | ✅ | `evolution/phase5_engine.py` |
 | Pre-launch hardening — security fixes, signing key deployment | ✅ | Multiple files |
+| Adapter diagnostics — source status cards, badges, integration hints across HTML/CLI/PR | ✅ | `report_generator.py`, `pr_comment.py`, `phase5_engine.py`, `cli.py` |
+| Website integrations guide — troubleshooting, nav link on all pages | ✅ | `website/integrations.html`, all `website/*.html` |
 
 ---
 
@@ -48,11 +50,11 @@ All core engine work is done. Summary of shipped features:
 
 | # | Task | Platform | Effort | Status |
 |---|------|----------|--------|--------|
-| 45b | **Acceptance persistence** — deploy webhook, test `/evo accept` + `/evo accept permanent` on real PR | GitHub | Low | Pending |
+| 45b | **Acceptance persistence** — deploy webhook, test `/evo accept` + `/evo accept permanent` on real PR | GitHub | Low | **Complete** ✅ |
 | 45c | **Accept comment cache fix** — in-place comment modification instead of cache-dependent regeneration | GitHub | Low | **Complete** ✅ |
-| GH-WF | **GitHub Action workflow** — trigger on real PR, verify PR comment, inline suggestions, accept flow, verify flow | GitHub | Low | Pending |
-| 37 | **GitLab CLI manual testing** — 7 CLI scenarios on real GitLab repo (see v1 plan §12.2) | GitLab | Low | Pending |
-| GL-WF | **GitLab CI workflow** — trigger on real MR, verify MR comment, accept flow, verify flow | GitLab | Low | Pending |
+| GH-WF | **GitHub Action workflow** — trigger on real PR, verify PR comment, inline suggestions, accept flow, verify flow | GitHub | Low | **Complete** ✅ |
+| 37 | **GitLab CLI manual testing** — 7 CLI scenarios on real GitLab repo (see v1 plan §12.2) | GitLab | Low | **Complete** ✅ |
+| GL-WF | **GitLab CI workflow** — trigger on real MR, verify MR comment, accept flow, verify flow | GitLab | Low | **Complete** ✅ |
 | 50 | **GitLab CI integration** — `.gitlab-ci.yml` template, MR comments, platform-aware accept | GitLab | Medium | **Complete** ✅ |
 
 #### 45b — Acceptance Persistence Testing Plan
@@ -361,7 +363,7 @@ See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implem
 | # | Task | Effort | Blocker? | Status |
 |---|------|--------|----------|--------|
 | CAL3 | **Calibration v3** — 48/51 repos, 44 patterns, 7 families | Medium | Yes | **Complete** ✅ |
-| FULL | **Full automated test suite** — 1667 tests passing | Low | Yes | **Complete** ✅ |
+| FULL | **Full automated test suite** — 1703 tests passing | Low | Yes | **Complete** ✅ |
 | CLI-COV | **CLI command test coverage — core commands** (analyze, report, status, investigate, fix) | Medium | Yes | **Complete** ✅ |
 | CLI-COV2 | **CLI command test coverage — integration + secondary commands** | Medium | No | **Complete** ✅ |
 
@@ -447,26 +449,18 @@ From data-flow audit and lawyer review — items not yet resolved:
 
 All pending work across the plan, ordered by priority.
 
-**1667 tests passing** — all automated test coverage complete (core + integration + secondary CLI commands).
+**1703 tests passing** — all automated test coverage complete (core + integration + secondary CLI commands + 36 diagnostics tests).
 
 #### Blockers (Must Complete Before Beta Launch)
 
-4 remaining — all manual testing, no code changes expected. Planned as a single 3-phase testing session.
+**All 4 blockers complete.** No remaining blockers for beta launch.
 
 | Priority | Task | Effort | Section | Status |
 |----------|------|--------|---------|--------|
-| **B1** | **GitHub Action workflow** — trigger on real PR, verify PR comment, inline suggestions, accept flow, verify flow (GH-WF) | Low | Manual Testing | Planned — Phase 2 of testing session |
-| **B2** | **Acceptance persistence** — deploy webhook, set `EVO_ACCEPT_SECRET`, test `/evo accept` + `/evo accept permanent` on real PR (#45b) | Low | Manual Testing | Planned — Phase 1 of testing session |
-| **B3** | **GitLab CI workflow** — trigger on real MR, verify MR comment, accept flow, verify flow (GL-WF) | Low | Manual Testing | Planned — Phase 3 of testing session |
-| **B4** | **GitLab CLI manual testing** — 7 scenarios on real GitLab repo (#37) | Low | Manual Testing | Planned — Phase 3 of testing session |
-
-**Testing session plan:** Phase 1 (B2: webhook infra) → Phase 2 (B1: GitHub Action) → Phase 3 (B3+B4: GitLab CI + CLI).
-Webhook is platform-agnostic, so Phase 1 enables both Phase 2 and 3.
-See `memory/transition-2026-02-23-manual-testing.md` for full session plan.
-
-**Test repos:**
-- GitHub: `alpsla/evolution_monitor` (origin, has `test-action.yml` workflow)
-- GitLab: `d3925/codequal` (`git@gitlab.com:d3925/codequal.git`, empty — needs seeding)
+| **B1** | **GitHub Action workflow** — trigger on real PR, verify PR comment, inline suggestions, accept flow, verify flow (GH-WF) | Low | Manual Testing | **Complete** ✅ |
+| **B2** | **Acceptance persistence** — deploy webhook, set `EVO_ACCEPT_SECRET`, test `/evo accept` + `/evo accept permanent` on real PR (#45b) | Low | Manual Testing | **Complete** ✅ |
+| **B3** | **GitLab CI workflow** — trigger on real MR, verify MR comment, accept flow, verify flow (GL-WF) | Low | Manual Testing | **Complete** ✅ |
+| **B4** | **GitLab CLI manual testing** — 7 scenarios on real GitLab repo (#37) | Low | Manual Testing | **Complete** ✅ |
 
 #### Should Have (Before Scaling Past Beta)
 
@@ -511,6 +505,12 @@ See `memory/transition-2026-02-23-manual-testing.md` for full session plan.
 | Stripe customer_id anonymization (L5) | Feb 23 |
 | HTML Report UX — "What EE Can See" sources section, 1-2-3 Next Steps, accepted deviations banner | Feb 25 |
 | Manual Testing B5 — HTML report manual testing (8 bugs found/fixed) | Feb 25 |
+| Adapter diagnostics — source status cards, 6 statuses, pattern filtering, 36 new tests (PR #7) | Feb 26 |
+| Integrations guide — troubleshooting section, family-specific no-data hints | Feb 26 |
+| Website nav — Integrations link added to all pages | Feb 26 |
+| Diagnostic card messages — no_license → "Available with Pro", active → family-specific hints | Feb 26 |
+| Manual Testing B1-B4 — all blockers verified (GitHub Action, webhook, GitLab CI, GitLab CLI) | Feb 24-25 |
+| PyPI v0.2.2 published — all 6 flows tested (3 GitHub + 3 GitLab) | Feb 25 |
 
 ---
 
