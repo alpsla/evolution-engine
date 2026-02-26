@@ -391,9 +391,8 @@ def _format_sources_section(sources_info: dict, ci_provider: Optional[str] = Non
 
     token_name = "GITLAB_TOKEN" if ci_provider == "gitlab" else "GITHUB_TOKEN"
 
-    # Always show git (built-in)
-    if "git" in connected_families:
-        # Find git adapter info for baseline count
+    # Always show git (built-in) — sources may report as "git" or "version_control"
+    if "git" in connected_families or "version_control" in connected_families:
         lines.append("\u2705 Git history")
 
     # Show connected non-git families (deduplicate via seen set)
