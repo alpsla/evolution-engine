@@ -90,6 +90,15 @@ def format_pr_comment(
             lines.extend(_format_sources_section(sources_info, ci_provider=ci_provider))
         lines.append("\u2705 **All clear** — no significant deviations detected.")
         lines.append("")
+        # Show accepted deviations even in all-clear state
+        accepted_count = summary.get("accepted_changes", 0)
+        accepted_metrics = summary.get("accepted_metrics", [])
+        if accepted_count > 0:
+            metrics_str = ", ".join(accepted_metrics[:5])
+            if len(accepted_metrics) > 5:
+                metrics_str += f" +{len(accepted_metrics) - 5} more"
+            lines.append(f"> {accepted_count} accepted deviation(s): {metrics_str}")
+            lines.append("")
         lines.append(
             "<sub>Powered by [Evolution Engine](https://github.com/evolution-engine/evolution-engine)</sub>"
         )
@@ -133,6 +142,17 @@ def format_pr_comment(
         )
 
     lines.append("")
+
+    # Accepted deviations (show what was filtered)
+    accepted_count = summary.get("accepted_changes", 0)
+    accepted_metrics = summary.get("accepted_metrics", [])
+    if accepted_count > 0:
+        metrics_str = ", ".join(accepted_metrics[:5])
+        if len(accepted_metrics) > 5:
+            metrics_str += f" +{len(accepted_metrics) - 5} more"
+        lines.append(f"> \u2705 **{accepted_count} accepted deviation(s) not shown:** {metrics_str}")
+        lines.append(f"> Manage with `evo accepted list`")
+        lines.append("")
 
     # Pattern matches
     if patterns or candidates:
@@ -371,22 +391,23 @@ def _format_sources_section(sources_info: dict, ci_provider: Optional[str] = Non
 
     token_name = "GITLAB_TOKEN" if ci_provider == "gitlab" else "GITHUB_TOKEN"
 
-    # Always show git (built-in)
-    if "git" in connected_families:
-        # Find git adapter info for baseline count
+    # Always show git (built-in) — sources may report as "git" or "version_control"
+    if "git" in connected_families or "version_control" in connected_families:
         lines.append("\u2705 Git history")
 
     # Show connected non-git families (deduplicate via seen set)
     seen_display = set()
     for c in connected:
         family = c.get("family", "?")
-        if family == "git":
+        if family in ("git", "version_control"):
             continue
         display = _FAMILY_DISPLAY.get(family, family.replace("_", " ").title())
         if display in seen_display:
             continue
         seen_display.add(display)
-        lines.append(f"\u2705 {display}")
+        tier = c.get("tier", 1)
+        pro_badge = " `Pro`" if tier == 2 else ""
+        lines.append(f"\u2705 {display}{pro_badge}")
 
     # Track detected families (only show CI/deployment as actionable hints)
     seen_families = set()
@@ -397,12 +418,20 @@ def _format_sources_section(sources_info: dict, ci_provider: Optional[str] = Non
         seen_families.add(family)
 
     # Always hint at CI/deploy if not connected and not detected
+    has_hints = False
     for family, label in [
         ("ci", "CI builds"),
         ("deployment", "Deployments"),
     ]:
         if family not in connected_families and family not in seen_families:
-            lines.append(f"\u2b1c {label} — add `{token_name}` secret to enable")
+            lines.append(f"\u2b1c {label} `Pro` — add `{token_name}` secret to enable")
+            has_hints = True
+
+    if has_hints:
+        lines.append("")
+        lines.append(
+            "<sub>[Setup guide](https://github.com/evolution-engine/evolution-engine/blob/main/docs/guides/INTEGRATIONS.md)</sub>"
+        )
 
     lines.append("")
     return lines
@@ -469,6 +498,12 @@ def _format_next_steps(
     if report_url:
         lines.append(f"\U0001f4ca [View Full Report]({report_url})")
         lines.append("")
+
+    lines.append(
+        "<sub>Verify locally: `evo analyze . --verify` | "
+        "[Docs](https://github.com/evolution-engine/evolution-engine/blob/main/QUICKSTART.md)</sub>"
+    )
+    lines.append("")
 
     return lines
 

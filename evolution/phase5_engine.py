@@ -95,18 +95,26 @@ def _content_hash(data) -> str:
 
 
 def _dedup_and_limit_patterns(patterns: list[dict], limit: int = 5) -> list[dict]:
-    """Deduplicate patterns by (families, metrics, direction) and return top N.
+    """Deduplicate patterns by (families, metrics) and return top N.
 
-    Groups patterns that share the same family+metric+direction key and
-    keeps the one with the highest correlation strength from each group.
+    Groups patterns that share the same family+metric key (regardless of
+    correlation direction) and keeps the one with the highest absolute
+    correlation strength from each group. Also merges conceptual inverses
+    like dispersion/change_locality into a single slot.
     """
+    # Canonical metric aliases: map inverse metrics to a single key
+    _METRIC_CANONICAL = {"change_locality": "dispersion"}
+
     seen = {}
     for p in patterns:
         families = tuple(sorted(p.get("families") or p.get("sources") or []))
-        metrics = tuple(sorted(p.get("metrics") or []))
+        raw_metrics = tuple(sorted(p.get("metrics") or []))
+        # Normalize inverse metrics to canonical form for dedup
+        canonical_metrics = tuple(sorted(
+            _METRIC_CANONICAL.get(m, m) for m in raw_metrics
+        ))
         corr = p.get("correlation") or p.get("correlation_strength") or 0
-        direction = "up" if corr >= 0 else "down"
-        key = (families, metrics, direction)
+        key = (families, canonical_metrics)
 
         if key not in seen or abs(corr) > abs(
             seen[key].get("correlation") or seen[key].get("correlation_strength") or 0

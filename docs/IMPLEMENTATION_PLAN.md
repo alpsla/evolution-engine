@@ -509,6 +509,58 @@ See `memory/transition-2026-02-23-manual-testing.md` for full session plan.
 | Cookie/analytics disclosure (L3) | Feb 23 |
 | Webhook error sanitization (L4) | Feb 23 |
 | Stripe customer_id anonymization (L5) | Feb 23 |
+| HTML Report UX — "What EE Can See" sources section, 1-2-3 Next Steps, accepted deviations banner | Feb 25 |
+| Manual Testing B5 — HTML report manual testing (8 bugs found/fixed) | Feb 25 |
+
+---
+
+### HTML Report UX Improvements (Feb 25, 2026)
+
+**Status: Complete**
+
+Major UX overhaul of the HTML report (`evolution/report_generator.py`) based on manual testing. Automated tests (100 report tests passing) did not catch several issues that were immediately visible during hands-on usage.
+
+#### What Was Done
+
+1. **"What EE Can See" section** (after Executive Summary)
+   - Shows all connected families with status badges: Active (green), Connected/No Deviations (blue), Config Detected (amber), Not Connected (gray), Pro (purple)
+   - License-aware: Free users see Pro badge + pricing link for Tier 2 families; Pro users see "Connected" with CI setup guidance
+   - Loads `.env` via `load_dotenv()` so tokens are detected during report generation
+   - All hints include "Setup guide" link to `docs/guides/INTEGRATIONS.md`
+   - Signal counts shown for connected families
+
+2. **1-2-3 Next Steps flow** (replaced "Investigate with AI" section)
+   - Step 1: Investigate (copy prompt, paste in AI)
+   - Step 2: Fix (apply changes or Accept if intentional)
+   - Step 3: Verify (run `evo analyze . --verify`, check verification banner)
+   - 3-column responsive grid layout
+
+3. **Accepted deviations visibility**
+   - Green banner in "What Changed" section showing accepted deviations not displayed
+   - Uses `summary.accepted_metrics` from Phase 5 advisory
+   - Shows family/metric labels and management hint (`evo accept --list`)
+
+4. **Adapter section cleanup**
+   - Removed "Currently Active" from "Expand Your Coverage" (avoids duplication with Sources)
+   - Added Pro badges to Tier 2 adapter cards
+   - Filtered sources families out of adapters section
+
+#### Bugs Found During Manual Testing (Not Caught by Automated Tests)
+
+1. `source_file` could be `None` causing `.lower()` crash in `_get_ci_hint`
+2. `.env` not loaded during report generation so tokens were not detected
+3. Tier 2 families showed "set your token" even when token was present — needed tier-aware logic
+4. Pro features incorrectly described as "runs in CI" — needed license check
+5. Adapter cards in "Expand Your Coverage" didn't show Pro badge for Tier 2 adapters
+6. Doc links missing from all hints (plan specified them, implementation forgot)
+7. Accepted deviations silently filtered — user saw no trace of them
+8. "Next Steps" section described what AI would do but didn't tell user HOW to verify
+
+#### What's Next
+
+- **Manual Testing B5: GitLab CI webhook verify flow** — test full GitLab CI pipeline with report changes
+- Verify MR comments still work correctly with new report format
+- Test report in GitLab CI context (Pro tier, with pipeline data)
 
 ---
 

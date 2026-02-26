@@ -1176,3 +1176,132 @@ class TestFormatCommentScript:
 
 import sys
 from pathlib import Path
+
+
+# ─── Accepted deviations visibility (Bug 7) ───
+
+
+class TestAcceptedDeviationsVisibility:
+    """Accepted deviations should be visible in PR comment output."""
+
+    def test_accepted_shown_in_findings(self):
+        """When there are accepted deviations alongside findings, show them."""
+        changes = [_make_change()]
+        advisory = _make_advisory(changes=changes)
+        advisory["summary"]["accepted_changes"] = 2
+        advisory["summary"]["accepted_metrics"] = ["git/files_touched", "git/change_locality"]
+        result = format_pr_comment(advisory)
+        assert "2 accepted deviation(s) not shown" in result
+        assert "git/files_touched" in result
+        assert "git/change_locality" in result
+        assert "evo accepted list" in result
+
+    def test_accepted_shown_in_all_clear(self):
+        """When all clear but accepted exist, show accepted note."""
+        advisory = _make_advisory(significant_changes=0)
+        advisory["summary"]["accepted_changes"] = 1
+        advisory["summary"]["accepted_metrics"] = ["git/dispersion"]
+        result = format_pr_comment(advisory)
+        assert "All clear" in result
+        assert "1 accepted deviation(s)" in result
+        assert "git/dispersion" in result
+
+    def test_no_accepted_no_extra_line(self):
+        """When no accepted deviations, don't show the accepted line."""
+        changes = [_make_change()]
+        advisory = _make_advisory(changes=changes)
+        result = format_pr_comment(advisory)
+        assert "accepted deviation" not in result
+
+    def test_accepted_many_truncated(self):
+        """When many accepted metrics, show first 5 + count."""
+        advisory = _make_advisory(significant_changes=0)
+        metrics = [f"git/metric_{i}" for i in range(7)]
+        advisory["summary"]["accepted_changes"] = 7
+        advisory["summary"]["accepted_metrics"] = metrics
+        result = format_pr_comment(advisory)
+        assert "7 accepted deviation(s)" in result
+        assert "+2 more" in result
+
+
+# ─── Pro badge on Tier 2 adapters (Bug 5) ───
+
+
+class TestProBadgeInSources:
+    """Tier 2 adapters should show Pro badge in sources section."""
+
+    def test_tier2_connected_shows_pro(self):
+        """Connected Tier 2 adapters show Pro badge."""
+        sources = _make_sources_info(
+            connected=[
+                {"family": "git", "adapter": "builtin", "tier": 1},
+                {"family": "ci", "adapter": "github_actions", "tier": 2},
+            ],
+            families=["git", "ci"],
+        )
+        lines = _format_sources_section(sources)
+        text = "\n".join(lines)
+        assert "`Pro`" in text
+
+    def test_tier1_no_pro_badge(self):
+        """Tier 1 adapters don't show Pro badge on their own lines."""
+        sources = _make_sources_info(
+            connected=[
+                {"family": "git", "adapter": "builtin", "tier": 1},
+                {"family": "dependency", "adapter": "builtin", "tier": 1},
+            ],
+            families=["git", "dependency"],
+        )
+        lines = _format_sources_section(sources)
+        # Check that the dependency line specifically doesn't have Pro
+        dep_lines = [l for l in lines if "Dependencies" in l]
+        assert dep_lines
+        assert "`Pro`" not in dep_lines[0]
+
+    def test_ci_deploy_hints_show_pro(self):
+        """CI/deploy hints show Pro badge."""
+        sources = _make_sources_info(
+            connected=[{"family": "git", "adapter": "builtin", "tier": 1}],
+            families=["git"],
+        )
+        lines = _format_sources_section(sources)
+        text = "\n".join(lines)
+        assert "`Pro`" in text
+
+
+# ─── Doc links (Bug 6) ───
+
+
+class TestDocLinks:
+    """Doc links should appear in sources section and next steps."""
+
+    def test_sources_section_doc_link(self):
+        """Sources section with hints includes setup guide link."""
+        sources = _make_sources_info(
+            connected=[{"family": "git", "adapter": "builtin", "tier": 1}],
+            families=["git"],
+        )
+        lines = _format_sources_section(sources)
+        text = "\n".join(lines)
+        assert "INTEGRATIONS.md" in text
+
+    def test_next_steps_verify_hint(self):
+        """Next steps footer includes verify hint and docs link."""
+        lines = _format_next_steps()
+        text = "\n".join(lines)
+        assert "evo analyze . --verify" in text
+        assert "QUICKSTART.md" in text
+
+    def test_sources_no_hints_no_doc_link(self):
+        """When all families connected, no hint section = no doc link."""
+        sources = _make_sources_info(
+            connected=[
+                {"family": "git", "adapter": "builtin", "tier": 1},
+                {"family": "ci", "adapter": "github_actions", "tier": 2},
+                {"family": "deployment", "adapter": "github_releases", "tier": 2},
+            ],
+            families=["git", "ci", "deployment"],
+        )
+        lines = _format_sources_section(sources)
+        text = "\n".join(lines)
+        assert "Setup guide" not in text

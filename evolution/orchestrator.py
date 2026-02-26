@@ -314,6 +314,8 @@ class Orchestrator:
                     + advisory["summary"]["candidate_patterns_matched"]
                 ),
                 "status": advisory.get("status", {}),
+                "accepted_changes": advisory["summary"].get("accepted_changes", 0),
+                "accepted_metrics": advisory["summary"].get("accepted_metrics", []),
             }
             result["formats"] = p5_result.get("formats", {})
 

@@ -17,6 +17,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+from evolution.phase5_engine import _dedup_and_limit_patterns
 from evolution.friendly import (
     risk_level, relative_change, metric_insight, friendly_pattern,
     pattern_risk_assessment, _severity_rank,
@@ -151,6 +152,50 @@ FAMILY_ICONS = {
 
 
 
+def _detect_sources(repo_dir: Path) -> dict:
+    """Detect connected and available data sources for the report.
+
+    Returns a dict with 'connected' (list of AdapterConfig-like dicts)
+    and 'detected' (list of DetectedService-like dicts), or empty on error.
+    """
+    try:
+        from evolution.prescan import SourcePrescan
+        from evolution.registry import AdapterRegistry
+
+        # Load .env so tokens like GITHUB_TOKEN are available
+        try:
+            from dotenv import load_dotenv
+            load_dotenv()
+        except ImportError:
+            pass
+
+        registry = AdapterRegistry(repo_dir)
+        prescan = SourcePrescan(repo_dir)
+
+        connected = registry.detect()
+        detected = prescan.scan()
+
+        connected_family_set = set(c.family for c in connected)
+        unconnected = [s for s in detected if s.family not in connected_family_set]
+
+        return {
+            "connected": [
+                {"family": c.family, "adapter": c.adapter_name, "tier": c.tier,
+                 "source_file": c.source_file}
+                for c in connected
+            ],
+            "detected": [
+                {"service": s.service, "display_name": s.display_name,
+                 "family": s.family, "adapter": s.adapter,
+                 "detection_layers": s.detection_layers, "evidence": s.evidence}
+                for s in unconnected
+            ],
+            "connected_families": sorted(connected_family_set),
+        }
+    except Exception:
+        return {"connected": [], "detected": [], "connected_families": []}
+
+
 def generate_report(
     evo_dir: str | Path,
     title: str = None,
@@ -194,10 +239,15 @@ def generate_report(
     repo_dir = evo_dir.parent
     remote_url = _detect_remote_url(repo_dir)
 
-    return _render_html(advisory, evidence, title, calibration_result, remote_url, verification)
+    # Detect sources for the "What EE Can See" section
+    sources_info = _detect_sources(repo_dir)
+
+    return _render_html(advisory, evidence, title, calibration_result, remote_url,
+                        verification, sources_info, evo_dir)
 
 
-def _render_html(advisory, evidence, title, cal=None, remote_url="", verification=None):
+def _render_html(advisory, evidence, title, cal=None, remote_url="",
+                  verification=None, sources_info=None, evo_dir=None):
     scope = advisory.get("scope", "Unknown")
     summary = advisory.get("summary", {})
     changes = advisory.get("changes", [])
@@ -223,22 +273,27 @@ def _render_html(advisory, evidence, title, cal=None, remote_url="", verificatio
 
     cover = _build_cover_page(scope, period_from, period_to, advisory_id, generated)
     exec_summary = _build_executive_summary(summary, families_affected, cal, n_commits, total_patterns)
+    sources_html = _build_sources_section(sources_info, families_affected, evo_dir) if sources_info else ""
     verify_html = _build_verification_banner(verification) if verification else ""
     findings_html = _build_key_findings(changes, pattern_matches, candidate_patterns, families_affected)
+    # Accepted deviations — from the advisory summary (filtered by Phase 5)
+    accepted_metrics = summary.get("accepted_metrics", [])
+    # Format: "family/metric" → "family:metric" for key matching
+    accepted_keys = set(m.replace("/", ":") for m in accepted_metrics)
     # Build commit lookup for per-finding evidence
     commits_by_sha = {}
     for cm in commits:
         sha = cm.get("sha", "")
         if sha:
             commits_by_sha[sha] = cm
-    changes_html = _build_changes_section(changes, remote_url, commits_by_sha, commits, deps_changed)
+    changes_html = _build_changes_section(changes, remote_url, commits_by_sha, commits, deps_changed, accepted_keys, accepted_metrics)
     patterns_html = _build_pattern_section(pattern_matches, candidate_patterns)
     all_patterns = list(pattern_matches) + list(candidate_patterns)
     invest_html = _build_investigation_section(
         scope, period_from, period_to, changes, commits, files_affected, timeline,
         all_patterns,
     )
-    adapters_html = _build_adapters_section(families_affected)
+    adapters_html = _build_adapters_section(families_affected, sources_info)
     return (
         '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
         '<meta charset="UTF-8">\n'
@@ -252,6 +307,7 @@ def _render_html(advisory, evidence, title, cal=None, remote_url="", verificatio
         '</head>\n<body>\n'
         f'{cover}\n'
         f'{exec_summary}\n'
+        f'{sources_html}\n'
         f'{verify_html}\n'
         f'{findings_html}\n'
         f'{changes_html}\n'
@@ -567,11 +623,43 @@ def _build_key_findings(changes, pattern_matches, candidate_patterns, families_a
 
 
 def _build_changes_section(changes, remote_url="", commits_by_sha=None,
-                           all_commits=None, deps_changed=None):
+                           all_commits=None, deps_changed=None,
+                           accepted_keys=None, accepted_metrics=None):
+    accepted_keys = accepted_keys or set()
+    accepted_metrics = accepted_metrics or []
+
+    # Build accepted banner if there are accepted deviations
+    accepted_banner = ""
+    if accepted_metrics:
+        n_accepted = len(accepted_metrics)
+        items = []
+        for m in accepted_metrics:
+            parts = m.split("/", 1)
+            if len(parts) == 2:
+                fam_label = FAMILY_LABELS.get(parts[0], parts[0])
+                met_label = METRIC_LABELS.get(parts[1], parts[1])
+                items.append(f'{fam_label} / {met_label}')
+            else:
+                items.append(m)
+        items_html = ", ".join(items)
+        accepted_banner = (
+            '  <div class="accepted-summary">\n'
+            f'    <span class="accepted-summary-icon">\u2713</span>\n'
+            f'    <div>\n'
+            f'      <strong>{n_accepted} accepted deviation{"s" if n_accepted != 1 else ""}</strong>'
+            f' not shown: {items_html}\n'
+            f'      <div class="accepted-summary-hint">'
+            f'These were previously reviewed and marked as expected. '
+            f'Manage with <code>evo accept --list</code></div>\n'
+            f'    </div>\n'
+            '  </div>\n'
+        )
+
     if not changes:
         return (
             '<section class="changes-detected page-break-before">\n'
             '  <h2>What Changed in Your Codebase</h2>\n'
+            f'{accepted_banner}'
             '  <p class="empty">No unusual changes detected.</p>\n'
             '</section>'
         )
@@ -579,7 +667,7 @@ def _build_changes_section(changes, remote_url="", commits_by_sha=None,
     n = len(changes)
     cards = "\n".join(
         _build_change_card(c, idx, remote_url, commits_by_sha or {},
-                           all_commits or [], deps_changed or [])
+                           all_commits or [], deps_changed or [], accepted_keys)
         for idx, c in enumerate(changes)
     )
 
@@ -603,6 +691,7 @@ def _build_changes_section(changes, remote_url="", commits_by_sha=None,
     return (
         '<section class="changes-detected page-break-before">\n'
         '  <h2>What Changed in Your Codebase</h2>\n'
+        f'{accepted_banner}'
         '  <p style="color: var(--color-text-muted); margin-bottom: 1.5em;">\n'
         f'    We\'ve detected {n} change{"s" if n != 1 else ""} that differ from your project\'s\n'
         '    normal patterns. Each change shows what typically happens versus what we observed this time.\n'
@@ -615,7 +704,8 @@ def _build_changes_section(changes, remote_url="", commits_by_sha=None,
 
 
 def _build_change_card(c, index=0, remote_url="", commits_by_sha=None,
-                       all_commits=None, deps_changed=None):
+                       all_commits=None, deps_changed=None,
+                       accepted_keys=None):
     family = c.get("family", "")
     metric_key = c.get("metric", "")
     metric_name = METRIC_LABELS.get(metric_key, metric_key)
@@ -626,6 +716,7 @@ def _build_change_card(c, index=0, remote_url="", commits_by_sha=None,
     median = normal.get("median", normal.get("mean", 0))
     dev = c.get("deviation_stddev", 0)
     dev_class = _deviation_class(dev)
+    is_accepted = f"{family}:{metric_key}" in (accepted_keys or set())
     direction = "above" if dev >= 0 else "below"
     abs_dev = abs(dev)
 
@@ -740,17 +831,30 @@ def _build_change_card(c, index=0, remote_url="", commits_by_sha=None,
             "If the change was intentional, no fix needed — accept it in the report."
         )
 
-    action_buttons = (
-        f'  <div class="change-actions no-print" id="actions-{index}">\n'
-        f'    <div class="accept-group">\n'
-        f'      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu({index})">Accept &mdash; Expected</button>\n'
-        f'      <div class="accept-menu" id="accept-menu-{index}">\n'
-        f'        <button onclick="acceptFinding({index}, \'permanent\', \'{accept_cmd}\')">Accept permanently<span class="accept-hint">Never flag this signal again</span></button>\n'
-        f'        <button onclick="acceptFinding({index}, \'this-run\', \'{accept_thisrun}\')">Accept for this run only<span class="accept-hint">Dismiss now, flag again next analysis</span></button>\n'
-        f'      </div>\n'
-        f'    </div>\n'
-        f'    <button class="btn btn-action btn-fix" onclick="toggleFixPrompt({index})">Fix with AI</button>\n'
-        f'  </div>\n'
+    if is_accepted:
+        action_buttons = (
+            f'  <div class="change-actions no-print" id="actions-{index}">\n'
+            f'    <div class="accept-group">\n'
+            f'      <button class="btn btn-action btn-accept accepted" disabled>Accepted \u2713</button>\n'
+            f'    </div>\n'
+            f'    <button class="btn btn-action btn-fix" onclick="toggleFixPrompt({index})">Fix with AI</button>\n'
+            f'  </div>\n'
+        )
+    else:
+        action_buttons = (
+            f'  <div class="change-actions no-print" id="actions-{index}">\n'
+            f'    <div class="accept-group">\n'
+            f'      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu({index})">Accept &mdash; Expected</button>\n'
+            f'      <div class="accept-menu" id="accept-menu-{index}">\n'
+            f'        <button onclick="acceptFinding({index}, \'permanent\', \'{accept_cmd}\')">Accept permanently<span class="accept-hint">Never flag this signal again</span></button>\n'
+            f'        <button onclick="acceptFinding({index}, \'this-run\', \'{accept_thisrun}\')">Accept for this run only<span class="accept-hint">Dismiss now, flag again next analysis</span></button>\n'
+            f'      </div>\n'
+            f'    </div>\n'
+            f'    <button class="btn btn-action btn-fix" onclick="toggleFixPrompt({index})">Fix with AI</button>\n'
+            f'  </div>\n'
+        )
+
+    fix_prompt_html = (
         f'  <div class="fix-prompt-panel no-print" id="fix-prompt-{index}">\n'
         f'    <div class="fix-prompt-header">\n'
         f'      <strong>Drift Investigation Prompt</strong>\n'
@@ -801,14 +905,21 @@ def _build_change_card(c, index=0, remote_url="", commits_by_sha=None,
             else:
                 trend_html = f'  <div class="trend-subtitle trend-returning">\u2198 Returned to baseline</div>\n'
 
+    accepted_class = " change-card-accepted" if is_accepted else ""
+    accepted_badge = (
+        '    <div class="accepted-badge">\u2713 Accepted</div>\n'
+        if is_accepted else ""
+    )
+
     return (
-        f'<div class="change-card {dev_class}" id="{anchor_id}">\n'
+        f'<div class="change-card {dev_class}{accepted_class}" id="{anchor_id}">\n'
         '  <div class="change-card-header">\n'
         f'    <span class="family-icon">{icon}</span>\n'
         f'    <div>\n'
         f'      <div class="metric-name">{_esc(metric_name)}</div>\n'
         f'      <div class="family-label">{_esc(family_label)}</div>\n'
         f'    </div>\n'
+        f'{accepted_badge}'
         '  </div>\n'
         f'  <div class="user-friendly-summary">{explanation}</div>\n'
         '  <div class="bar-chart">\n'
@@ -827,6 +938,7 @@ def _build_change_card(c, index=0, remote_url="", commits_by_sha=None,
         f'{commit_html}'
         f'{trend_html}'
         f'{action_buttons}'
+        f'{fix_prompt_html}'
         f'{tech_html}'
         '</div>'
     )
@@ -955,7 +1067,7 @@ def _build_pattern_section(matches, candidates):
 
     PATTERN_VISIBLE_LIMIT = 3
 
-    # Assess all patterns to determine overall risk
+    # Assess all patterns to determine overall risk (before dedup for accurate counts)
     all_patterns = list(matches) + list(candidates)
     all_risks = [pattern_risk_assessment(p) for p in all_patterns]
     severity_counts = {}
@@ -966,18 +1078,23 @@ def _build_pattern_section(matches, candidates):
         if _severity_rank(sev) > _severity_rank(highest_severity):
             highest_severity = sev
 
+    # Dedup patterns by family+metric (same logic as CLI output)
+    deduped_matches = _dedup_and_limit_patterns(matches, limit=len(matches)) if matches else []
+    deduped_candidates = _dedup_and_limit_patterns(candidates, limit=len(candidates)) if candidates else []
+    deduped_all = list(deduped_matches) + list(deduped_candidates)
+
     # Sort all patterns by severity (most critical first), unified list
-    matches_set = set(id(p) for p in matches)
+    matches_set = set(id(p) for p in deduped_matches)
     all_sorted = sorted(
-        all_patterns,
+        deduped_all,
         key=lambda p: _severity_rank(pattern_risk_assessment(p)["severity"]),
         reverse=True,
     )
 
-    all_cards = []
-    for p in all_sorted:
-        badge = "Known Pattern" if id(p) in matches_set else "New Pattern"
-        all_cards.extend(_grouped_cards([p], badge))
+    # Group all patterns together so _grouped_cards can merge identical impacts
+    known = [p for p in all_sorted if id(p) in matches_set]
+    new = [p for p in all_sorted if id(p) not in matches_set]
+    all_cards = _grouped_cards(known, "Known Pattern") + _grouped_cards(new, "New Pattern")
 
     cards_html = _collapsible_pattern_cards(all_cards, "patterns", PATTERN_VISIBLE_LIMIT)
 
@@ -1121,22 +1238,36 @@ def _build_investigation_section(scope, period_from, period_to, changes,
     return (
         '<section class="investigation-section page-break-before">\n'
         '  <div class="next-steps-header">\n'
-        '    <h2 style="margin: 0;">Next Steps: Investigate with AI</h2>\n'
+        '    <h2 style="margin: 0;">Next Steps</h2>\n'
         '  </div>\n'
-        '  <p style="margin-bottom: 1em;">\n'
-        '    We\'ve prepared an investigation prompt you can use with your AI assistant\n'
-        '    (ChatGPT, Claude, etc.) to dig deeper into these changes.\n'
-        '  </p>\n'
-        '  <div class="investigation-expectations">\n'
-        '    <h4>What to expect from the investigation:</h4>\n'
-        '    <ul>\n'
-        '      <li><strong>Root cause analysis</strong> \u2014 The AI will identify why these changes deviate from your normal patterns</li>\n'
-        '      <li><strong>Risk assessment</strong> \u2014 Which changes need immediate attention vs. monitoring</li>\n'
-        '      <li><strong>Actionable fixes</strong> \u2014 Specific code changes, config tweaks, or process adjustments to address the issues</li>\n'
-        '      <li><strong>Verification</strong> \u2014 After applying fixes, re-run <code>evo analyze</code> to confirm improvements. '
-        'The deviations should decrease and severity levels should drop</li>\n'
-        '    </ul>\n'
+        '  <div class="next-steps-flow">\n'
+        '    <div class="step-card">\n'
+        '      <div class="step-number">1</div>\n'
+        '      <div class="step-content">\n'
+        '        <div class="step-title">Investigate</div>\n'
+        '        <p>Copy the prompt below and paste it into your AI assistant '
+        '(Claude Code, Cursor, Copilot, ChatGPT). '
+        'It will identify root causes and suggest fixes.</p>\n'
+        '      </div>\n'
+        '    </div>\n'
+        '    <div class="step-card">\n'
+        '      <div class="step-number">2</div>\n'
+        '      <div class="step-content">\n'
+        '        <div class="step-title">Fix</div>\n'
+        '        <p>Apply the suggested changes. If a deviation was intentional, '
+        'click <strong>Accept</strong> on its card above instead.</p>\n'
+        '      </div>\n'
+        '    </div>\n'
+        '    <div class="step-card">\n'
+        '      <div class="step-number">3</div>\n'
+        '      <div class="step-content">\n'
+        '        <div class="step-title">Verify</div>\n'
+        '        <p>Run <code>evo analyze . --verify</code> to re-analyze and compare. '
+        'A verification banner will show which deviations resolved, improved, or persist.</p>\n'
+        '      </div>\n'
+        '    </div>\n'
         '  </div>\n'
+        '  <h3 style="margin-top: 1.5em;">Investigation Prompt</h3>\n'
         f'  <div class="prompt-preview">{_esc(preview)}</div>\n'
         '  <div class="action-buttons no-print">\n'
         '    <button class="btn btn-primary" onclick="copyPrompt()" id="copyBtn">Copy Prompt to Clipboard</button>\n'
@@ -1148,11 +1279,253 @@ def _build_investigation_section(scope, period_from, period_to, changes,
     )
 
 
-def _build_adapters_section(active_families: list) -> str:
+_INTEGRATIONS_LINK = '<a href="docs/guides/INTEGRATIONS.md" class="source-doc-link">Setup guide &rarr;</a>'
+
+_SOURCE_HINTS = {
+    "ci": {
+        "github": (
+            'Config found but no run data. Set your token to get build duration '
+            '&amp; failure metrics.'
+            '<div class="source-hint-cmd">'
+            '<code>export GITHUB_TOKEN=$(gh auth token)</code>'
+            f' {_INTEGRATIONS_LINK}'
+            '</div>'
+        ),
+        "gitlab": (
+            'Config found but no run data. Set your token to get pipeline metrics.'
+            '<div class="source-hint-cmd">'
+            '<code>export GITLAB_TOKEN=glpat-...</code>'
+            f' {_INTEGRATIONS_LINK}'
+            '</div>'
+        ),
+        "default": (
+            'CI config found but no run data. Set the appropriate token to unlock '
+            f'build duration &amp; failure metrics. {_INTEGRATIONS_LINK}'
+        ),
+    },
+    "deployment": (
+        'Set <code>GITHUB_TOKEN</code> or <code>GITLAB_TOKEN</code> to unlock '
+        f'release cadence and deployment metrics. {_INTEGRATIONS_LINK}'
+    ),
+    "security": (
+        'Set <code>GITHUB_TOKEN</code> (with <code>security_events</code> scope) '
+        f'to get security advisory data. {_INTEGRATIONS_LINK}'
+    ),
+    "testing": (
+        'Generate test results: '
+        '<code>pytest --junitxml=junit.xml</code> or equivalent, then re-run analysis. '
+        f'{_INTEGRATIONS_LINK}'
+    ),
+    "coverage": (
+        'Generate coverage reports: '
+        '<code>pytest --cov --cov-report=xml</code> or equivalent, then re-run analysis. '
+        f'{_INTEGRATIONS_LINK}'
+    ),
+    "error_tracking": (
+        'Set <code>SENTRY_AUTH_TOKEN</code> to pull error tracking data from Sentry. '
+        f'{_INTEGRATIONS_LINK}'
+    ),
+}
+
+
+def _count_signals(evo_dir: Path, family: str) -> int:
+    """Count Phase 2 signals for a given family."""
+    if evo_dir is None:
+        return 0
+    # Normalize: "version_control" → "git" for file paths
+    file_family = "git" if family == "version_control" else family
+    signals_path = evo_dir / "phase2" / f"{file_family}_signals.json"
+    if not signals_path.exists():
+        return 0
+    try:
+        data = json.loads(signals_path.read_text())
+        return len(data) if isinstance(data, list) else 0
+    except Exception:
+        return 0
+
+
+def _get_ci_hint(connected: list) -> str:
+    """Determine the appropriate CI hint based on detected adapter sources."""
+    for c in connected:
+        if c.get("family") == "ci":
+            source = c.get("source_file") or ""
+            if "gitlab" in source.lower():
+                return _SOURCE_HINTS["ci"]["gitlab"]
+            if "github" in source.lower():
+                return _SOURCE_HINTS["ci"]["github"]
+    return _SOURCE_HINTS["ci"]["default"]
+
+
+def _build_sources_section(sources_info: dict, families_affected: list,
+                            evo_dir: Path = None) -> str:
+    """Build the 'What EE Can See' section showing all connected families."""
+    if not sources_info:
+        return ""
+
+    connected = sources_info.get("connected", [])
+    detected = sources_info.get("detected", [])
+    connected_families = sources_info.get("connected_families", [])
+
+    if not connected and not detected:
+        return ""
+
+    # Build a set of families that have findings
+    findings_set = set(families_affected)
+    # Normalize: "git" ↔ "version_control"
+    if "git" in findings_set:
+        findings_set.add("version_control")
+    if "version_control" in findings_set:
+        findings_set.add("git")
+
+    # Group connected adapters by family (deduplicate)
+    connected_by_family = {}
+    for c in connected:
+        fam = c["family"]
+        if fam not in connected_by_family:
+            connected_by_family[fam] = c
+
+    cards = []
+
+    # 1. Connected families with findings → green "Active" badge
+    # 2. Connected families without findings → blue "No Deviations" badge
+    for fam, adapter_info in connected_by_family.items():
+        icon = FAMILY_ICONS.get(fam, "")
+        label = FAMILY_LABELS.get(fam, fam)
+        color = FAMILY_COLORS.get(fam, "#64748b")
+        has_findings = fam in findings_set
+
+        # Check adapter tier — Tier 2+ means a token is present
+        has_api_adapter = any(
+            c.get("tier", 1) >= 2 and c.get("family") == fam
+            for c in connected
+        )
+
+        if has_findings:
+            badge = '<div class="source-status source-status-active">Active</div>'
+            detail = ""
+        else:
+            # Check if we have signals (analyzed but no deviations)
+            n_signals = _count_signals(evo_dir, fam)
+            if n_signals > 0:
+                badge = '<div class="source-status source-status-quiet">Connected &mdash; No Deviations</div>'
+                detail = (
+                    f'<div class="source-detail">'
+                    f'{n_signals:,} signal{"s" if n_signals != 1 else ""} analyzed '
+                    f'&mdash; all within normal range'
+                    f'</div>'
+                )
+            elif has_api_adapter:
+                # Token is set (Tier 2) but no signal data
+                # Check if user has Pro — Tier 2 adapters require it
+                try:
+                    from evolution.license import is_pro
+                    user_is_pro = is_pro(str(evo_dir.parent) if evo_dir else None)
+                except Exception:
+                    user_is_pro = False
+
+                if user_is_pro:
+                    badge = '<div class="source-status source-status-quiet">Connected</div>'
+                    detail = (
+                        '<div class="source-detail">'
+                        'Token set. This data is analyzed automatically when running '
+                        'via GitHub Action or GitLab CI. '
+                        f'{_INTEGRATIONS_LINK}'
+                        '</div>'
+                    )
+                else:
+                    badge = '<div class="source-status source-status-pro">Pro</div>'
+                    detail = (
+                        '<div class="source-detail">'
+                        'Token set. CI, deployment, and security analysis requires '
+                        '<a href="https://codequal.dev/#pricing" class="source-doc-link">'
+                        'Evolution Engine Pro</a>.'
+                        '</div>'
+                    )
+            else:
+                # Tier 1 only (config file found, no token) — show actionable hint
+                badge = '<div class="source-status source-status-hint">Config Detected</div>'
+                if fam == "ci":
+                    hint_text = _get_ci_hint(connected)
+                elif isinstance(_SOURCE_HINTS.get(fam), str):
+                    hint_text = _SOURCE_HINTS[fam]
+                else:
+                    hint_text = "Connected but no data yet. Re-run analysis after setup."
+                detail = f'<div class="source-detail">{hint_text}</div>'
+
+        cards.append(
+            f'<div class="source-card">'
+            f'<div class="source-card-header">'
+            f'<span class="source-icon" style="color: {color}">{icon}</span>'
+            f'<div>'
+            f'<div class="source-name">{_esc(label)}</div>'
+            f'{badge}'
+            f'</div>'
+            f'</div>'
+            f'{detail}'
+            f'</div>'
+        )
+
+    # 3. Detected but not connected → gray "Not Connected" badge with hints
+    for d in detected:
+        fam = d["family"]
+        icon = FAMILY_ICONS.get(fam, "")
+        label = FAMILY_LABELS.get(fam, fam)
+        color = FAMILY_COLORS.get(fam, "#64748b")
+        display_name = d.get("display_name", label)
+
+        badge = '<div class="source-status source-status-disconnected">Not Connected</div>'
+
+        if fam == "ci":
+            hint_text = _get_ci_hint(connected)
+        elif isinstance(_SOURCE_HINTS.get(fam), str):
+            hint_text = _SOURCE_HINTS[fam]
+        else:
+            evidence_str = "; ".join(d.get("evidence", [])[:2])
+            hint_text = (
+                f'Detected: {_esc(evidence_str)}. '
+                f'Install <code>{_esc(d.get("adapter", ""))}</code> or check '
+                f'<code>docs/guides/INTEGRATIONS.md</code> for setup.'
+            )
+
+        detail = f'<div class="source-detail">{hint_text}</div>'
+
+        cards.append(
+            f'<div class="source-card source-card-disconnected">'
+            f'<div class="source-card-header">'
+            f'<span class="source-icon" style="color: {color}; opacity: 0.5">{icon}</span>'
+            f'<div>'
+            f'<div class="source-name">{_esc(display_name)}</div>'
+            f'{badge}'
+            f'</div>'
+            f'</div>'
+            f'{detail}'
+            f'</div>'
+        )
+
+    cards_html = "\n    ".join(cards)
+
+    n_connected = len(connected_by_family)
+    n_detected = len(detected)
+    subtitle = f'{n_connected} connected'
+    if n_detected > 0:
+        subtitle += f', {n_detected} available'
+
+    return (
+        '<section class="sources-section">\n'
+        '  <h2>What EE Can See</h2>\n'
+        f'  <p class="sources-subtitle">{subtitle}</p>\n'
+        '  <div class="sources-grid">\n'
+        f'    {cards_html}\n'
+        '  </div>\n'
+        '</section>'
+    )
+
+
+def _build_adapters_section(active_families: list, sources_info: dict = None) -> str:
     """Build the 'Expand Your Coverage' section with adapter cards.
 
-    Shows active adapters, available adapters the user could enable,
-    and general setup guidance.
+    Shows available adapters the user could enable and general setup guidance.
+    Skips the "Currently Active" subsection since the Sources section handles that.
     """
     catalog = _load_adapter_catalog()
     universal_count = _load_universal_patterns_count()
@@ -1164,26 +1537,23 @@ def _build_adapters_section(active_families: list) -> str:
     if "git" in active_set:
         active_set.add("version_control")
 
-    active_adapters = [a for a in catalog if a["status"] == "available"
-                       and a.get("family") in active_set]
-    available_adapters = [a for a in catalog if a["status"] == "available"
-                          and a.get("family") not in active_set]
-    planned_adapters = [a for a in catalog if a["status"] == "planned"]
+    # Also exclude families already shown in the sources section
+    sources_families = set()
+    if sources_info:
+        for c in sources_info.get("connected", []):
+            sources_families.add(c["family"])
+        for d in sources_info.get("detected", []):
+            sources_families.add(d["family"])
+    # Normalize sources families
+    if "git" in sources_families:
+        sources_families.add("version_control")
+    if "version_control" in sources_families:
+        sources_families.add("git")
+    shown_set = active_set | sources_families
 
-    # Active adapter cards
-    active_cards = []
-    for a in active_adapters:
-        icon = FAMILY_ICONS.get(a["family"], "")
-        label = FAMILY_LABELS.get(a["family"], a["family"])
-        color = FAMILY_COLORS.get(a["family"], "#64748b")
-        active_cards.append(
-            f'<div class="adapter-card adapter-active">'
-            f'<div class="adapter-icon" style="color: {color}">{icon}</div>'
-            f'<div class="adapter-name">{_esc(a["name"])}</div>'
-            f'<div class="adapter-family">{_esc(label)}</div>'
-            f'<div class="adapter-status-badge active">Active</div>'
-            f'</div>'
-        )
+    available_adapters = [a for a in catalog if a["status"] == "available"
+                          and a.get("family") not in shown_set]
+    planned_adapters = [a for a in catalog if a["status"] == "planned"]
 
     # Available adapter cards (can be enabled)
     available_cards = []
@@ -1192,16 +1562,25 @@ def _build_adapters_section(active_families: list) -> str:
         label = FAMILY_LABELS.get(a["family"], a["family"])
         color = FAMILY_COLORS.get(a["family"], "#64748b")
         token = a.get("token")
+        is_pro_adapter = a.get("tier", 1) >= 2
         hint = ""
         if token:
-            hint = f'<div class="adapter-hint">Set <code>{_esc(token)}</code></div>'
+            hint = (
+                f'<div class="adapter-hint">Set <code>{_esc(token)}</code> '
+                f'{_INTEGRATIONS_LINK}</div>'
+            )
         elif a["tier"] == 1:
-            hint = '<div class="adapter-hint">Auto-detected from files</div>'
+            hint = f'<div class="adapter-hint">Auto-detected from files {_INTEGRATIONS_LINK}</div>'
+        pro_badge = (
+            '<div class="adapter-status-badge pro">Pro</div>'
+            if is_pro_adapter else ""
+        )
         available_cards.append(
             f'<div class="adapter-card adapter-available">'
             f'<div class="adapter-icon" style="color: {color}">{icon}</div>'
             f'<div class="adapter-name">{_esc(a["name"])}</div>'
             f'<div class="adapter-family">{_esc(label)}</div>'
+            f'{pro_badge}'
             f'<div class="adapter-desc">{_esc(a["description"])}</div>'
             f'{hint}'
             f'</div>'
@@ -1211,6 +1590,10 @@ def _build_adapters_section(active_families: list) -> str:
     planned_families = sorted(set(
         FAMILY_LABELS.get(a["family"], a["family"]) for a in planned_adapters
     ))
+
+    # If nothing to show, skip this section
+    if not available_cards and not planned_families:
+        return ""
 
     # Build the section
     parts = []
@@ -1225,13 +1608,6 @@ def _build_adapters_section(active_families: list) -> str:
         'the more cross-family patterns can be detected.</p>'
         '  </div>'
     )
-
-    # Active adapters
-    if active_cards:
-        parts.append('  <h3>Currently Active</h3>')
-        parts.append('  <div class="adapter-grid">')
-        parts.extend(f'    {c}' for c in active_cards)
-        parts.append('  </div>')
 
     # Available adapters
     if available_cards:
@@ -1569,6 +1945,15 @@ pre { background: var(--color-bg-subtle); padding: 1em; border-radius: 8px;
 .change-card { border: 1px solid var(--color-border); border-left: 4px solid var(--color-secondary);
   padding: 1.5em; margin-bottom: 1.5em; background: var(--color-bg-subtle);
   border-radius: 8px; page-break-inside: avoid; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.change-card-accepted { opacity: 0.6; border-left-color: var(--color-success) !important; }
+.accepted-badge { margin-left: auto; padding: 0.2em 0.75em; border-radius: 12px;
+  background: #d1fae5; color: #065f46; font-size: 9pt; font-weight: 600;
+  white-space: nowrap; }
+.accepted-summary { display: flex; gap: 0.75em; align-items: flex-start; padding: 1em 1.25em;
+  background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 3px solid #16a34a;
+  border-radius: 0 8px 8px 0; margin-bottom: 1.5em; font-size: 10pt; }
+.accepted-summary-icon { color: #16a34a; font-size: 14pt; font-weight: 700; line-height: 1; }
+.accepted-summary-hint { font-size: 9pt; color: var(--color-text-muted); margin-top: 0.3em; }
 .change-card.deviation-high { border-left-color: var(--color-danger); }
 .change-card.deviation-medium { border-left-color: var(--color-warning); }
 .change-card.deviation-low { border-left-color: var(--color-success); }
@@ -1664,6 +2049,19 @@ pre { background: var(--color-bg-subtle); padding: 1em; border-radius: 8px;
 .investigation-section { background: #fff; border: 2px solid var(--color-secondary);
   border-radius: 8px; padding: 2em; margin: 2em 0; }
 .next-steps-header { display: flex; align-items: center; gap: 0.5em; margin-bottom: 1em; }
+.next-steps-flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1em;
+  margin: 1em 0; }
+.step-card { display: flex; gap: 0.75em; padding: 1em; background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border); border-radius: 8px; }
+.step-number { width: 32px; height: 32px; min-width: 32px; border-radius: 50%;
+  background: var(--color-secondary); color: white; display: flex; align-items: center;
+  justify-content: center; font-weight: 700; font-size: 14pt; }
+.step-title { font-weight: 700; color: var(--color-primary); margin-bottom: 0.3em; }
+.step-content p { font-size: 9pt; color: var(--color-text-muted); line-height: 1.5; margin: 0; }
+.step-content code { font-size: 8.5pt; }
+@media (max-width: 768px) {
+  .next-steps-flow { grid-template-columns: 1fr; }
+}
 .action-buttons { display: flex; gap: 1em; margin: 1em 0; flex-wrap: wrap; }
 .btn { padding: 0.75em 1.5em; border-radius: 6px; font-weight: 600; font-size: 10pt;
   cursor: pointer; border: none; transition: all 250ms ease-out; }
@@ -1800,6 +2198,35 @@ div.evidence-overflow.show { display: block; }
 footer { margin-top: 4em; padding-top: 2em; border-top: 1px solid var(--color-border);
   text-align: center; color: var(--color-text-muted); font-size: 9pt; }
 footer strong { color: var(--color-secondary); }
+/* ─── Sources Section ─── */
+.sources-section { margin-top: 1.5em; }
+.sources-subtitle { color: var(--color-text-muted); margin-bottom: 1em; }
+.sources-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1em; margin: 1em 0 1.5em; }
+.source-card { border: 1px solid var(--color-border); border-radius: 8px;
+  padding: 1.2em; background: var(--color-bg); border-left: 3px solid var(--color-success);
+  transition: box-shadow 0.2s; }
+.source-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.source-card-disconnected { border-left-color: var(--color-border); background: var(--color-bg-subtle); }
+.source-card-header { display: flex; align-items: flex-start; gap: 0.75em; }
+.source-icon { font-size: 20pt; line-height: 1; }
+.source-name { font-weight: 600; font-size: 11pt; color: var(--color-primary); }
+.source-status { display: inline-block; padding: 0.15em 0.6em; border-radius: 12px;
+  font-size: 8pt; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+  margin-top: 0.2em; }
+.source-status-active { background: #d1fae5; color: #065f46; }
+.source-status-quiet { background: #dbeafe; color: #1e40af; }
+.source-status-hint { background: #fef3c7; color: #92400e; }
+.source-status-disconnected { background: #f1f5f9; color: #64748b; }
+.source-status-pro { background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; }
+.source-detail { margin-top: 0.75em; font-size: 9pt; color: var(--color-text-muted);
+  line-height: 1.5; }
+.source-detail code { font-size: 8.5pt; background: #e0f2fe; color: #0369a1;
+  padding: 0.15em 0.4em; border-radius: 3px; }
+.source-hint-cmd { margin-top: 0.5em; }
+.source-doc-link { color: var(--color-secondary); font-weight: 600; text-decoration: none;
+  font-size: 9pt; }
+.source-doc-link:hover { text-decoration: underline; }
 /* ─── Adapters Section ─── */
 .adapters-section { margin-top: 2em; }
 .adapters-intro { padding: 1em 1.5em; background: var(--color-bg-subtle);
@@ -1828,6 +2255,8 @@ footer strong { color: var(--color-secondary); }
   letter-spacing: 0.05em; padding: 0.2em 0.6em; border-radius: 12px;
   position: absolute; top: 1em; right: 1em; }
 .adapter-status-badge.active { background: #d1fae5; color: #065f46; }
+.adapter-status-badge.pro { background: linear-gradient(135deg, #7c3aed, #a855f7); color: white;
+  position: static; display: inline-block; margin-top: 0.3em; }
 .adapter-setup-guide { background: var(--color-bg-subtle); border: 1px solid var(--color-border);
   border-radius: 8px; padding: 1.5em; margin: 1.5em 0; }
 .adapter-setup-guide h4 { margin-top: 0; margin-bottom: 0.75em;
