@@ -8,7 +8,7 @@ branding:
 
 inputs:
   github-token:
-    description: "GitHub token for API access (CI, releases, security data)"
+    description: "GitHub token for API access. CI/releases/security analysis requires Pro license (EVO_LICENSE_KEY)."
     required: false
     default: ${{ github.token }}
   comment:

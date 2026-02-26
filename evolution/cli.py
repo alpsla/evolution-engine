@@ -86,7 +86,11 @@ def _open_report_with_server(evo_dir: Path, report_path: Path):
 @click.version_option(version=__version__, prog_name="evo")
 def main():
     """Evolution Engine — Git-native codebase evolution indexer."""
-    pass
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
 
 
 # ─────────────────── evo analyze ───────────────────
@@ -154,9 +158,21 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verb
         click.echo(f"  {changes} significant change(s) across {', '.join(families) or 'no families'}")
         if patterns:
             click.echo(f"  {patterns} pattern(s) matched")
+
+        # Show accepted deviations (Bug 7)
+        accepted_count = advisory.get("accepted_changes", 0)
+        accepted_metrics = advisory.get("accepted_metrics", [])
+        if accepted_count > 0:
+            metrics_str = ", ".join(accepted_metrics[:3])
+            if len(accepted_metrics) > 3:
+                metrics_str += f" +{len(accepted_metrics) - 3} more"
+            click.echo(f"  {accepted_count} accepted deviation(s) not shown: {metrics_str}")
+            click.echo(f"  Manage with `evo accepted list`")
+
         if status_info.get("level") in ("action_required", "needs_attention"):
             click.echo(f"\n  Run `evo investigate .` for AI-powered root cause analysis")
             click.echo(f"  Run `evo accept . <N>` to dismiss expected changes")
+            click.echo(f"  Run `evo analyze . --verify` after fixes to confirm resolution")
 
     # Track analyze completion + run counter for activation metrics
     if result["status"] == "complete":
@@ -965,7 +981,8 @@ def sources(path, token, what_if_adapters, json_output):
     if connected:
         for c in connected:
             source = f" ({c.source_file})" if c.source_file else ""
-            click.echo(f"  \u2705 {c.family:20s} {c.adapter_name}{source}")
+            tier_label = " [Pro]" if c.tier == 2 else ""
+            click.echo(f"  \u2705 {c.family:20s} {c.adapter_name}{source}{tier_label}")
     else:
         click.echo("  (none)")
 
@@ -998,17 +1015,21 @@ def sources(path, token, what_if_adapters, json_output):
 
     # Token hints for built-in (Tier 2) adapters
     from evolution.registry import TIER2_DETECTORS
+    from evolution.license import is_pro as _is_pro
+    _pro = _is_pro(path)
     token_hints = []
     for token_key, adapters in TIER2_DETECTORS.items():
         env_var = token_key.upper()
         if os.environ.get(env_var):
             continue  # token already set
         families = sorted(set(family for _, family in adapters))
-        token_hints.append(f"  Set {env_var} to unlock: {', '.join(families)}")
+        pro_note = "" if _pro else " (requires Pro license)"
+        token_hints.append(f"  Set {env_var} to unlock: {', '.join(families)}{pro_note}")
     if token_hints:
         click.echo()
         for hint in token_hints:
             click.echo(hint)
+        click.echo("  See docs/guides/INTEGRATIONS.md for setup details")
 
     # Summary
     click.echo()

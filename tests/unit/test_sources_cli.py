@@ -41,6 +41,7 @@ class TestSourcesTokenHints:
         """When GITHUB_TOKEN is not set, show hint for it."""
         with patch("evolution.prescan.SourcePrescan") as mock_prescan, \
              patch("evolution.registry.AdapterRegistry") as mock_registry, \
+             patch("dotenv.load_dotenv", return_value=None), \
              patch.dict("os.environ", {}, clear=False):
             # Ensure tokens are not set
             os.environ.pop("GITHUB_TOKEN", None)
@@ -61,6 +62,7 @@ class TestSourcesTokenHints:
         """When GITLAB_TOKEN is not set, show hint for it."""
         with patch("evolution.prescan.SourcePrescan") as mock_prescan, \
              patch("evolution.registry.AdapterRegistry") as mock_registry, \
+             patch("dotenv.load_dotenv", return_value=None), \
              patch.dict("os.environ", {}, clear=False):
             os.environ.pop("GITHUB_TOKEN", None)
             os.environ.pop("GITLAB_TOKEN", None)
@@ -79,6 +81,7 @@ class TestSourcesTokenHints:
         """When GITHUB_TOKEN is set, don't show hint for it."""
         with patch("evolution.prescan.SourcePrescan") as mock_prescan, \
              patch("evolution.registry.AdapterRegistry") as mock_registry, \
+             patch("dotenv.load_dotenv", return_value=None), \
              patch.dict("os.environ", {"GITHUB_TOKEN": "ghp_fake123"}, clear=False):
             os.environ.pop("GITLAB_TOKEN", None)
             os.environ.pop("CIRCLECI_TOKEN", None)
