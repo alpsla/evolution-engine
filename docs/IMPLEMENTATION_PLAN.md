@@ -336,9 +336,9 @@ See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implem
 |---|------|--------|----------|--------|
 | 36 | **Lawyer review implementation** — 6 sub-tasks above | Medium | No | **Complete** ✅ |
 | 36.7 | **Webhook signing key** — confirm `EVO_LICENSE_SIGNING_KEY` env var in Vercel production (hard-fail if missing) | Low | Yes — webhook returns 500 without it | **Complete** ✅ |
-| 36.8 | **Axiom 30-day retention** — configure in Axiom dashboard for all datasets | Low | No | Pending (set during dashboard setup session) |
-| 36.9 | **Verify Axiom/Vercel DPAs** — confirm SCCs in their Data Processing Agreements | Low | No | Pending |
-| 36.10 | **Verify Vercel Pro plan** — confirm project is on Pro tier | Low | No | Pending |
+| 36.8 | **Axiom 30-day retention** — configure in Axiom dashboard for all datasets | Low | No | **Complete** ✅ |
+| 36.9 | **Verify Axiom/Vercel DPAs** — confirm SCCs in their Data Processing Agreements | Low | No | **Complete** ✅ (both auto-effective, EU 2021/914 SCCs) |
+| 36.10 | **Verify Vercel Pro plan** — confirm project is on Pro tier | Low | No | **Complete** ✅ ($20/mo Premium) |
 | 36.11 | **Terms page + routing** — `website/terms.html` created, `/terms` route added | Low | No | **Complete** ✅ |
 | 36.12 | **BSL licensing in README** — dual-license table added | Low | No | **Complete** ✅ |
 | 36.13 | **GDPR deletion runbook** — internal ops procedure | Low | No | **Complete** ✅ |
@@ -470,16 +470,16 @@ All pending work across the plan, ordered by priority.
 
 #### Should Have (Before Scaling Past Beta)
 
-6 remaining — all external/ops tasks.
+All complete.
 
 | Priority | Task | Effort | Section | Status |
 |----------|------|--------|---------|--------|
 | **S1** | **Axiom dashboard & monitors** — 10 typed helpers, enriched events, 5 dashboards (20 panels), 3 alerts (#49) | Medium | External | **Complete** ✅ |
-| **S2** | **Axiom 30-day retention** — configure in dashboard (#36.8) | Low | External | Pending |
-| **S3** | **Verify Axiom/Vercel DPAs** — confirm SCCs (#36.9) | Low | External | Pending |
-| **S4** | **Verify Vercel Pro plan** (#36.10) | Low | External | Pending |
-| **S5** | **Google Search Console** — verify codequal.dev, submit sitemap (https://codequal.dev/sitemap.xml) | Low | External | Pending |
-| **S6** | **Deploy SEO changes** — push to Vercel so robots.txt/sitemap.xml/meta tags go live | Low | External | Pending |
+| **S2** | **Axiom 30-day retention** — configure in dashboard (#36.8) | Low | External | **Complete** ✅ |
+| **S3** | **Verify Axiom/Vercel DPAs** — confirm SCCs (#36.9) | Low | External | **Complete** ✅ (both have EU 2021/914 SCCs) |
+| **S4** | **Verify Vercel Pro plan** (#36.10) | Low | External | **Complete** ✅ ($20/mo Premium) |
+| **S5** | **Google Search Console** — verify codequal.dev, submit sitemap | Low | External | **Complete** ✅ (verified + sitemap submitted) |
+| **S6** | **Deploy SEO changes** — robots.txt/sitemap.xml/meta tags live on all pages | Low | External | **Complete** ✅ |
 
 #### Nice to Have (Low Priority)
 
@@ -525,6 +525,11 @@ All pending work across the plan, ordered by priority.
 | Axiom observability (#49) — 10 typed telemetry helpers, enriched CLI + Vercel events, 5 dashboards, 3 alerts, 13 new tests | Feb 26 |
 | Manual Testing B1-B4 — all blockers verified (GitHub Action, webhook, GitLab CI, GitLab CLI) | Feb 24-25 |
 | PyPI v0.2.2 published — all 6 flows tested (3 GitHub + 3 GitLab) | Feb 25 |
+| Axiom 30-day retention configured (S2) | Feb 27 |
+| Axiom/Vercel DPAs verified — both have EU 2021/914 SCCs (S3) | Feb 27 |
+| Vercel Pro plan activated — $20/mo Premium (S4) | Feb 27 |
+| Google Search Console — codequal.dev verified, sitemap submitted (S5) | Feb 27 |
+| SEO fully deployed — robots.txt, sitemap.xml, meta tags, canonical URLs, hreflang live (S6) | Feb 27 |
 
 ---
 
