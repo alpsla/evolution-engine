@@ -59,6 +59,14 @@
     {
       "src": "assets/**",
       "use": "@vercel/static"
+    },
+    {
+      "src": "robots.txt",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "sitemap.xml",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -79,6 +87,8 @@
     { "src": "/i18n.js", "dest": "/i18n.js" },
     { "src": "/i18n/(.*)", "dest": "/i18n/$1" },
     { "src": "/docs/integrations", "dest": "/integrations.html" },
+    { "src": "/robots.txt", "dest": "/robots.txt" },
+    { "src": "/sitemap.xml", "dest": "/sitemap.xml" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
