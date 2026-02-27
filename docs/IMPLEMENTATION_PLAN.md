@@ -1,6 +1,6 @@
 # Evolution Engine — Implementation Plan
 
-> **Last updated:** February 26, 2026 | 1703 tests passing | v0.2.2 on PyPI | 44 universal patterns | 7 signal families
+> **Last updated:** February 27, 2026 | 1716 tests passing | v0.3.0 (beta) | 44 universal patterns | 7 signal families
 >
 > This document tracks remaining work before public beta.
 > For completed implementation history, see `IMPLEMENTATION_PLAN_v1.md`.
@@ -477,7 +477,7 @@ All complete.
 | **S1** | **Axiom dashboard & monitors** — 10 typed helpers, enriched events, 5 dashboards (20 panels), 3 alerts (#49) | Medium | External | **Complete** ✅ |
 | **S2** | **Axiom 30-day retention** — configure in dashboard (#36.8) | Low | External | **Complete** ✅ |
 | **S3** | **Verify Axiom/Vercel DPAs** — confirm SCCs (#36.9) | Low | External | **Complete** ✅ (both have EU 2021/914 SCCs) |
-| **S4** | **Verify Vercel Pro plan** (#36.10) | Low | External | **Complete** ✅ ($20/mo Premium) |
+| **S4** | **Verify Vercel Pro plan** (#36.10) | Low | External | **Complete** ✅ (Pro not needed for beta — Hobby plan sufficient, cancelling after billing cycle) |
 | **S5** | **Google Search Console** — verify codequal.dev, submit sitemap | Low | External | **Complete** ✅ (verified + sitemap submitted) |
 | **S6** | **Deploy SEO changes** — robots.txt/sitemap.xml/meta tags live on all pages | Low | External | **Complete** ✅ |
 
