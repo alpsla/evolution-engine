@@ -372,10 +372,20 @@ class handler(BaseHTTPRequestHandler):
                     if p.get("last_updated", "") >= since
                 ]
 
+            # Count patterns that have met quorum (2+ independent submitters)
+            quorum_met = sum(1 for p in patterns if p.get("independent_count", 0) >= 2)
+            # Collect unique source families
+            pattern_families = sorted(set(
+                src for p in patterns for src in p.get("sources", [])
+            ))
+
             _axiom_send({
                 "type": "pattern_pull",
                 "pattern_count": len(patterns),
+                "quorum_met_count": quorum_met,
+                "pattern_families": pattern_families,
                 "since": since,
+                "country": self.headers.get("x-vercel-ip-country", ""),
                 "timestamp": time.time(),
             })
 
@@ -444,12 +454,22 @@ class handler(BaseHTTPRequestHandler):
         if not _redis_set(store):
             return self._json({"error": "Storage write failed"}, 500)
 
+        # Compute quorum and family stats for the entire store
+        all_patterns = list(store.get("patterns", {}).values())
+        quorum_met = sum(1 for p in all_patterns if p.get("independent_count", 0) >= 2)
+        pattern_families = sorted(set(
+            src for p in all_patterns for src in p.get("sources", [])
+        ))
+
         _axiom_send({
             "type": "pattern_push",
             "instance_id": instance_id,
             "accepted": len(validated),
             "rejected": len(errors),
-            "total_patterns": len(store.get("patterns", {})),
+            "total_patterns": len(all_patterns),
+            "quorum_met_count": quorum_met,
+            "pattern_families": pattern_families,
+            "country": self.headers.get("x-vercel-ip-country", ""),
             "timestamp": time.time(),
         })
 

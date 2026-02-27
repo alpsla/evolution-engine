@@ -334,7 +334,7 @@ The `evo investigate` and `evo fix` features use third-party AI (Claude/ChatGPT)
 - [ ] Create Stripe coupon (FOUNDING50, 50% off, 3 months, max 50)
 - [ ] Add AI transparency disclosure to CLI (`evo investigate`, `evo fix`)
 - [x] Add `run_number` + timestamps to telemetry (activation/retention metrics)
-- [ ] Set up Axiom dashboard + monitors (see Section 9.2 for spec)
+- [x] Set up Axiom dashboard + monitors (5 dashboards, 3 alerts — Feb 26)
 - [ ] Record terminal demo (asciinema, no face/voice — alias only)
 - [ ] README hero section with terminal demo embed
 

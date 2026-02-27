@@ -53,6 +53,18 @@ class Orchestrator:
         # Check license
         self.license = get_license(str(self.repo_path))
 
+        # Track license check
+        try:
+            from evolution.telemetry import track_license_check
+            track_license_check(
+                tier=self.license.tier,
+                source=getattr(self.license, "source", ""),
+                valid=self.license.is_valid() if hasattr(self.license, "is_valid") else self.license.is_pro(),
+                days_to_expiry=getattr(self.license, "days_to_expiry", -1),
+            )
+        except Exception:
+            pass
+
         # Gate LLM features behind Pro tier (message deferred to "Next steps")
         if enable_llm and not self.license.is_pro():
             self.enable_llm = False
@@ -306,6 +318,10 @@ class Orchestrator:
             },
             "advisory_status": p5_result["status"],
             "elapsed_seconds": elapsed,
+            # Telemetry metadata (prefixed with _ to signal internal use)
+            "_license_tier": self.license.tier,
+            "_gated_families_count": len(_gated_families),
+            "_has_diagnostics": bool(self._diagnostics),
         }
 
         # Count patterns eligible for community sharing
@@ -374,6 +390,18 @@ class Orchestrator:
         if extras:
             entry.update(extras)
         self._diagnostics[family] = entry
+
+        # Track non-active diagnostics for user guidance analytics
+        if status != "active":
+            try:
+                from evolution.telemetry import track_event
+                track_event("adapter_diagnostic", {
+                    "family": family,
+                    "status": status,
+                    "platform": extras.get("detected_platform", ""),
+                })
+            except Exception:
+                pass
 
     def _detect_remote_platform(self) -> str:
         """Detect git remote platform from origin URL.
@@ -506,6 +534,14 @@ class Orchestrator:
             result = sync.pull()
             if result.success and result.pulled > 0:
                 log(f"  Auto-pulled {result.pulled} community pattern(s)")
+                try:
+                    from evolution.telemetry import track_pattern_sync
+                    track_pattern_sync(
+                        action="pull", count=result.pulled,
+                        rejected=0, source="registry",
+                    )
+                except Exception:
+                    pass
         except Exception as e:
             logger.debug("Auto-pull failed (non-fatal): %s", e)
 
@@ -530,7 +566,17 @@ class Orchestrator:
                 return 0
 
             result = import_patterns(db_path, patterns)
-            return result.get("imported", 0)
+            imported = result.get("imported", 0)
+            if imported > 0:
+                try:
+                    from evolution.telemetry import track_pattern_sync
+                    track_pattern_sync(
+                        action="pull", count=imported,
+                        rejected=0, source="pypi",
+                    )
+                except Exception:
+                    pass
+            return imported
         except Exception as e:
             logger.debug("Pattern package import failed (non-fatal): %s", e)
             return 0
@@ -649,22 +695,32 @@ class Orchestrator:
             futures = {}
             for name, factory in adapters_to_fetch.items():
                 def _fetch(n=name, f=factory):
+                    t0 = time.monotonic()
                     try:
                         adapter = f(client)
                         events = list(adapter.iter_events())
-                        return n, events, None
+                        return n, events, None, time.monotonic() - t0
                     except Exception as e:
-                        return n, [], e
+                        return n, [], e, time.monotonic() - t0
                 futures[executor.submit(_fetch)] = name
 
             for future in as_completed(futures):
-                name, events, error = future.result()
+                name, events, error, duration = future.result()
+                duration_ms = int(duration * 1000)
                 if error:
                     if name not in self._diagnostics:
                         self._set_diagnostic(
                             name, "api_error",
                             f"API error: {error}",
                         )
+                    try:
+                        from evolution.telemetry import track_adapter_execution
+                        track_adapter_execution(
+                            family=name, tier=2, event_count=0,
+                            duration_ms=duration_ms, success=False,
+                        )
+                    except Exception:
+                        pass
                     continue
                 if events:
                     class _ListAdapter:
@@ -681,6 +737,14 @@ class Orchestrator:
                             name, "no_data",
                             f"Connected to API but no events returned.",
                         )
+                try:
+                    from evolution.telemetry import track_adapter_execution
+                    track_adapter_execution(
+                        family=name, tier=2, event_count=len(events),
+                        duration_ms=duration_ms, success=True,
+                    )
+                except Exception:
+                    pass
         return counts
 
     def _ingest_github_api(self, phase1, families: list[str]) -> dict[str, int]:

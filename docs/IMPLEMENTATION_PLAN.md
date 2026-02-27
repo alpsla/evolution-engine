@@ -335,7 +335,7 @@ See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implem
 |---|------|--------|----------|--------|
 | 36 | **Lawyer review implementation** — 6 sub-tasks above | Medium | No | **Complete** ✅ |
 | 36.7 | **Webhook signing key** — confirm `EVO_LICENSE_SIGNING_KEY` env var in Vercel production (hard-fail if missing) | Low | Yes — webhook returns 500 without it | **Complete** ✅ |
-| 36.8 | **Axiom 30-day retention** — configure in Axiom dashboard for all datasets | Low | No | Pending |
+| 36.8 | **Axiom 30-day retention** — configure in Axiom dashboard for all datasets | Low | No | Pending (set during dashboard setup session) |
 | 36.9 | **Verify Axiom/Vercel DPAs** — confirm SCCs in their Data Processing Agreements | Low | No | Pending |
 | 36.10 | **Verify Vercel Pro plan** — confirm project is on Pro tier | Low | No | Pending |
 | 36.11 | **Terms page + routing** — `website/terms.html` created, `/terms` route added | Low | No | **Complete** ✅ |
@@ -343,7 +343,7 @@ See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implem
 | 36.13 | **GDPR deletion runbook** — internal ops procedure | Low | No | **Complete** ✅ |
 | 36.14 | **Lawyer confirmation packet** — `codequal.dev/lawyer-review-packet-2026-02-22` | Low | No | **Complete** ✅ |
 | 38b | **Stripe live-mode testing** — repeat all flows with real Stripe dashboard | Low | Yes — required before launch payments | **Complete** ✅ |
-| 49 | **Axiom dashboard & monitors** — API health, alerts, usage metrics from existing ingest | Medium | No — operational readiness | Pending |
+| 49 | **Axiom dashboard & monitors** — 10 typed telemetry helpers, enriched CLI + Vercel events, 5 dashboards, 3 alerts, 1716 tests | Medium | No — operational readiness | **Complete** ✅ |
 
 **#38b — Stripe Live-Mode Testing (after #36):**
 1. Pro purchase — complete checkout with real card, verify license key, `evo license status` shows Pro
@@ -351,9 +351,14 @@ See `memory/transition-2026-02-20-legal.md` for exact lawyer language and implem
 3. FOUNDING50 discount — apply coupon, verify 50% off for 3 months, Pro license still valid
 4. Payment failure — simulate failed renewal, verify `past_due` flag, appropriate notification
 
-**#49 — Axiom Dashboard:**
-- API health dashboard (pattern registry, license webhook, accept webhook, website endpoints)
-- Alert rules for errors, latency spikes, failed webhooks
+**#49 — Axiom Observability (Complete):**
+- 10 typed telemetry helpers in `evolution/telemetry.py` (analyze, investigate, fix, verify, accept, sources, license_check, adapter_execution, pattern_sync, error)
+- Enriched CLI events with duration, license_tier, gated_families, diagnostics; global error hook via sys.excepthook
+- Per-adapter timing + adapter_diagnostic events for 0-data monitoring
+- Vercel handler enrichment: geo (country), revenue data, user_agent, pattern quorum/families
+- 5 Axiom dashboards (Usage Analytics, Financial/Revenue, Business Overview, Service Health, Adapter & Pattern Ecosystem)
+- 3 alerts (webhook failures, CLI error spike, payment failures)
+- 13 new tests (1716 total), APL query reference at `docs/axiom-dashboards.md`
 - Usage metrics (analyses/day, patterns shared, licenses issued)
 
 ---
@@ -468,7 +473,7 @@ All pending work across the plan, ordered by priority.
 
 | Priority | Task | Effort | Section | Status |
 |----------|------|--------|---------|--------|
-| **S1** | **Axiom dashboard & monitors** — API health, alerts, usage metrics (#49) | Medium | External | Pending |
+| **S1** | **Axiom dashboard & monitors** — 10 typed helpers, enriched events, 5 dashboards (20 panels), 3 alerts (#49) | Medium | External | **Complete** ✅ |
 | **S2** | **Axiom 30-day retention** — configure in dashboard (#36.8) | Low | External | Pending |
 | **S3** | **Verify Axiom/Vercel DPAs** — confirm SCCs (#36.9) | Low | External | Pending |
 | **S4** | **Verify Vercel Pro plan** (#36.10) | Low | External | Pending |

@@ -82,10 +82,36 @@ def _open_report_with_server(evo_dir: Path, report_path: Path):
         webbrowser.open(report_path.resolve().as_uri())
 
 
+def _install_error_hook():
+    """Install sys.excepthook to track unhandled errors via telemetry.
+
+    Only sends exception class name + CLI command. Never sends
+    stack traces, file paths, or any other potentially sensitive data.
+    """
+    _original_hook = sys.excepthook
+
+    def _error_hook(exc_type, exc_value, exc_tb):
+        try:
+            from evolution.telemetry import track_error
+            command = ""
+            if len(sys.argv) > 1:
+                command = sys.argv[1]
+            track_error(
+                error_type=exc_type.__name__,
+                command=command,
+            )
+        except Exception:
+            pass
+        _original_hook(exc_type, exc_value, exc_tb)
+
+    sys.excepthook = _error_hook
+
+
 @click.group()
 @click.version_option(version=__version__, prog_name="evo")
 def main():
     """Evolution Engine — Git-native codebase evolution indexer."""
+    _install_error_hook()
     try:
         from dotenv import load_dotenv
         load_dotenv()
@@ -136,7 +162,7 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verb
     )
 
     # Telemetry: prompt on first analyze, track completion
-    from evolution.telemetry import prompt_consent, track_event
+    from evolution.telemetry import prompt_consent
     prompt_consent()
 
     if json_output:
@@ -189,13 +215,19 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verb
         except Exception:
             run_number = 0
 
+        from evolution.telemetry import track_analyze
         advisory = result.get("advisory", {})
-        track_event("analyze_complete", {
-            "families": advisory.get("families_affected", []),
-            "signal_count": advisory.get("significant_changes", 0),
-            "pattern_count": advisory.get("patterns_matched", 0),
-            "run_number": run_number,
-        })
+        track_analyze(
+            license_tier=result.get("_license_tier", "free"),
+            duration_seconds=result.get("elapsed_seconds", 0),
+            total_events=result.get("events", 0),
+            active_families_count=len(result.get("families", [])),
+            patterns_matched=advisory.get("patterns_matched", 0),
+            significant_changes_count=advisory.get("significant_changes", 0),
+            gated_families_count=result.get("_gated_families_count", 0),
+            has_diagnostics=result.get("_has_diagnostics", False),
+            run_number=run_number,
+        )
 
     if show_prompt and result["status"] == "complete":
         evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
@@ -378,6 +410,14 @@ def accept(path, indices, reason, evo_dir, scope, scope_from, scope_to):
             family_label = c["family"]
             metric_label = c["metric"]
             click.echo(f"  {family_label} / {metric_label}")
+
+        from evolution.telemetry import track_accept
+        families = set(c["family"] for c in accepted_items)
+        track_accept(
+            scope=scope,
+            count=len(accepted_items),
+            family=",".join(sorted(families)),
+        )
     else:
         click.echo("All specified deviations were already accepted.")
 
@@ -565,8 +605,13 @@ def investigate(path, evo_dir, show_prompt, agent_type, model):
     click.echo()
     click.echo("[AI Disclosure] This report was generated with the assistance of artificial intelligence (Claude by Anthropic). The analysis is based on your repository's metrics and may contain errors. Please review findings before taking action.")
 
-    from evolution.telemetry import track_event
-    track_event("cli_command", {"command": "investigate", "agent": report.agent_name})
+    from evolution.telemetry import track_investigate
+    track_investigate(
+        agent=report.agent_name or "",
+        duration_seconds=report.duration_seconds if hasattr(report, "duration_seconds") else 0.0,
+        success=report.success,
+        finding_count=report.finding_count if hasattr(report, "finding_count") else 0,
+    )
 
 
 # ─────────────────── evo fix ───────────────────
@@ -723,13 +768,15 @@ def fix(path, evo_dir, dry_run, max_iterations, branch, agent_type, scope, yes, 
                     f"New: {it.new_issues}, Regressions: {it.regressions}")
     click.echo("\nAI-generated code suggestions should be carefully reviewed before merging.")
 
-    from evolution.telemetry import track_event
-    track_event("cli_command", {
-        "command": "fix",
-        "iterations": len(result.iterations),
-        "resolved": result.total_resolved,
-        "status": result.status,
-    })
+    from evolution.telemetry import track_fix
+    track_fix(
+        iterations=len(result.iterations),
+        resolved=result.total_resolved,
+        status=result.status,
+        duration_seconds=result.duration_seconds if hasattr(result, "duration_seconds") else 0.0,
+        termination_reason=result.status,
+        dry_run=dry_run,
+    )
 
     # Save fix result
     output_dir = evo_path / "fix"
@@ -1075,6 +1122,15 @@ def sources(path, token, what_if_adapters, json_output):
                     f"({combos_total}x more patterns)" if combos_current > 0
                     else f"With all detected: {n_total} families "
                          f"→ {combos_total} combination(s)")
+
+    from evolution.telemetry import track_sources
+    tier2_count = sum(1 for c in connected if c.tier == 2)
+    unconnected_names = sorted(set(s.service for s in unconnected))
+    track_sources(
+        families_detected=n_current,
+        tier2_available=tier2_count,
+        unconnected_services=unconnected_names,
+    )
 
 
 # ─────────────────── evo adapter ───────────────────
@@ -2135,6 +2191,9 @@ def verify(previous, path, scope, quiet):
     evo_dir = Path(path) / ".evo"
     scope = scope or Path(path).resolve().name
 
+    import time as _time
+    _verify_start = _time.monotonic()
+
     phase5 = Phase5Engine(evo_dir)
     result = phase5.verify(scope=scope, previous_advisory_path=previous)
 
@@ -2143,6 +2202,16 @@ def verify(previous, path, scope, quiet):
     verification_path.parent.mkdir(parents=True, exist_ok=True)
     verification_path.write_text(
         json.dumps(result.get("verification", {}), indent=2), encoding="utf-8"
+    )
+
+    # Telemetry
+    _v_summary = result.get("verification", {}).get("summary", {})
+    from evolution.telemetry import track_verify
+    track_verify(
+        duration_seconds=_time.monotonic() - _verify_start,
+        changes_resolved=_v_summary.get("resolved", 0),
+        changes_persisting=_v_summary.get("persisting", 0),
+        changes_new=_v_summary.get("new", 0),
     )
 
     if quiet:

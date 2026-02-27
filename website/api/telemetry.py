@@ -76,12 +76,20 @@ class handler(BaseHTTPRequestHandler):
 
         _rate_limits[anon_id].append(now)
 
+        # Extract User-Agent for CLI version tracking
+        user_agent = self.headers.get("User-Agent", "")
+
+        # Geo: country code from Vercel header (no IP, no city)
+        country = self.headers.get("x-vercel-ip-country", "")
+
         log_entry = {
             "type": "telemetry",
             "event": event_name,
             "properties": data.get("properties", {}),
             "anon_id": anon_id,
             "version": data.get("version", "unknown"),
+            "user_agent": user_agent,
+            "country": country,
             "timestamp": now,
         }
         print(json.dumps(log_entry))

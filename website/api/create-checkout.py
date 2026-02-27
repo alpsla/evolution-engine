@@ -12,7 +12,27 @@ Environment variables:
 
 import json
 import os
+import time
+import urllib.request
 from http.server import BaseHTTPRequestHandler
+
+
+def _axiom_send(event: dict) -> None:
+    """Fire-and-forget: send a single event to Axiom. Never raises."""
+    token = os.environ.get("AXIOM_TOKEN")
+    if not token:
+        return
+    dataset = os.environ.get("AXIOM_DATASET", "evo")
+    try:
+        req = urllib.request.Request(
+            f"https://api.axiom.co/v1/datasets/{dataset}/ingest",
+            data=json.dumps([event]).encode("utf-8"),
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=2)
+    except Exception:
+        pass
 
 
 class handler(BaseHTTPRequestHandler):
@@ -39,6 +59,14 @@ class handler(BaseHTTPRequestHandler):
                 metadata={"product": "evolution-engine-pro"},
                 allow_promotion_codes=True,
             )
+
+            _axiom_send({
+                "type": "checkout",
+                "event": "checkout_started",
+                "country": self.headers.get("x-vercel-ip-country", ""),
+                "timestamp": time.time(),
+            })
+
             self._json({"url": session.url})
         except stripe.StripeError as e:
             self._json({"error": str(e)}, 400)

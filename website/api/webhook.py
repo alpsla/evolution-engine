@@ -71,7 +71,7 @@ class handler(BaseHTTPRequestHandler):
                 session = event["data"]["object"]
                 customer_id = session.get("customer")
                 if customer_id:
-                    _handle_checkout_completed(stripe, customer_id, signing_key)
+                    _handle_checkout_completed(stripe, customer_id, signing_key, self.headers)
                     result["action"] = "license_generated"
                 else:
                     result["action"] = "skipped_no_customer"
@@ -80,7 +80,7 @@ class handler(BaseHTTPRequestHandler):
                 subscription = event["data"]["object"]
                 customer_id = subscription.get("customer")
                 if customer_id:
-                    _handle_subscription_deleted(stripe, customer_id)
+                    _handle_subscription_deleted(stripe, customer_id, subscription, self.headers)
                     result["action"] = "license_revoked"
 
             elif event_type == "invoice.payment_failed":
@@ -89,7 +89,7 @@ class handler(BaseHTTPRequestHandler):
                 attempt_count = invoice.get("attempt_count", 0)
                 result["attempt_count"] = attempt_count
                 if customer_id:
-                    _handle_payment_failed(stripe, customer_id, attempt_count)
+                    _handle_payment_failed(stripe, customer_id, attempt_count, invoice, self.headers)
                     result["action"] = "payment_failed_flagged"
         except Exception as exc:
             _axiom_send({
@@ -114,7 +114,7 @@ class handler(BaseHTTPRequestHandler):
         pass
 
 
-def _handle_checkout_completed(stripe, customer_id, signing_key):
+def _handle_checkout_completed(stripe, customer_id, signing_key, headers=None):
     customer = stripe.Customer.retrieve(customer_id)
     metadata = customer.get("metadata", {})
     if metadata.get("evo_license_key"):
@@ -130,31 +130,48 @@ def _handle_checkout_completed(stripe, customer_id, signing_key):
     stripe.Customer.modify(customer_id, metadata={"evo_license_key": license_key})
 
     cid_hash = hashlib.sha256(customer_id.encode()).hexdigest()[:12]
+    country = headers.get("x-vercel-ip-country", "") if headers else ""
     log_entry = {
         "type": "webhook",
         "event": "license_generated",
         "customer_id_hash": cid_hash,
         "tier": "pro",
+        "country": country,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     print(json.dumps(log_entry))
     _axiom_send(log_entry)
 
 
-def _handle_subscription_deleted(stripe, customer_id):
+def _handle_subscription_deleted(stripe, customer_id, subscription=None, headers=None):
     stripe.Customer.modify(customer_id, metadata={"evo_license_key": ""})
     cid_hash = hashlib.sha256(customer_id.encode()).hexdigest()[:12]
+    country = headers.get("x-vercel-ip-country", "") if headers else ""
+
+    # Compute subscription duration if available
+    duration_days = -1
+    if subscription:
+        created_ts = subscription.get("created")
+        if created_ts:
+            try:
+                created_dt = datetime.fromtimestamp(created_ts, tz=timezone.utc)
+                duration_days = (datetime.now(timezone.utc) - created_dt).days
+            except (ValueError, TypeError, OSError):
+                pass
+
     log_entry = {
         "type": "webhook",
         "event": "license_revoked",
         "customer_id_hash": cid_hash,
+        "subscription_duration_days": duration_days,
+        "country": country,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     print(json.dumps(log_entry))
     _axiom_send(log_entry)
 
 
-def _handle_payment_failed(stripe, customer_id, attempt_count):
+def _handle_payment_failed(stripe, customer_id, attempt_count, invoice=None, headers=None):
     """Flag customer when invoice payment fails."""
     stripe.Customer.modify(customer_id, metadata={
         "evo_payment_status": "past_due",
@@ -162,11 +179,23 @@ def _handle_payment_failed(stripe, customer_id, attempt_count):
         "evo_payment_attempt": str(attempt_count),
     })
     cid_hash = hashlib.sha256(customer_id.encode()).hexdigest()[:12]
+    country = headers.get("x-vercel-ip-country", "") if headers else ""
+
+    # Revenue at risk
+    amount_cents = 0
+    currency = "usd"
+    if invoice:
+        amount_cents = invoice.get("amount_due", 0)
+        currency = invoice.get("currency", "usd")
+
     log_entry = {
         "type": "webhook",
         "event": "payment_failed",
         "customer_id_hash": cid_hash,
         "attempt_count": attempt_count,
+        "amount_cents": amount_cents,
+        "currency": currency,
+        "country": country,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     print(json.dumps(log_entry))
