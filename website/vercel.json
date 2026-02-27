@@ -89,6 +89,7 @@
     { "src": "/docs/integrations", "dest": "/integrations.html" },
     { "src": "/robots.txt", "dest": "/robots.txt" },
     { "src": "/sitemap.xml", "dest": "/sitemap.xml" },
+    { "src": "/googlee9024bf2caf1dcc2.html", "dest": "/googlee9024bf2caf1dcc2.html" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
