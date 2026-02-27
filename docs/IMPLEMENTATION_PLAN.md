@@ -41,6 +41,7 @@ All core engine work is done. Summary of shipped features:
 | Pre-launch hardening — security fixes, signing key deployment | ✅ | Multiple files |
 | Adapter diagnostics — source status cards, badges, integration hints across HTML/CLI/PR | ✅ | `report_generator.py`, `pr_comment.py`, `phase5_engine.py`, `cli.py` |
 | Website integrations guide — troubleshooting, nav link on all pages | ✅ | `website/integrations.html`, all `website/*.html` |
+| Website SEO — robots.txt, sitemap.xml, Schema.org JSON-LD, meta tags, canonical URLs, hreflang | ✅ | `website/robots.txt`, `sitemap.xml`, all `website/*.html` |
 
 ---
 
@@ -517,6 +518,7 @@ All pending work across the plan, ordered by priority.
 | Website i18n — DE/ES translations for Data Sources (113 elements) and Docs (199 elements) pages | Feb 26 |
 | Website nav — unified nav across all 6 pages, lang switcher removed from legal pages | Feb 26 |
 | i18n.js fix — textContent for pre>code blocks to preserve diagram whitespace | Feb 26 |
+| Website SEO — robots.txt, sitemap.xml, Schema.org JSON-LD, unique titles/descriptions, canonical URLs, hreflang | Feb 27 |
 | Manual Testing B1-B4 — all blockers verified (GitHub Action, webhook, GitLab CI, GitLab CLI) | Feb 24-25 |
 | PyPI v0.2.2 published — all 6 flows tested (3 GitHub + 3 GitLab) | Feb 25 |
 
