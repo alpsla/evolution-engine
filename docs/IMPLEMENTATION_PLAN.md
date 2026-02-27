@@ -470,7 +470,7 @@ All pending work across the plan, ordered by priority.
 
 #### Should Have (Before Scaling Past Beta)
 
-4 remaining — all external/ops tasks.
+6 remaining — all external/ops tasks.
 
 | Priority | Task | Effort | Section | Status |
 |----------|------|--------|---------|--------|
@@ -478,12 +478,15 @@ All pending work across the plan, ordered by priority.
 | **S2** | **Axiom 30-day retention** — configure in dashboard (#36.8) | Low | External | Pending |
 | **S3** | **Verify Axiom/Vercel DPAs** — confirm SCCs (#36.9) | Low | External | Pending |
 | **S4** | **Verify Vercel Pro plan** (#36.10) | Low | External | Pending |
+| **S5** | **Google Search Console** — verify codequal.dev, submit sitemap (https://codequal.dev/sitemap.xml) | Low | External | Pending |
+| **S6** | **Deploy SEO changes** — push to Vercel so robots.txt/sitemap.xml/meta tags go live | Low | External | Pending |
 
 #### Nice to Have (Low Priority)
 
 | Priority | Task | Effort | Section | Status |
 |----------|------|--------|---------|--------|
 | **N1** | **Anthropic API terms review** — confirm data processing terms for investigation/fix prompts (L6) | Low | Legal | Pending |
+| **N2** | **Blog setup** — scaffold `/blog/` with templates and canonical setup for Dev.to cross-posting | Low | Website | Pending (hold until first post ready) |
 
 #### Post-Beta Month 2+
 
@@ -519,6 +522,7 @@ All pending work across the plan, ordered by priority.
 | Website nav — unified nav across all 6 pages, lang switcher removed from legal pages | Feb 26 |
 | i18n.js fix — textContent for pre>code blocks to preserve diagram whitespace | Feb 26 |
 | Website SEO — robots.txt, sitemap.xml, Schema.org JSON-LD, unique titles/descriptions, canonical URLs, hreflang | Feb 27 |
+| Axiom observability (#49) — 10 typed telemetry helpers, enriched CLI + Vercel events, 5 dashboards, 3 alerts, 13 new tests | Feb 26 |
 | Manual Testing B1-B4 — all blockers verified (GitHub Action, webhook, GitLab CI, GitLab CLI) | Feb 24-25 |
 | PyPI v0.2.2 published — all 6 flows tested (3 GitHub + 3 GitLab) | Feb 25 |
 
