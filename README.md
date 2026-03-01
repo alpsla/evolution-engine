@@ -1,8 +1,16 @@
 # Evolution Engine
 
+[![PyPI version](https://img.shields.io/pypi/v/evolution-engine)](https://pypi.org/project/evolution-engine/)
+[![Python 3.11+](https://img.shields.io/pypi/pyversions/evolution-engine)](https://pypi.org/project/evolution-engine/)
+[![License: BSL 1.1](https://img.shields.io/badge/license-BSL%201.1-blue)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-1716%20passing-brightgreen)]()
+
 **AI coding tools write correct code that silently breaks your architecture. Evolution Engine detects the drift, shows you the exact commit, and lets your AI fix it — with evidence.**
 
 Calibrated on 90+ open-source repos. 6.18M signals analyzed. Your code never leaves your machine.
+
+<!-- TODO: Replace with actual demo GIF after recording with VHS -->
+<!-- ![evo demo](demo.gif) -->
 
 ---
 
@@ -15,18 +23,20 @@ Evolution Engine is a **drift detector for AI-assisted development**. It learns 
 ### The Loop: Detect → Evidence → Fix → Verify
 
 ```
-  evo analyze .          What changed? Is it unusual for THIS repo?
+  evo analyze .              What changed? Is it unusual for THIS repo?
        |
-  evo investigate .      AI identifies the root cause commit + drift pattern
+  evo investigate .          AI pinpoints the root cause commit + drift pattern
        |
-  evo fix .              AI proposes a fix based on evidence, not guesswork
+  evo fix . --dry-run        Generates an evidence-backed prompt for your AI tool
        |
-  evo verify .           Did the fix resolve the drift? Or did it make it worse?
+  You + your AI tool         Paste the prompt into Cursor / Claude Code / Copilot
        |
-  evo accept . 1 2       Expected change? Accept it. Move on.
+  evo analyze . --verify     Did the fix resolve the drift? Or make it worse?
+       |
+  evo accept . 1 2           Expected change? Accept it. Move on.
 ```
 
-This is the full cycle no other tool offers: detect drift, provide evidence, let AI fix it, verify the fix worked, and let humans decide what's intentional.
+EE generates the evidence and the prompt — you bring your own AI tool to apply the fix. Then EE verifies whether the drift resolved. No other tool closes this loop.
 
 ### How It Works (5-Phase Pipeline)
 
@@ -85,10 +95,6 @@ evo init . --path all
 ```
 
 Free tier covers Path 1 (CLI). Pro unlocks Path 2 (hooks) and Path 3 (CI integration), plus AI investigation, AI fix loop, and inline PR review comments.
-
-### Founding Member Program
-
-We're looking for 50 developers who use AI coding tools daily. In exchange for monthly feedback, you get founding member pricing: **$9.50/month for 3 months** (regular: $19/month). Use code `FOUNDING50` at checkout.
 
 ### Environment Variables
 
@@ -151,8 +157,9 @@ evo analyze . --families git,ci  # Override auto-detection
 evo report [path]                # Generate HTML report from last run
 evo status                       # Show detected adapters and event counts
 evo investigate [path]           # AI root cause analysis (Pro)
-evo fix [path]                   # AI fix-verify loop (Pro)
-evo fix [path] --residual        # Iteration-aware prompt (current vs previous)
+evo fix [path] --dry-run         # Generate evidence-backed fix prompt (Pro)
+evo fix [path] --dry-run --residual  # Iteration-aware prompt (what's fixed vs still broken)
+evo fix [path]                   # Automated fix-verify loop with CLI agent (Pro, advanced)
 evo verify <advisory>            # Compare current state to a previous advisory
 
 # Setup & Integration
