@@ -71,18 +71,19 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
+        COMMENT_BODY: ${{ github.event.comment.body }}
+        COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+        COMMENT_ASSOC: ${{ github.event.comment.author_association }}
+        PR_NUMBER: ${{ github.event.issue.number }}
       run: |
         # Check author association — only MEMBER, OWNER, COLLABORATOR can accept
-        ASSOC="${{ github.event.comment.author_association }}"
-        if [[ "$ASSOC" != "MEMBER" && "$ASSOC" != "OWNER" && "$ASSOC" != "COLLABORATOR" ]]; then
-          echo "Ignoring /evo accept from $ASSOC (requires MEMBER, OWNER, or COLLABORATOR)"
+        if [[ "$COMMENT_ASSOC" != "MEMBER" && "$COMMENT_ASSOC" != "OWNER" && "$COMMENT_ASSOC" != "COLLABORATOR" ]]; then
+          echo "Ignoring /evo accept from $COMMENT_ASSOC (requires MEMBER, OWNER, or COLLABORATOR)"
           echo "accepted=false" >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
-        PR_NUMBER="${{ github.event.issue.number }}"
-        AUTHOR="${{ github.event.comment.user.login }}"
-        COMMENT_BODY="${{ github.event.comment.body }}"
+        AUTHOR="$COMMENT_AUTHOR"
 
         # Parse scope from comment: "/evo accept permanent" vs "/evo accept"
         if echo "$COMMENT_BODY" | grep -qi '/evo accept permanent'; then
@@ -262,11 +263,13 @@ runs:
     - name: Install Evolution Engine
       if: steps.accept.outputs.accepted != 'true' && inputs.skip-install != 'true'
       shell: bash
+      env:
+        EVO_VERSION: ${{ inputs.evo-version }}
       run: |
-        if [ "${{ inputs.evo-version }}" = "latest" ]; then
+        if [ "$EVO_VERSION" = "latest" ]; then
           pip install evolution-engine
         else
-          pip install "evolution-engine==${{ inputs.evo-version }}"
+          pip install "evolution-engine==$EVO_VERSION"
         fi
 
     - name: Restore previous advisory (for verification on subsequent pushes)
@@ -300,10 +303,15 @@ runs:
         mkdir -p .evo
 
         python3 -c "
-        import json, sys, urllib.request, os
+        import hashlib, hmac, json, sys, urllib.request, os
 
         repo = '${{ github.repository }}'
-        url = f'https://codequal.dev/api/accept?repo={repo}'
+        secret = os.environ.get('EVO_ACCEPT_SECRET', '')
+        if not secret:
+            sys.exit(0)
+
+        sig = hmac.new(secret.encode(), repo.encode(), hashlib.sha256).hexdigest()
+        url = f'https://codequal.dev/api/accept?repo={repo}&sig={sig}'
         try:
             req = urllib.request.Request(url, method='GET')
             resp = urllib.request.urlopen(req, timeout=10)
@@ -372,15 +380,17 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         EVO_LICENSE_KEY: ${{ env.EVO_LICENSE_KEY || '' }}
+        INPUT_FAMILIES: ${{ inputs.families }}
+        INPUT_TOKEN: ${{ inputs.github-token }}
       run: |
         mkdir -p .evo
 
         ARGS="--json --quiet"
-        if [ -n "${{ inputs.families }}" ]; then
-          ARGS="$ARGS --families ${{ inputs.families }}"
+        if [ -n "$INPUT_FAMILIES" ]; then
+          ARGS="$ARGS --families $INPUT_FAMILIES"
         fi
-        if [ -n "${{ inputs.github-token }}" ]; then
-          ARGS="$ARGS --token ${{ inputs.github-token }}"
+        if [ -n "$INPUT_TOKEN" ]; then
+          ARGS="$ARGS --token $INPUT_TOKEN"
         fi
 
         # Run analysis

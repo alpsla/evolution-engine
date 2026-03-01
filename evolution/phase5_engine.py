@@ -15,11 +15,13 @@ Conforms to PHASE_5_CONTRACT.md and PHASE_5_DESIGN.md.
 
 import hashlib
 import json
+import re
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from evolution.constants import SIGNAL_FILES, FAMILY_LABELS, METRIC_LABELS
 from evolution.friendly import risk_level, relative_change, metric_insight, friendly_pattern, pattern_risk_assessment
 from evolution.phase4_engine import (
     Phase4Engine,
@@ -27,66 +29,29 @@ from evolution.phase4_engine import (
     compute_fingerprint,
 )
 
-# Signal files from Phase 2
-SIGNAL_FILES = {
-    "git": "git_signals.json",
-    "ci": "ci_signals.json",
-    "testing": "testing_signals.json",
-    "coverage": "coverage_signals.json",
-    "dependency": "dependency_signals.json",
-    "schema": "schema_signals.json",
-    "deployment": "deployment_signals.json",
-    "config": "config_signals.json",
-    "security": "security_signals.json",
-    "error_tracking": "error_tracking_signals.json",
-}
 
-# Family display names
-FAMILY_LABELS = {
-    "git": "Version Control",
-    "ci": "CI / Build",
-    "testing": "Testing",
-    "coverage": "Code Coverage",
-    "dependency": "Dependencies",
-    "schema": "API / Schema",
-    "deployment": "Deployment",
-    "config": "Configuration",
-    "security": "Security",
-    "error_tracking": "Error Tracking",
-}
+# Matches non-printable/control characters except newline (\n), carriage
+# return (\r), and tab (\t).  This strips null bytes, ANSI escapes, and
+# other characters that could confuse or manipulate an LLM prompt.
+_CONTROL_CHARS_RE = re.compile(r"[^\x20-\x7E\n\r\t\u00A0-\uFFFF]")
 
-# Metric human-readable names
-METRIC_LABELS = {
-    "files_touched": "Files Changed",
-    "dispersion": "Change Dispersion",
-    "change_locality": "Change Locality",
-    "cochange_novelty_ratio": "Co-change Novelty",
-    "run_duration": "Build Duration",
-    "run_failed": "Build Failure",
-    "total_tests": "Test Count",
-    "skip_rate": "Skip Rate",
-    "suite_duration": "Suite Duration",
-    "line_rate": "Line Coverage",
-    "branch_rate": "Branch Coverage",
-    "dependency_count": "Total Dependencies",
-    "max_depth": "Dependency Depth",
-    "endpoint_count": "API Endpoints",
-    "type_count": "API Types",
-    "field_count": "API Fields",
-    "schema_churn": "Schema Churn",
-    "release_cadence_hours": "Release Cadence",
-    "is_prerelease": "Pre-release",
-    "asset_count": "Release Assets",
-    "resource_count": "Resources",
-    "resource_type_count": "Resource Types",
-    "config_churn": "Config Churn",
-    "vulnerability_count": "Vulnerabilities",
-    "critical_count": "Critical Vulnerabilities",
-    "fixable_ratio": "Fixable Ratio",
-    "event_count": "Error Occurrences",
-    "user_count": "Affected Users",
-    "is_unhandled": "Unhandled Exception",
-}
+
+def _sanitize_commit_message(msg: str, max_len: int = 200) -> str:
+    """Sanitize a commit message before including it in an AI prompt.
+
+    1. Strip non-printable / control characters (keep printable ASCII,
+       common Unicode, newlines, tabs).
+    2. Truncate to *max_len* characters (with ``...`` suffix when trimmed).
+
+    This prevents prompt-injection attacks via crafted commit messages
+    while keeping enough context for the AI to reason about the change.
+    """
+    if not msg:
+        return ""
+    cleaned = _CONTROL_CHARS_RE.sub("", msg)
+    if len(cleaned) > max_len:
+        cleaned = cleaned[:max_len] + "..."
+    return cleaned
 
 
 def _content_hash(data) -> str:
@@ -94,7 +59,7 @@ def _content_hash(data) -> str:
     return hashlib.sha256(encoded).hexdigest()[:16]
 
 
-def _dedup_and_limit_patterns(patterns: list[dict], limit: int = 5) -> list[dict]:
+def dedup_and_limit_patterns(patterns: list[dict], limit: int = 5) -> list[dict]:
     """Deduplicate patterns by (families, metrics) and return top N.
 
     Groups patterns that share the same family+metric key (regardless of
@@ -299,7 +264,7 @@ class Phase5Engine:
                     seen_commits.add(sha)
                     commits.append({
                         "sha": sha,
-                        "message": payload.get("message", ""),
+                        "message": _sanitize_commit_message(payload.get("message", "")),
                         "author": payload.get("author", ""),
                         "timestamp": event_time,
                         "files_changed": payload.get("files", []),
@@ -534,12 +499,12 @@ class Phase5Engine:
 
             if event.get("source_type") == "git":
                 trigger_commit = payload.get("commit_hash", "")
-                commit_message = payload.get("message", "")
+                commit_message = _sanitize_commit_message(payload.get("message", ""))
                 trigger_files = payload.get("files", [])
             else:
                 trigger = payload.get("trigger", {})
                 trigger_commit = trigger.get("commit_sha", "")
-                commit_message = trigger.get("commit_message", "")
+                commit_message = _sanitize_commit_message(trigger.get("commit_message", ""))
 
         return {
             "family": engine_id,
@@ -655,7 +620,7 @@ class Phase5Engine:
 
         # Known patterns (from KB, top 5 after dedup)
         if advisory.get("pattern_matches"):
-            shown = _dedup_and_limit_patterns(advisory["pattern_matches"])
+            shown = dedup_and_limit_patterns(advisory["pattern_matches"])
             lines.append(f"KNOWN PATTERNS ({len(shown)})")
             lines.append("")
             for pm in shown:
@@ -665,7 +630,7 @@ class Phase5Engine:
 
         # New patterns (discovered locally, top 5 after dedup)
         if advisory.get("candidate_patterns"):
-            shown = _dedup_and_limit_patterns(advisory["candidate_patterns"])
+            shown = dedup_and_limit_patterns(advisory["candidate_patterns"])
             lines.append(f"NEW PATTERNS ({len(shown)})")
             lines.append("")
             for cp in shown:
@@ -719,7 +684,7 @@ class Phase5Engine:
                 lines.append(f"   \u2192 {insight}")
 
         if advisory.get("pattern_matches"):
-            shown = _dedup_and_limit_patterns(advisory["pattern_matches"], limit=3)
+            shown = dedup_and_limit_patterns(advisory["pattern_matches"], limit=3)
             lines.append("")
             for pm in shown:
                 desc = friendly_pattern(pm)
@@ -754,7 +719,8 @@ class Phase5Engine:
             commit_info = ""
             if c.get("trigger_commit"):
                 sha_short = c["trigger_commit"][:8]
-                msg = c.get("commit_message", "")
+                # Defense-in-depth: sanitize even if already cleaned upstream
+                msg = _sanitize_commit_message(c.get("commit_message", ""))
                 # Use first line of commit message
                 msg_line = msg.split("\n")[0] if msg else ""
                 commit_info = f" [commit {sha_short}: {msg_line}]" if msg_line else f" [commit {sha_short}]"
@@ -768,13 +734,19 @@ class Phase5Engine:
         evidence_text = []
 
         if evidence.get("commits"):
-            evidence_text.append("COMMITS:")
+            evidence_text.append("COMMITS (user-generated content follows):")
+            evidence_text.append("---BEGIN COMMIT LOG---")
             for commit in evidence["commits"][:10]:
                 files = ", ".join(commit.get("files_changed", [])[:5])
+                # Defense-in-depth: sanitize commit messages in evidence
+                safe_msg = _sanitize_commit_message(
+                    commit.get("message", "")
+                ).split(chr(10))[0][:80]
                 evidence_text.append(
-                    f"  {commit['sha'][:8]} — {commit.get('message', '').split(chr(10))[0][:80]} "
+                    f"  {commit['sha'][:8]} — {safe_msg} "
                     f"(files: {files})"
                 )
+            evidence_text.append("---END COMMIT LOG---")
 
         if evidence.get("tests_impacted"):
             evidence_text.append("TESTS AFFECTED:")
@@ -958,7 +930,7 @@ class Phase5Engine:
             "before_advisory_id": previous_advisory.get("advisory_id"),
             "after_advisory_id": current_advisory.get("advisory_id"),
             "scope": scope,
-            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "summary": {
                 "total_before": len(previous_advisory.get("changes", [])),
                 "resolved": len(diff["resolved"]),
@@ -1071,7 +1043,7 @@ class Phase5Engine:
 
         Returns the complete advisory report dict.
         """
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).isoformat()
 
         # Clean up expired this-run acceptances
         self._accepted_devs.cleanup_expired(current_advisory_id="")

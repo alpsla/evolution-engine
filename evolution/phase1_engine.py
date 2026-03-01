@@ -11,7 +11,7 @@ dependency, schema, deployment, config, security).
 from pathlib import Path
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 
 REQUIRED_FIELDS = {"source_type", "source_id", "ordering_mode", "attestation", "payload"}
 
@@ -101,7 +101,7 @@ class Phase1Engine:
                     payload.get("committed_at")
                     or payload.get("authored_at")
                     or payload.get("timestamp")
-                    or (datetime.utcnow().isoformat() + "Z")
+                    or (datetime.now(timezone.utc).isoformat())
                 )
 
             source_event = {

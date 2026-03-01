@@ -59,8 +59,8 @@ class Orchestrator:
             track_license_check(
                 tier=self.license.tier,
                 source=getattr(self.license, "source", ""),
-                valid=self.license.is_valid() if hasattr(self.license, "is_valid") else self.license.is_pro(),
-                days_to_expiry=getattr(self.license, "days_to_expiry", -1),
+                valid=self.license.is_valid(),
+                days_to_expiry=-1,
             )
         except Exception:
             pass
@@ -102,16 +102,44 @@ class Orchestrator:
         Returns:
             Pipeline result dict with event/signal/pattern/advisory counts.
         """
+        scope = scope or self.repo_path.name
+        start = time.monotonic()
+        log = self._log if not quiet else lambda *a, **k: None
+        vlog = log if verbose else lambda *a, **k: None
+
+        # ── Acquire pipeline lock (prevent concurrent runs) ──
+        lock_path = self.evo_dir / ".pipeline.lock"
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        lock_file = open(lock_path, "w")
+        try:
+            import fcntl
+            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except (BlockingIOError, OSError):
+            lock_file.close()
+            return {"status": "locked", "message": "Another evo analyze is already running on this repo."}
+        except ImportError:
+            pass  # Windows: fcntl unavailable, skip locking
+
+        try:
+            return self._run_pipeline(scope, json_output, quiet, verbose, log, vlog, start)
+        finally:
+            try:
+                import fcntl
+                fcntl.flock(lock_file, fcntl.LOCK_UN)
+            except (ImportError, OSError):
+                pass
+            lock_file.close()
+            try:
+                lock_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    def _run_pipeline(self, scope, json_output, quiet, verbose, log, vlog, start):
         from evolution.phase1_engine import Phase1Engine
         from evolution.phase2_engine import Phase2Engine
         from evolution.phase3_engine import Phase3Engine
         from evolution.phase4_engine import Phase4Engine
         from evolution.phase5_engine import Phase5Engine
-
-        scope = scope or self.repo_path.name
-        start = time.monotonic()
-        log = self._log if not quiet else lambda *a, **k: None
-        vlog = log if verbose else lambda *a, **k: None
 
         # ── Snapshot previous advisory for loop closure ──
         previous_advisory = self._load_previous_advisory()
@@ -332,11 +360,11 @@ class Orchestrator:
 
         if p5_result["status"] == "complete":
             advisory = p5_result["advisory"]
-            from evolution.phase5_engine import _dedup_and_limit_patterns
+            from evolution.phase5_engine import dedup_and_limit_patterns
             known = advisory.get("pattern_matches", [])
             candidates = advisory.get("candidate_patterns", [])
-            deduped_known = _dedup_and_limit_patterns(known, limit=len(known)) if known else []
-            deduped_cands = _dedup_and_limit_patterns(candidates, limit=len(candidates)) if candidates else []
+            deduped_known = dedup_and_limit_patterns(known, limit=len(known)) if known else []
+            deduped_cands = dedup_and_limit_patterns(candidates, limit=len(candidates)) if candidates else []
             result["advisory"] = {
                 "significant_changes": advisory["summary"]["significant_changes"],
                 "families_affected": advisory["summary"]["families_affected"],
@@ -356,7 +384,7 @@ class Orchestrator:
             if self._llm_gated:
                 next_steps.append(
                     "AI investigation available with Pro. "
-                    "Run `evo setup .` to configure, or visit https://codequal.dev/pro"
+                    "Run `evo setup .` to configure, or visit https://codequal.dev/#pricing"
                 )
             if _gated_families:
                 n = len(_gated_families)

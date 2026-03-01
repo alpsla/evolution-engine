@@ -1,7 +1,7 @@
 """Unit tests for KnowledgeStore (SQLite backend)."""
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -209,7 +209,7 @@ class TestKnowledgeCRUD:
 class TestPatternLifecycle:
     def test_decay_finds_old_patterns(self, kb):
         # Pattern last seen 100 days ago
-        old_time = (datetime.utcnow() - timedelta(days=100)).isoformat() + "Z"
+        old_time = (datetime.now(timezone.utc) - timedelta(days=100)).isoformat()
         pid = kb.create_pattern(_make_pattern(last_seen=old_time))
 
         decayed = kb.get_decayed_patterns(decay_window_days=90)
@@ -217,7 +217,7 @@ class TestPatternLifecycle:
         assert decayed[0]["pattern_id"] == pid
 
     def test_decay_ignores_recent_patterns(self, kb):
-        recent = datetime.utcnow().isoformat() + "Z"
+        recent = datetime.now(timezone.utc).isoformat()
         kb.create_pattern(_make_pattern(last_seen=recent))
 
         decayed = kb.get_decayed_patterns(decay_window_days=90)

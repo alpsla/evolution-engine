@@ -37,6 +37,16 @@
       "config": { "maxLambdaSize": "15mb" }
     },
     {
+      "src": "api/activate-license.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "15mb" }
+    },
+    {
+      "src": "api/license-check.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "15mb" }
+    },
+    {
       "src": "*.html",
       "use": "@vercel/static"
     },

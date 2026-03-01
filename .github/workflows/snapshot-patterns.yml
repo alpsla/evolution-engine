@@ -11,6 +11,9 @@ on:
         required: false
         default: "false"
 
+permissions:
+  contents: read
+
 jobs:
   snapshot:
     runs-on: ubuntu-latest

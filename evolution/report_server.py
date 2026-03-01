@@ -15,6 +15,7 @@ Usage:
 """
 
 import json
+import secrets
 import socket
 import sys
 import threading
@@ -49,6 +50,7 @@ class ReportServer:
         self.report_path = Path(report_path)
         self.port = port or self.find_available_port()
         self.timeout = timeout
+        self.token = secrets.token_urlsafe(16)
         self._server: Optional[HTTPServer] = None
 
     def serve(self):
@@ -61,7 +63,7 @@ class ReportServer:
             timer.daemon = True
             timer.start()
 
-        webbrowser.open(f"http://127.0.0.1:{self.port}")
+        webbrowser.open(f"http://127.0.0.1:{self.port}/{self.token}")
         self._server.serve_forever()
 
     def _shutdown(self):
@@ -167,18 +169,37 @@ class ReportServer:
         handler.end_headers()
         handler.wfile.write(body)
 
+    def _check_token(self, handler) -> bool:
+        """Verify auth token in URL path or Referer header."""
+        if handler.path.startswith(f"/{self.token}"):
+            return True
+        referer = handler.headers.get("Referer", "")
+        if referer.startswith(f"http://127.0.0.1:{self.port}/{self.token}"):
+            return True
+        return False
+
     def _make_handler(self):
         server = self
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):
-                if self.path == "/api/accepted":
+                if not server._check_token(self):
+                    self.send_response(403)
+                    self.end_headers()
+                    return
+                if self.path == f"/{server.token}/api/accepted":
                     server._handle_get_accepted(self)
+                elif self.path.startswith(f"/{server.token}"):
+                    server._handle_get_report(self)
                 else:
                     server._handle_get_report(self)
 
             def do_POST(self):
-                if self.path == "/api/accept":
+                if not server._check_token(self):
+                    self.send_response(403)
+                    self.end_headers()
+                    return
+                if self.path == f"/{server.token}/api/accept":
                     server._handle_post_accept(self)
                 else:
                     self.send_response(404)

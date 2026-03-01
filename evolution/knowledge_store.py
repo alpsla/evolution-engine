@@ -12,7 +12,7 @@ import json
 import sqlite3
 import hashlib
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -196,7 +196,7 @@ class SQLiteKnowledgeStore(KnowledgeStoreBase):
         return hashlib.sha256(encoded).hexdigest()[:16]
 
     def _now(self) -> str:
-        return datetime.utcnow().isoformat() + "Z"
+        return datetime.now(timezone.utc).isoformat()
 
     def _row_to_dict(self, row: sqlite3.Row) -> dict:
         d = dict(row)
@@ -441,7 +441,7 @@ class SQLiteKnowledgeStore(KnowledgeStoreBase):
 
     def get_decayed_patterns(self, decay_window_days: int) -> list[dict]:
         from datetime import timedelta
-        cutoff = (datetime.utcnow() - timedelta(days=decay_window_days)).isoformat() + "Z"
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=decay_window_days)).isoformat()
         rows = self._conn.execute(
             "SELECT * FROM patterns WHERE expired = 0 AND last_seen < ? ORDER BY last_seen",
             (cutoff,),

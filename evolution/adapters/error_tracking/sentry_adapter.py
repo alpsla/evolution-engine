@@ -154,15 +154,26 @@ class SentryAdapter:
 
         return all_issues[:self.max_issues]
 
-    @staticmethod
-    def _parse_next_link(link_header: str) -> Optional[str]:
-        """Parse Sentry's Link header for the next page URL."""
+    def _parse_next_link(self, link_header: str) -> Optional[str]:
+        """Parse Sentry's Link header for the next page URL.
+
+        Validates that the next URL has the same scheme and host as
+        self._api_base to prevent open-redirect / SSRF attacks.
+        """
+        from urllib.parse import urlparse
+
         if not link_header:
             return None
         for part in link_header.split(","):
             part = part.strip()
             if 'rel="next"' in part and 'results="true"' in part:
                 url = part.split(";")[0].strip().strip("<>")
+                # Validate scheme + host match self._api_base
+                parsed_base = urlparse(self._api_base)
+                parsed_next = urlparse(url)
+                if (parsed_next.scheme != parsed_base.scheme or
+                        parsed_next.hostname != parsed_base.hostname):
+                    return None
                 return url
         return None
 

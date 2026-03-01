@@ -493,49 +493,57 @@ class TestHandlerIntegration:
         resp_body = h.wfile.read().decode("utf-8")
         return h._response_code, json.loads(resp_body) if resp_body else {}
 
+    @patch("api.patterns._validate_license_key", return_value={"tier": "pro"})
     @patch("api.patterns._redis_get", return_value={"patterns": {}, "submitters": {}})
+    @patch("api.patterns._redis_cas", return_value=(True, None))
     @patch("api.patterns._redis_set", return_value=True)
     @patch("api.patterns._axiom_send")
-    def test_post_valid_patterns(self, mock_axiom, mock_set, mock_get):
+    def test_post_valid_patterns(self, mock_axiom, mock_set, mock_cas, mock_get, mock_key):
         payload = {
             "level": 2,
             "instance_id": "abcdef0123456789",
+            "license_key": "test-key",
             "patterns": [_valid_pattern()],
         }
         code, resp = self._make_handler("POST", "/api/patterns", payload)
         assert code == 200
         assert resp["accepted"] == 1
-        mock_set.assert_called_once()
+        mock_cas.assert_called_once()
 
+    @patch("api.patterns._validate_license_key", return_value={"tier": "pro"})
     @patch("api.patterns._redis_get", return_value={"patterns": {}, "submitters": {}})
     @patch("api.patterns._redis_set", return_value=True)
     @patch("api.patterns._axiom_send")
-    def test_post_level1_metadata(self, mock_axiom, mock_set, mock_get):
-        payload = {"level": 1, "metadata": {"families": ["git"]}}
+    def test_post_level1_metadata(self, mock_axiom, mock_set, mock_get, mock_key):
+        payload = {"level": 1, "license_key": "test-key", "metadata": {"families": ["git"]}}
         code, resp = self._make_handler("POST", "/api/patterns", payload)
         assert code == 200
         assert resp["accepted"] == 0
         mock_set.assert_not_called()
 
+    @patch("api.patterns._validate_license_key", return_value={"tier": "pro"})
     @patch("api.patterns._redis_get", return_value={"patterns": {}, "submitters": {}})
     @patch("api.patterns._axiom_send")
-    def test_post_invalid_instance_id(self, mock_axiom, mock_get):
+    def test_post_invalid_instance_id(self, mock_axiom, mock_get, mock_key):
         payload = {
             "level": 2,
             "instance_id": "bad",
+            "license_key": "test-key",
             "patterns": [_valid_pattern()],
         }
         code, resp = self._make_handler("POST", "/api/patterns", payload)
         assert code == 400
         assert "instance_id" in resp["error"]
 
+    @patch("api.patterns._validate_license_key", return_value={"tier": "pro"})
     @patch("api.patterns._redis_get", return_value={"patterns": {}, "submitters": {}})
     @patch("api.patterns._redis_set", return_value=True)
     @patch("api.patterns._axiom_send")
-    def test_post_rejects_bad_pattern(self, mock_axiom, mock_set, mock_get):
+    def test_post_rejects_bad_pattern(self, mock_axiom, mock_set, mock_get, mock_key):
         payload = {
             "level": 2,
             "instance_id": "abcdef0123456789",
+            "license_key": "test-key",
             "patterns": [{"fingerprint": "BAD"}],
         }
         code, resp = self._make_handler("POST", "/api/patterns", payload)
@@ -573,9 +581,10 @@ class TestHandlerIntegration:
         assert code == 200
         assert len(resp["patterns"]) == 1
 
+    @patch("api.patterns._validate_license_key", return_value={"tier": "pro"})
     @patch("api.patterns._redis_get", return_value={"patterns": {}, "submitters": {}})
     @patch("api.patterns._axiom_send")
-    def test_post_rate_limited(self, mock_axiom, mock_get):
+    def test_post_rate_limited(self, mock_axiom, mock_get, mock_key):
         instance = "abcdef0123456789"
         # Exhaust rate limit
         _rate_limits[instance] = [time.time()] * 10
@@ -583,6 +592,7 @@ class TestHandlerIntegration:
         payload = {
             "level": 2,
             "instance_id": instance,
+            "license_key": "test-key",
             "patterns": [_valid_pattern()],
         }
         code, resp = self._make_handler("POST", "/api/patterns", payload)
@@ -596,14 +606,17 @@ class TestHandlerIntegration:
         assert code == 400
         assert "level" in resp["error"].lower()
 
+    @patch("api.patterns._validate_license_key", return_value={"tier": "pro"})
     @patch("api.patterns._redis_get", return_value={"patterns": {}, "submitters": {}})
+    @patch("api.patterns._redis_cas", return_value=(True, None))
     @patch("api.patterns._redis_set", return_value=True)
     @patch("api.patterns._axiom_send")
-    def test_post_mixed_valid_invalid(self, mock_axiom, mock_set, mock_get):
+    def test_post_mixed_valid_invalid(self, mock_axiom, mock_set, mock_cas, mock_get, mock_key):
         """Some valid, some invalid patterns — valid ones accepted."""
         payload = {
             "level": 2,
             "instance_id": "abcdef0123456789",
+            "license_key": "test-key",
             "patterns": [
                 _valid_pattern(),
                 {"fingerprint": "BAD"},
@@ -614,13 +627,16 @@ class TestHandlerIntegration:
         assert resp["accepted"] == 1
         assert resp["rejected"] == 1
 
+    @patch("api.patterns._validate_license_key", return_value={"tier": "pro"})
     @patch("api.patterns._redis_get", return_value={"patterns": {}, "submitters": {}})
+    @patch("api.patterns._redis_cas", return_value=(False, None))
     @patch("api.patterns._redis_set", return_value=False)
     @patch("api.patterns._axiom_send")
-    def test_post_redis_write_failure(self, mock_axiom, mock_set, mock_get):
+    def test_post_redis_write_failure(self, mock_axiom, mock_set, mock_cas, mock_get, mock_key):
         payload = {
             "level": 2,
             "instance_id": "abcdef0123456789",
+            "license_key": "test-key",
             "patterns": [_valid_pattern()],
         }
         code, resp = self._make_handler("POST", "/api/patterns", payload)

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Optional
 
 from evolution.friendly import metric_insight, risk_level
-from evolution.phase5_engine import _dedup_and_limit_patterns
+from evolution.phase5_engine import dedup_and_limit_patterns
 
 
 # ─── Risk Badge Emojis ───
@@ -157,8 +157,8 @@ def format_pr_comment(
         lines.append("")
 
     # Pattern matches (dedup before counting and display)
-    deduped_patterns = _dedup_and_limit_patterns(patterns, limit=len(patterns)) if patterns else []
-    deduped_candidates = _dedup_and_limit_patterns(candidates, limit=len(candidates)) if candidates else []
+    deduped_patterns = dedup_and_limit_patterns(patterns, limit=len(patterns)) if patterns else []
+    deduped_candidates = dedup_and_limit_patterns(candidates, limit=len(candidates)) if candidates else []
     if deduped_patterns or deduped_candidates:
         lines.append("<details>")
         lines.append(f"<summary><strong>Patterns ({len(deduped_patterns)} known, {len(deduped_candidates)} candidate)</strong></summary>")

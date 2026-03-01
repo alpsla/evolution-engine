@@ -11,23 +11,10 @@ Conforms to PHASE_3_CONTRACT.md and PHASE_3_DESIGN.md.
 from pathlib import Path
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 
+from evolution.constants import SIGNAL_FILES
 from evolution.friendly import relative_change, metric_insight
-
-# All Phase 2 signal files, keyed by family
-SIGNAL_FILES = {
-    "git": "git_signals.json",
-    "ci": "ci_signals.json",
-    "testing": "testing_signals.json",
-    "coverage": "coverage_signals.json",
-    "dependency": "dependency_signals.json",
-    "schema": "schema_signals.json",
-    "deployment": "deployment_signals.json",
-    "config": "config_signals.json",
-    "security": "security_signals.json",
-    "error_tracking": "error_tracking_signals.json",
-}
 
 
 class Phase3Engine:
@@ -210,7 +197,7 @@ class Phase3Engine:
                     "deviation": signal["deviation"],
                 },
                 "confidence": signal["confidence"],
-                "generated_at": datetime.utcnow().isoformat() + "Z",
+                "generated_at": datetime.now(timezone.utc).isoformat(),
             }
 
             explanation_id = self._hash(explanation)

@@ -678,6 +678,98 @@ Once-per-week phone home to verify subscription is still active.
 
 ---
 
+## Post-Release: Audit-Driven Backlog (Feb 28, 2026)
+
+Two comprehensive audits (5 deep audits each: security, business logic, architecture, performance, dependencies) identified these items as post-release work — best addressed with real usage data.
+
+### Trigger: First Paying Customer
+
+| # | Task | Why Wait | Effort |
+|---|------|----------|--------|
+| A1 | **License periodic re-validation** — weekly server check on `evo analyze`; cancelled users currently keep Pro locally forever (C1) | No paying customers to protect yet; revocation is theoretical | Medium |
+| A2 | **Machine fingerprint binding** — limit key to N machines | Need activation data first to set the right limit | Medium |
+| A3 | **Activation token with server nonce** — current SHA-256 token is forgeable without a secret (H1); add server-derived component at activation time | Requires A1 infrastructure | Medium |
+| A4 | **Accept GET endpoint authentication** — currently returns accepted deviations for any repo without auth (C3) | Low-value data pre-launch; add signature param matching POST pattern | Low |
+| A5 | **Duplicate checkout prevention** — check for existing active subscription before creating Stripe session (M3) | No customers yet to double-charge | Low |
+
+### Trigger: First Failed Payment
+
+| # | Task | Why Wait | Effort |
+|---|------|----------|--------|
+| A6 | **Revoke license after N failed payments** — currently `payment_failed` only sets metadata flag, CLI ignores it (M1) | Need real dunning data to set correct threshold | Low |
+
+### Trigger: Pattern Count > 200
+
+| # | Task | Why Wait | Effort |
+|---|------|----------|--------|
+| A7 | **SQLite index on KB fingerprint column** | 44 patterns today; O(n) lookup is <1ms | Low |
+| A8 | **Redis failover for pattern registry** — PyPI as fallback when Upstash is down | 28 patterns; loss recoverable from PyPI cache | Medium |
+| A9 | **Pattern pagination on GET /api/patterns** | Response is ~5KB today; only matters at 1000+ patterns | Low |
+
+### Trigger: Repo with 5K+ Commits Analyzed
+
+| # | Task | Why Wait | Effort |
+|---|------|----------|--------|
+| A10 | **Event streaming in Phase 2** — sliding window, reduce 1-2GB peak to ~200MB (H9) | Current repos are <2K commits | High |
+| A11 | **Batch git subprocess calls** — single `git log --numstat` instead of per-commit diff (H10); walker spawns up to 17K subprocesses for 1K commits | Perf is 10-16s for typical repos | High |
+| A12 | **Phase 1 JSONL batching** — one file per family instead of per-event JSON files (H11); Phase 2 reads all events 10x (M6) | 2500 files tolerable on modern FS | Medium |
+| A13 | **`--max-commits` CLI flag** — default 500, user-configurable | Need real usage data on what "large" means | Low |
+| A14 | **Phase 1 index: write once** — currently rewritten per ingest call, 1000s of JSON serializations (M7) | Adds 2-10s only at scale | Low |
+
+### Trigger: Wheel Download Count > 1000/month
+
+| # | Task | Why Wait | Effort |
+|---|------|----------|--------|
+| A15 | **Sign wheels with Sigstore** — post-publish binary attestation | Supply chain risk scales with adoption | Medium |
+| A16 | **Publish SHA256 checksums** alongside releases | Same rationale as A15 | Low |
+| A17 | **Pin all GitHub Actions to commit SHAs** — currently pinned to major version tags (H5) | Low likelihood but high impact if compromised | Medium |
+
+### Trigger: First Security Report / Abuse Complaint
+
+| # | Task | Why Wait | Effort |
+|---|------|----------|--------|
+| A18 | **Rate limits in Redis** — persistent across Vercel cold starts (M4); in-memory limits reset on every cold start | Vercel has platform DDoS protection | Medium |
+| A19 | **Restrict CORS on patterns/telemetry/accept endpoints** — currently `Access-Control-Allow-Origin: *` (M10); CLI uses `requests` not browser fetch | Need to verify no browser consumers first | Low |
+
+### Trigger: API Cache Staleness Reported
+
+| # | Task | Why Wait | Effort |
+|---|------|----------|--------|
+| A20 | **API cache TTL** — GitHub/GitLab cached responses never expire (M5) | No reports of stale data yet | Low |
+| A21 | **HTTP retry with backoff** — single failure = 24h stale pattern data (M8) | Transient failures are rare | Low |
+
+### Trigger: Revenue > $500/month (License Hardening)
+
+| # | Task | Why Wait | Effort |
+|---|------|----------|--------|
+| A22 | **Track activation count per key in Redis** — enforce limit (e.g., 3 machines per key) | Premature for early users; heartbeat already catches cancelled | Medium |
+| A23 | **One-time-use session_id retrieval** — mark session consumed after first GET /api/get-license | Low risk (Stripe session IDs are random); matters at scale | Low |
+| A24 | **Admin key recovery tool** — manual endpoint to regenerate key from Stripe customer_id | Edge case (webhook failure + Stripe retry failure); add if support tickets appear | Medium |
+| A25 | **PyPI pattern package hash pinning** — pin SHA256 of trusted .whl files in pattern_index.json | Supply chain risk scales with pattern package count (currently 0 external) | Medium |
+
+### Code Quality (No External Trigger — Do When Convenient)
+
+| # | Task | Effort | Impact |
+|---|------|--------|--------|
+| A26 | **Replace `except Exception: pass` with `logger.debug()`** — 60+ silent blocks (H12) | Medium | Debuggability |
+| A27 | **Add Phase 1 and Phase 3 engine tests** — critical pipeline phases with zero dedicated coverage (H14) | Medium | Correctness |
+| A28 | **Phase 2 `run_git()` → `_emit_signals()` refactor** — 80 lines of duplicated signal logic (M16) | Medium | Consistency |
+| A29 | **Extract signal-loading utility** — duplicated across Phase 3, 4, 5 (M13) | Low | Maintenance |
+| A30 | **Extract `_hash` / `_content_hash` utility** — duplicated across 4 modules | Low | Maintenance |
+| A31 | **`evo_path` helper extraction** — 13 duplicate expressions in cli.py | Low | Maintenance |
+| A32 | **`phase3_1_renderer.py` removal** — dead code, Phase 3.1 LLM retired | Low | Cleanup |
+| A33 | **Remove `_prescan_hint()` dead code** — replaced by `_prescan_hint_collect()` | Low | Cleanup |
+| A34 | **`_axiom_send()` template generation** — script to emit Vercel handlers from template | Low | Maintenance (8 copies) |
+| A35 | **Replace `print()` with `logging`** — watcher, adapters, phase2_engine (M18) | Low | Debug experience |
+| A36 | **Move `load_dotenv()` from module-level** — phase4_engine import-time env pollution (M17) | Low | Test stability |
+| A37 | **Decouple `fixer.py` from `click`** — domain module imports CLI framework (M14) | Low | Library usability |
+| A38 | **SQLite batch commits** — knowledge store commits per pattern operation (M9) | Low | Import speed |
+| A39 | **Watcher daemon log rotation** | Low | Long-running daemon |
+| A40 | **Config TOML special character escaping** — `#`, `=`, newlines corrupt file | Low | Edge case |
+| A41 | **Connection pooling for GitHub/GitLab clients** — use `requests.Session` | Low | API latency |
+
+---
+
 ## Future Enhancements (Post-Beta)
 
 - **Datadog adapter** — monitoring family, high effort, deferred to post-deployment

@@ -77,7 +77,18 @@ def _open_report_with_server(evo_dir: Path, report_path: Path):
         time.sleep(0.3)
         if proc.poll() is not None:
             raise RuntimeError("Server exited immediately")
-        webbrowser.open(f"http://127.0.0.1:{port}")
+        # Server subprocess opens browser with auth token — no need to open here
+        import atexit
+        def _cleanup():
+            try:
+                proc.terminate()
+                proc.wait(timeout=2)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+        atexit.register(_cleanup)
     except Exception:
         webbrowser.open(report_path.resolve().as_uri())
 
@@ -829,9 +840,9 @@ def status(path, token):
             s = advisory.get("summary", {})
             click.echo(f"  Significant changes: {s.get('significant_changes', 0)}")
             click.echo(f"  Families: {', '.join(s.get('families_affected', []))}")
-            from evolution.phase5_engine import _dedup_and_limit_patterns
+            from evolution.phase5_engine import dedup_and_limit_patterns
             raw = advisory.get("pattern_matches", [])
-            deduped = _dedup_and_limit_patterns(raw, limit=len(raw)) if raw else []
+            deduped = dedup_and_limit_patterns(raw, limit=len(raw)) if raw else []
             click.echo(f"  Patterns matched: {len(deduped)}")
         except (json.JSONDecodeError, KeyError):
             pass
@@ -2084,33 +2095,30 @@ def license_status(path):
         click.echo("  - LLM-enhanced explanations and semantic patterns")
         click.echo("  - Community knowledge base sync (coming soon)")
         click.echo()
-        click.echo("Set EVO_LICENSE_KEY or visit https://codequal.dev/pro")
+        click.echo("Visit https://codequal.dev/#pricing to upgrade.")
 
 
 @license.command("activate")
 @click.argument("key")
 def license_activate(key):
-    """Save license key to ~/.evo/license.json."""
-    from evolution.license import _validate_key
+    """Activate a license key (validates with server if needed)."""
+    from evolution.license import activate_license
 
-    # Validate the new key
-    license_data = _validate_key(key)
-    if not license_data:
-        click.echo("Error: Invalid license key")
+    click.echo("Activating license...")
+    result = activate_license(key)
+
+    if result.get("success"):
+        tier = result.get("tier", "free")
+        source = result.get("source", "server")
+        license_file = Path.home() / ".evo" / "license.json"
+        click.echo(f"License activated: {tier.upper()}")
+        if source == "server":
+            click.echo("Validated with activation server.")
+        click.echo(f"Saved to {license_file}")
+    else:
+        error = result.get("error", "Unknown error")
+        click.echo(f"Activation failed: {error}", err=True)
         sys.exit(1)
-
-    tier = license_data.get("tier", "free")
-
-    # Save to ~/.evo/license.json (always overwrites)
-    evo_home = Path.home() / ".evo"
-    evo_home.mkdir(exist_ok=True)
-    license_file = evo_home / "license.json"
-
-    license_file.write_text(json.dumps({"license_key": key}, indent=2))
-    click.echo(f"License activated: {tier.upper()}")
-    if license_data.get("expires"):
-        click.echo(f"Expires: {license_data['expires'][:10]}")
-    click.echo(f"Saved to {license_file}")
 
 
 # ─────────────────── evo report ───────────────────

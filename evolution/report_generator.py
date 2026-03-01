@@ -17,7 +17,8 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-from evolution.phase5_engine import _dedup_and_limit_patterns
+from evolution.constants import FAMILY_LABELS, METRIC_LABELS
+from evolution.phase5_engine import dedup_and_limit_patterns
 from evolution.friendly import (
     risk_level, relative_change, metric_insight, friendly_pattern,
     pattern_risk_assessment, _severity_rank,
@@ -76,39 +77,6 @@ def _commit_url(remote_url: str, sha: str) -> str:
         return f"{remote_url}/-/commit/{sha}"
     return f"{remote_url}/commit/{sha}"
 
-FAMILY_LABELS = {
-    "git": "Version Control",
-    "version_control": "Version Control",
-    "ci": "CI / Build",
-    "testing": "Testing",
-    "coverage": "Coverage",
-    "dependency": "Dependencies",
-    "schema": "API / Schema",
-    "deployment": "Deployment",
-    "config": "Configuration",
-    "security": "Security",
-    "error_tracking": "Error Tracking",
-    "monitoring": "Monitoring",
-    "quality_gate": "Quality Gate",
-    "security_scan": "Security Scan",
-    "incidents": "Incidents",
-    "work_items": "Work Items",
-    "feature_flags": "Feature Flags",
-}
-
-METRIC_LABELS = {
-    "files_touched": "Files Changed",
-    "dispersion": "Change Dispersion",
-    "change_locality": "Change Locality",
-    "cochange_novelty_ratio": "Co-change Novelty",
-    "run_duration": "Build Duration",
-    "run_failed": "Build Failure",
-    "dependency_count": "Total Dependencies",
-    "max_depth": "Dependency Depth",
-    "release_cadence_hours": "Release Cadence",
-    "is_prerelease": "Pre-release",
-    "asset_count": "Release Assets",
-}
 
 FAMILY_COLORS = {
     "git": "#3b82f6",
@@ -1146,8 +1114,8 @@ def _build_pattern_section(matches, candidates, accepted_pattern_count=0,
     PATTERN_VISIBLE_LIMIT = 3
 
     # Dedup patterns by family+metric (same logic as CLI output)
-    deduped_matches = _dedup_and_limit_patterns(matches, limit=len(matches)) if matches else []
-    deduped_candidates = _dedup_and_limit_patterns(candidates, limit=len(candidates)) if candidates else []
+    deduped_matches = dedup_and_limit_patterns(matches, limit=len(matches)) if matches else []
+    deduped_candidates = dedup_and_limit_patterns(candidates, limit=len(candidates)) if candidates else []
     deduped_all = list(deduped_matches) + list(deduped_candidates)
 
     # Severity counts from deduped patterns (matches what user sees in cards)
@@ -1197,7 +1165,7 @@ def _build_pattern_section(matches, candidates, accepted_pattern_count=0,
     )
 
     # Build dedup note explaining which metrics were merged
-    # Uses the same canonical mapping as _dedup_and_limit_patterns
+    # Uses the same canonical mapping as dedup_and_limit_patterns
     _METRIC_CANONICAL = {"change_locality": "dispersion"}
     dedup_note = ""
     all_raw = list(matches or []) + list(candidates or [])
@@ -2000,13 +1968,14 @@ def _value_near_baseline(latest_value, normal_dict: dict,
 
 
 def _esc(text: str) -> str:
-    """HTML-escape a string."""
+    """HTML-escape a string (attribute-safe)."""
     return (
         str(text)
         .replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")
+        .replace("'", "&#x27;")
     )
 
 

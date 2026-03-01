@@ -11,6 +11,7 @@ Usage:
 """
 
 import json
+import secrets
 import threading
 import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -355,7 +356,8 @@ function saveGroup(groupId) {
       changes[key] = el.value;
     }
   });
-  fetch('/api/config', {
+  var base = window.location.pathname.replace(/\/+$/, '');
+  fetch(base + '/api/config', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(changes)
@@ -367,7 +369,8 @@ function saveGroup(groupId) {
 }
 
 function shutdownServer() {
-  fetch('/api/shutdown', {method: 'POST'}).catch(function(){});
+  var base = window.location.pathname.replace(/\/+$/, '');
+  fetch(base + '/api/shutdown', {method: 'POST'}).catch(function(){});
   document.body.innerHTML = '<div style="text-align:center;padding:4em;">' +
     '<h2 style="color:#0A4D4A;">Settings saved. You can close this tab.</h2></div>';
 }
@@ -419,6 +422,7 @@ class SetupUI:
         self.port = port
         self.config = config or EvoConfig()
         self.timeout = timeout
+        self.token = secrets.token_urlsafe(16)
         self._server: Optional[HTTPServer] = None
         self._shutdown_event = threading.Event()
 
@@ -436,7 +440,7 @@ class SetupUI:
             timer.start()
 
         # Open browser
-        webbrowser.open(f"http://127.0.0.1:{self.port}")
+        webbrowser.open(f"http://127.0.0.1:{self.port}/{self.token}")
 
         # Block
         self._server.serve_forever()
@@ -536,8 +540,9 @@ class SetupUI:
 
         # Detected adapters
         try:
-            from evolution.registry import _discover_tier3
-            adapters = _discover_tier3()
+            from evolution.registry import AdapterRegistry
+            reg = AdapterRegistry(".")
+            adapters = reg.list_plugins()
             if adapters:
                 for name in adapters[:5]:
                     badges.append(
@@ -719,6 +724,8 @@ class SetupUI:
             return
 
         for key, value in changes.items():
+            if key not in _DEFAULTS:
+                continue  # reject unknown config keys
             self.config.set(key, value)
 
         response = json.dumps({"saved": True, "count": len(changes)})
@@ -759,21 +766,38 @@ class SetupUI:
             self._server.shutdown()
         self._shutdown_event.set()
 
+    def _check_token(self, handler) -> bool:
+        """Verify auth token in URL path or Referer header."""
+        if handler.path.startswith(f"/{self.token}"):
+            return True
+        referer = handler.headers.get("Referer", "")
+        if referer.startswith(f"http://127.0.0.1:{self.port}/{self.token}"):
+            return True
+        return False
+
     def _make_handler(self):
         """Create a request handler class bound to this SetupUI instance."""
         ui = self
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):
-                if self.path == "/api/status":
+                if not ui._check_token(self):
+                    self.send_response(403)
+                    self.end_headers()
+                    return
+                if self.path == f"/{ui.token}/api/status":
                     ui._handle_status(self)
                 else:
                     ui._handle_get(self)
 
             def do_POST(self):
-                if self.path == "/api/config":
+                if not ui._check_token(self):
+                    self.send_response(403)
+                    self.end_headers()
+                    return
+                if self.path == f"/{ui.token}/api/config":
                     ui._handle_post(self)
-                elif self.path == "/api/shutdown":
+                elif self.path == f"/{ui.token}/api/shutdown":
                     ui._handle_shutdown(self)
                 else:
                     self.send_response(404)

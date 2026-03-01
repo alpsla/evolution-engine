@@ -128,11 +128,28 @@ def get_agent(
             key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
             return AnthropicAgent(api_key=key, model=model)
         except ImportError:
-            pass  # anthropic package not installed
+            if prefer == "anthropic":
+                import sys
+                print(
+                    "Warning: 'anthropic' package not installed. "
+                    "Install it with: pip install anthropic\n"
+                    "Falling back to prompt display mode.",
+                    file=sys.stderr,
+                )
 
     if prefer == "cli" or (prefer is None and _has_cli(cli_command)):
         from evolution.agents.cli_agent import CliAgent
         return CliAgent(command=cli_command or "claude", model=model)
+
+    if prefer is None and _has_anthropic_key(api_key):
+        # API key is set but anthropic package is missing — warn the user
+        import sys
+        print(
+            "Note: ANTHROPIC_API_KEY is set but the 'anthropic' package is not installed.\n"
+            "Install it with: pip install anthropic\n"
+            "Using prompt display mode instead.",
+            file=sys.stderr,
+        )
 
     return ShowPromptAgent()
 

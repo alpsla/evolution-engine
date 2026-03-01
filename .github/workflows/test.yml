@@ -24,6 +24,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
 
       - name: Install dependencies
         run: |
@@ -32,6 +33,11 @@ jobs:
       - name: Run tests
         run: |
           python -m pytest tests/ -v --tb=short
+
+      - name: Audit dependencies
+        run: |
+          pip install pip-audit
+          pip-audit --strict --desc 2>&1 || true
 
       - name: Verify CLI
         run: |

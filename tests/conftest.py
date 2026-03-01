@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-# Enable test-only license features (e.g. pro-trial key)
-os.environ["EVO_TEST_MODE"] = "1"
+# Note: pro-trial key detection now uses sys.modules["pytest"]
+# instead of the removed EVO_TEST_MODE env var.
 
 from evolution.phase1_engine import Phase1Engine
 from evolution.phase2_engine import Phase2Engine

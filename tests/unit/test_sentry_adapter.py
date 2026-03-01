@@ -204,30 +204,67 @@ class TestSentryAdapterAPIMode:
 
 class TestSentryLinkParsing:
 
+    def _make_adapter(self, base_url=None):
+        """Create a fixture-mode adapter for link parsing tests."""
+        return SentryAdapter(issues=[], base_url=base_url)
+
     def test_parse_next_link(self):
         """Parses Sentry cursor pagination Link header."""
+        adapter = self._make_adapter()
         header = (
             '<https://sentry.io/api/0/projects/myorg/myproject/issues/?cursor=abc>; '
             'rel="previous"; results="false"; cursor="abc", '
             '<https://sentry.io/api/0/projects/myorg/myproject/issues/?cursor=xyz>; '
             'rel="next"; results="true"; cursor="xyz"'
         )
-        url = SentryAdapter._parse_next_link(header)
+        url = adapter._parse_next_link(header)
         assert url == "https://sentry.io/api/0/projects/myorg/myproject/issues/?cursor=xyz"
 
     def test_parse_next_link_no_more(self):
         """Returns None when no more results."""
+        adapter = self._make_adapter()
         header = (
             '<https://sentry.io/api/0/issues/?cursor=abc>; '
             'rel="next"; results="false"; cursor="abc"'
         )
-        url = SentryAdapter._parse_next_link(header)
+        url = adapter._parse_next_link(header)
         assert url is None
 
     def test_parse_next_link_empty(self):
         """Returns None for empty header."""
-        assert SentryAdapter._parse_next_link("") is None
-        assert SentryAdapter._parse_next_link(None) is None
+        adapter = self._make_adapter()
+        assert adapter._parse_next_link("") is None
+        assert adapter._parse_next_link(None) is None
+
+    def test_parse_next_link_rejects_different_host(self):
+        """Returns None when next URL points to a different host (SSRF prevention)."""
+        adapter = self._make_adapter()
+        header = (
+            '<https://evil.example.com/api/0/issues/?cursor=abc>; '
+            'rel="next"; results="true"; cursor="abc"'
+        )
+        url = adapter._parse_next_link(header)
+        assert url is None
+
+    def test_parse_next_link_rejects_different_scheme(self):
+        """Returns None when next URL uses http instead of https."""
+        adapter = self._make_adapter()
+        header = (
+            '<http://sentry.io/api/0/issues/?cursor=abc>; '
+            'rel="next"; results="true"; cursor="abc"'
+        )
+        url = adapter._parse_next_link(header)
+        assert url is None
+
+    def test_parse_next_link_self_hosted(self):
+        """Accepts next URL from same self-hosted Sentry instance."""
+        adapter = self._make_adapter(base_url="https://sentry.mycompany.com/api/0")
+        header = (
+            '<https://sentry.mycompany.com/api/0/issues/?cursor=abc>; '
+            'rel="next"; results="true"; cursor="abc"'
+        )
+        url = adapter._parse_next_link(header)
+        assert url == "https://sentry.mycompany.com/api/0/issues/?cursor=abc"
 
 
 # ---- Phase 2 Integration ----
@@ -304,6 +341,6 @@ class TestSentryRegistry:
     def test_orchestrator_family_label(self):
         """error_tracking in orchestrator family labels."""
         # Just verify the label is referenced in the code
-        from evolution.phase5_engine import FAMILY_LABELS
+        from evolution.constants import FAMILY_LABELS
         assert "error_tracking" in FAMILY_LABELS
         assert FAMILY_LABELS["error_tracking"] == "Error Tracking"

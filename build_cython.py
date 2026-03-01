@@ -37,23 +37,23 @@ DIST_DIR = Path("dist_compiled")
 def inject_signing_key():
     """Inject production signing key into license.py before Cython compilation.
 
-    Reads EVO_LICENSE_SIGNING_KEY from environment. If set, replaces the dev
-    fallback key so the compiled binary embeds the production key. Users won't
+    Reads EVO_LICENSE_SIGNING_KEY from environment. If set, replaces the
+    placeholder so the compiled binary embeds the production key. Users won't
     need the env var — the key is baked into the .so/.pyd.
     """
     key = os.environ.get("EVO_LICENSE_SIGNING_KEY")
     if not key:
-        print("  No EVO_LICENSE_SIGNING_KEY set — using dev key (test builds only)")
+        print("  No EVO_LICENSE_SIGNING_KEY set — placeholder stays (server-side activation only)")
         return False
 
     license_py = Path("evolution/license.py")
     content = license_py.read_text()
-    marker = '_DEV_SIGNING_KEY = b"evo-license-v1-dev-key-replace-in-production"'
+    marker = '_EMBEDDED_SIGNING_KEY = b"__EVO_SIGNING_KEY_PLACEHOLDER__"'
     if marker not in content:
         print("  Warning: signing key marker not found in license.py", file=sys.stderr)
         return False
 
-    content = content.replace(marker, f'_DEV_SIGNING_KEY = b"{key}"')
+    content = content.replace(marker, f'_EMBEDDED_SIGNING_KEY = b"{key}"')
     license_py.write_text(content)
     print("  Injected production signing key into license.py")
     return True

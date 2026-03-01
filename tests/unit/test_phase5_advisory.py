@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from evolution.phase5_engine import Phase5Engine, METRIC_LABELS, FAMILY_LABELS
+from evolution.constants import FAMILY_LABELS
+from evolution.phase5_engine import Phase5Engine, METRIC_LABELS
 
 
 class TestSignificanceFilter:

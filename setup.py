@@ -34,10 +34,10 @@ if os.environ.get("EVO_CYTHON_BUILD") == "1":
         original_content = None
         if key and license_py.exists():
             original_content = license_py.read_text()
-            marker = '_DEV_SIGNING_KEY = b"evo-license-v1-dev-key-replace-in-production"'
+            marker = '_EMBEDDED_SIGNING_KEY = b"__EVO_SIGNING_KEY_PLACEHOLDER__"'
             if marker in original_content:
                 modified = original_content.replace(
-                    marker, f'_DEV_SIGNING_KEY = b"{key}"'
+                    marker, f'_EMBEDDED_SIGNING_KEY = b"{key}"'
                 )
                 license_py.write_text(modified)
                 print("  Injected production signing key into license.py")

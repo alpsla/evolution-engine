@@ -19,15 +19,71 @@ Usage:
 """
 
 import hashlib
+import ipaddress
 import json
 import logging
+import socket
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 log = logging.getLogger("evo.kb_sync")
+
+
+# ─── URL Validation ───
+
+_PRIVATE_HOSTNAMES = {"localhost", "localhost.localdomain"}
+
+
+def _validate_registry_url(url: str) -> str:
+    """Validate a registry URL to prevent SSRF.
+
+    Ensures:
+      - URL uses https:// scheme (rejects http://, file://, etc.)
+      - Hostname does not resolve to private/internal IP ranges
+
+    Returns the validated URL unchanged, or raises ValueError.
+    """
+    parsed = urlparse(url)
+
+    # Must be HTTPS
+    if parsed.scheme != "https":
+        raise ValueError(
+            f"Registry URL must use https:// (got {parsed.scheme!r}). "
+            "Refusing to connect over insecure or non-HTTP schemes."
+        )
+
+    hostname = parsed.hostname or ""
+    if not hostname:
+        raise ValueError("Registry URL has no hostname.")
+
+    # Reject well-known private hostnames
+    if hostname.lower() in _PRIVATE_HOSTNAMES:
+        raise ValueError(
+            f"Registry URL must not point to a private host ({hostname!r})."
+        )
+
+    # Resolve hostname and reject private/reserved IPs
+    try:
+        resolved = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+    except socket.gaierror:
+        # If resolution fails, allow it through — the actual HTTP request will
+        # fail later with a more descriptive error.  We only block *resolved*
+        # private addresses.
+        return url
+
+    for family, _type, _proto, _canon, sockaddr in resolved:
+        ip = ipaddress.ip_address(sockaddr[0])
+        if ip.is_private or ip.is_reserved or ip.is_loopback or ip.is_link_local:
+            raise ValueError(
+                f"Registry URL hostname {hostname!r} resolves to private/reserved "
+                f"address {ip}. Refusing to connect."
+            )
+
+    return url
 
 
 # ─── Sync Result ───
@@ -85,9 +141,10 @@ class KBSync:
         self._config = config
 
         self._privacy_level = config.get("sync.privacy_level", 0)
-        self._registry_url = registry_url or config.get(
+        raw_url = registry_url or config.get(
             "sync.registry_url", "https://codequal.dev/api"
         )
+        self._registry_url = _validate_registry_url(raw_url)
 
     @property
     def privacy_level(self) -> int:
@@ -255,6 +312,51 @@ class KBSync:
             },
         }
 
+    def _get_license_key(self) -> str | None:
+        """Retrieve the license key for push authentication.
+
+        Checks in order:
+          1. EVO_LICENSE_KEY environment variable
+          2. ~/.evo/license.json file
+          3. <evo_dir>/license.json (repo-local)
+
+        Returns the raw key string, or None if not found.
+        """
+        import os
+
+        # 1. Environment variable
+        env_key = os.environ.get("EVO_LICENSE_KEY")
+        if env_key and env_key != "pro-trial":
+            return env_key
+
+        # 2. ~/.evo/license.json
+        home_license = Path.home() / ".evo" / "license.json"
+        key = self._read_license_key_from_file(home_license)
+        if key:
+            return key
+
+        # 3. <evo_dir>/license.json
+        repo_license = self._evo_dir / "license.json"
+        key = self._read_license_key_from_file(repo_license)
+        if key:
+            return key
+
+        return None
+
+    @staticmethod
+    def _read_license_key_from_file(path: Path) -> str | None:
+        """Read a license key from a license.json file."""
+        if not path.exists():
+            return None
+        try:
+            data = json.loads(path.read_text())
+            key = data.get("license_key", "")
+            if key and key != "pro-trial":
+                return key
+        except (json.JSONDecodeError, OSError):
+            pass
+        return None
+
     def _build_pattern_payload(self) -> dict:
         """Build pattern payload (anonymized digests).
 
@@ -264,6 +366,8 @@ class KBSync:
         All KB patterns already passed Phase 4 discovery thresholds
         (min_support=5, min_correlation=0.4), so no additional
         filtering is needed here.
+
+        Includes the license key for server-side authentication.
         """
         from evolution.kb_export import export_patterns
         from evolution.kb_security import get_instance_id
@@ -271,10 +375,18 @@ class KBSync:
         digests = export_patterns(self._db_path, evo_dir=self._evo_dir)
         instance_id = get_instance_id(self._evo_dir)
 
+        license_key = self._get_license_key()
+        if not license_key:
+            raise ValueError(
+                "No license key found. Pattern push requires a valid license. "
+                "Set EVO_LICENSE_KEY or run `evo license activate <key>`."
+            )
+
         return {
-            "level": 1,
+            "level": 2,
             "instance_id": instance_id,
             "patterns": digests,
+            "license_key": license_key,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 

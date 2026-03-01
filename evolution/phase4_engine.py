@@ -20,7 +20,7 @@ import logging
 import os
 import re
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from itertools import combinations
 from pathlib import Path
 from statistics import mean, pstdev
@@ -28,6 +28,7 @@ from typing import Optional
 
 log = logging.getLogger("evolution.phase4")
 
+from evolution.constants import SIGNAL_FILES
 from evolution.knowledge_store import SQLiteKnowledgeStore
 from evolution.validation_gate import ValidationGate
 
@@ -61,18 +62,6 @@ DEFAULT_PARAMS = {
     "direction_threshold": 1.5, # Stddev threshold for direction classification
     "confidence_full_at": 30,  # Sample count at which confidence weight reaches 1.0
     "temporal_window_hours": 24,  # Time window for temporal alignment (supplementary to commit-SHA)
-}
-
-# Signal files from Phase 2 (same map as Phase 3)
-SIGNAL_FILES = {
-    "git": "git_signals.json",
-    "ci": "ci_signals.json",
-    "testing": "testing_signals.json",
-    "dependency": "dependency_signals.json",
-    "schema": "schema_signals.json",
-    "deployment": "deployment_signals.json",
-    "config": "config_signals.json",
-    "security": "security_signals.json",
 }
 
 
@@ -550,8 +539,8 @@ class Phase4Engine:
                 "accepted_via": accepted_via,
                 "occurrence_count": co_deviations,
                 "signal_refs": signal_refs,
-                "first_seen": datetime.utcnow().isoformat() + "Z",
-                "last_seen": datetime.utcnow().isoformat() + "Z",
+                "first_seen": datetime.now(timezone.utc).isoformat(),
+                "last_seen": datetime.now(timezone.utc).isoformat(),
                 "confidence_tier": "statistical",
                 "confidence_status": "emerging",
             })
@@ -656,8 +645,8 @@ class Phase4Engine:
                 "accepted_via": accepted_via,
                 "occurrence_count": co_deviations,
                 "signal_refs": signal_refs,
-                "first_seen": datetime.utcnow().isoformat() + "Z",
-                "last_seen": datetime.utcnow().isoformat() + "Z",
+                "first_seen": datetime.now(timezone.utc).isoformat(),
+                "last_seen": datetime.now(timezone.utc).isoformat(),
                 "confidence_tier": "statistical",
                 "confidence_status": "emerging",
             })
@@ -802,8 +791,8 @@ class Phase4Engine:
                     "accepted_via": "presence",
                     "occurrence_count": nt,
                     "signal_refs": signal_refs,
-                    "first_seen": datetime.utcnow().isoformat() + "Z",
-                    "last_seen": datetime.utcnow().isoformat() + "Z",
+                    "first_seen": datetime.now(timezone.utc).isoformat(),
+                    "last_seen": datetime.now(timezone.utc).isoformat(),
                     "confidence_tier": "statistical",
                     "confidence_status": "emerging",
                 })
@@ -1006,7 +995,7 @@ class Phase4Engine:
 
         Returns a summary dict with counts and discovered patterns.
         """
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).isoformat()
 
         # Step 1: Load data
         signals = self._load_all_signals()

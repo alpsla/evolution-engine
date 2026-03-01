@@ -1,6 +1,7 @@
 """Tests for evolution.kb_sync — community pattern sync."""
 
 import json
+import os
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, create_autospec
@@ -23,6 +24,18 @@ def evo_dir(tmp_path):
 def config(tmp_path):
     """Create a test config."""
     return EvoConfig(path=tmp_path / "config.toml")
+
+
+@pytest.fixture
+def fake_license_key():
+    """Provide a fake license key for push tests via environment variable."""
+    old = os.environ.get("EVO_LICENSE_KEY")
+    os.environ["EVO_LICENSE_KEY"] = "dGVzdC1saWNlbnNlLWtleQ=="  # base64("test-license-key")
+    yield "dGVzdC1saWNlbnNlLWtleQ=="
+    if old is None:
+        os.environ.pop("EVO_LICENSE_KEY", None)
+    else:
+        os.environ["EVO_LICENSE_KEY"] = old
 
 
 class TestKBSyncInit:
@@ -122,8 +135,8 @@ class TestPush:
         assert not result.success
         assert "No knowledge base" in result.error
 
-    def test_push_level_1_patterns(self, evo_dir, config):
-        """Level 1 push sends anonymized patterns."""
+    def test_push_level_1_patterns(self, evo_dir, config, fake_license_key):
+        """Level 1 push sends anonymized patterns at level 2 (full pattern data)."""
         config.set("sync.privacy_level", 1)
         (evo_dir / "phase4" / "knowledge.db").touch()
 
@@ -142,11 +155,13 @@ class TestPush:
 
         assert result.success
         assert result.pushed == 5
-        assert uploaded_payload["level"] == 1
+        assert uploaded_payload["level"] == 2
         assert "patterns" in uploaded_payload
         assert "instance_id" in uploaded_payload
+        assert "license_key" in uploaded_payload
+        assert uploaded_payload["license_key"] == fake_license_key
 
-    def test_push_network_error(self, evo_dir, config):
+    def test_push_network_error(self, evo_dir, config, fake_license_key):
         """Push handles network errors."""
         config.set("sync.privacy_level", 1)
         (evo_dir / "phase4" / "knowledge.db").touch()
@@ -158,6 +173,57 @@ class TestPush:
             result = sync.push()
         assert not result.success
         assert "refused" in result.error
+
+    def test_push_no_license_key(self, evo_dir, config):
+        """Push fails when no license key is available."""
+        config.set("sync.privacy_level", 1)
+        (evo_dir / "phase4" / "knowledge.db").touch()
+
+        sync = KBSync(evo_dir=evo_dir, config=config)
+
+        # Ensure no license key is found anywhere
+        with patch.dict(os.environ, {}, clear=False), \
+             patch.object(KBSync, "_get_license_key", return_value=None), \
+             patch("evolution.kb_export.export_patterns", return_value=[
+                 {"fingerprint": "abc", "sources": ["git"], "metrics": ["dispersion"]},
+             ]):
+            result = sync.push()
+
+        assert not result.success
+        assert "No license key" in result.error
+
+    def test_push_reads_license_from_file(self, evo_dir, config, tmp_path):
+        """Push reads the license key from license.json when env var is absent."""
+        config.set("sync.privacy_level", 1)
+        (evo_dir / "phase4" / "knowledge.db").touch()
+
+        # Write a license file in the evo_dir
+        license_data = {"license_key": "ZmlsZS1saWNlbnNlLWtleQ=="}  # base64("file-license-key")
+        (evo_dir / "license.json").write_text(json.dumps(license_data))
+
+        sync = KBSync(evo_dir=evo_dir, config=config)
+
+        uploaded_payload = None
+        def capture_upload(payload):
+            nonlocal uploaded_payload
+            uploaded_payload = payload
+            return 3
+
+        # Use a fake home dir with no license file so only evo_dir is found
+        fake_home = tmp_path / "fake_home"
+        fake_home.mkdir()
+
+        # Remove env var and redirect Path.home() to force repo-local file lookup
+        with patch.dict(os.environ, {"EVO_LICENSE_KEY": ""}, clear=False), \
+             patch("pathlib.Path.home", return_value=fake_home), \
+             patch("evolution.kb_export.export_patterns", return_value=[
+                 {"fingerprint": "abc", "sources": ["git"], "metrics": ["dispersion"]},
+             ]), \
+             patch.object(sync, "_upload_patterns", side_effect=capture_upload):
+            result = sync.push()
+
+        assert result.success
+        assert uploaded_payload["license_key"] == "ZmlsZS1saWNlbnNlLWtleQ=="
 
 
 class TestStatus:

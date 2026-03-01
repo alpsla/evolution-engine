@@ -306,7 +306,18 @@ class EvoConfig:
         return default
 
     def set(self, key: str, value: Any):
-        """Set a config value and persist to disk."""
+        """Set a config value and persist to disk.
+
+        Raises ValueError if the key has a 'choice' type and the value
+        is not in the allowed list.
+        """
+        meta = _METADATA.get(key, {})
+        if meta.get("type") == "choice" and "allowed" in meta:
+            if value not in meta["allowed"]:
+                raise ValueError(
+                    f"Invalid value {value!r} for {key}. "
+                    f"Allowed: {meta['allowed']}"
+                )
         self._data[key] = value
         self._save()
 

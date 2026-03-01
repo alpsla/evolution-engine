@@ -111,6 +111,56 @@ def _redis_set(key: str, data: dict) -> bool:
         return False
 
 
+# Lua script for atomic compare-and-set using a version field.
+_CAS_LUA = """
+local current = redis.call('GET', KEYS[1])
+if current == false then
+    redis.call('SET', KEYS[1], ARGV[2])
+    return 1
+end
+local ok, parsed = pcall(cjson.decode, current)
+if not ok then
+    redis.call('SET', KEYS[1], ARGV[2])
+    return 1
+end
+if tostring(parsed['_v'] or 0) ~= ARGV[1] then
+    return current
+end
+redis.call('SET', KEYS[1], ARGV[2])
+return 1
+"""
+
+
+def _redis_cas(key: str, expected_version: int, data: dict) -> tuple[bool, dict | None]:
+    """Atomic compare-and-set. Returns (success, conflict_data)."""
+    url = os.environ.get("UPSTASH_REDIS_REST_URL")
+    token = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
+    if not url or not token:
+        return False, None
+
+    try:
+        payload = json.dumps([
+            "EVAL", _CAS_LUA, "1", key,
+            str(expected_version), json.dumps(data),
+        ]).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        resp = urllib.request.urlopen(req, timeout=5)
+        result = json.loads(resp.read().decode("utf-8")).get("result")
+
+        if result == 1:
+            return True, None
+        if isinstance(result, str):
+            return False, json.loads(result)
+        return False, None
+    except Exception:
+        return False, None
+
+
 # ── Validation ──
 
 def _check_text_safe(value: str, field_name: str, max_len: int = _SAFE_TEXT_MAX) -> tuple[str | None, str | None]:
@@ -208,7 +258,7 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        """Retrieve acceptances for a repo."""
+        """Retrieve acceptances for a repo (requires HMAC signature)."""
         try:
             parsed = urlparse(self.path)
             params = parse_qs(parsed.query)
@@ -220,6 +270,11 @@ class handler(BaseHTTPRequestHandler):
             # Validate repo format (owner/name)
             if not re.match(r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$", repo):
                 return self._json({"error": "Invalid repo format"}, 400)
+
+            # Require HMAC signature to prevent unauthenticated reads
+            sig = params.get("sig", [None])[0]
+            if not sig or not isinstance(sig, str) or not _verify_signature(repo, sig):
+                return self._json({"error": "Missing or invalid signature"}, 403)
 
             key = _redis_key(repo)
             data = _redis_get(key)
@@ -284,20 +339,37 @@ class handler(BaseHTTPRequestHandler):
         if not validated and errors:
             return self._json({"error": "All entries rejected", "details": errors}, 400)
 
-        # Merge into stored data
+        # Merge into stored data with optimistic concurrency (CAS retry)
+        _MAX_CAS_RETRIES = 3
         key = _redis_key(repo)
         stored = _redis_get(key) or {"repo": repo, "entries": []}
-        existing_keys = {e["key"] for e in stored.get("entries", [])}
-
         added = 0
-        for v in validated:
-            if v["key"] not in existing_keys:
-                stored.setdefault("entries", []).append(v)
-                existing_keys.add(v["key"])
-                added += 1
 
-        if not _redis_set(key, stored):
-            return self._json({"error": "Storage write failed"}, 500)
+        for _attempt in range(_MAX_CAS_RETRIES):
+            version = stored.get("_v", 0)
+            existing_keys = {e["key"] for e in stored.get("entries", [])}
+
+            added = 0
+            for v in validated:
+                if v["key"] not in existing_keys:
+                    stored.setdefault("entries", []).append(v)
+                    existing_keys.add(v["key"])
+                    added += 1
+
+            stored["_v"] = version + 1
+
+            success, conflict_data = _redis_cas(key, version, stored)
+            if success:
+                break
+            if conflict_data:
+                stored = conflict_data  # retry with fresh data
+                continue
+            # Fallback to plain SET if CAS unavailable
+            if not _redis_set(key, stored):
+                return self._json({"error": "Storage write failed"}, 500)
+            break
+        else:
+            return self._json({"error": "Storage conflict, please retry"}, 409)
 
         _axiom_send({
             "type": "accept_post",

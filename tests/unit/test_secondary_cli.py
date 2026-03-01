@@ -136,27 +136,23 @@ class TestLicenseActivate:
 
     def test_license_activate_valid(self, runner, tmp_path):
         """Valid key → 'License activated', writes file."""
-        license_data = {"tier": "pro", "expires": "2027-02-20T00:00:00Z"}
+        mock_result = {"success": True, "tier": "pro", "source": "server"}
 
-        with patch("evolution.license._validate_key", return_value=license_data):
+        with patch("evolution.license.activate_license", return_value=mock_result):
             result = runner.invoke(main, ["license", "activate", "pro_test_key_123"])
 
         assert result.exit_code == 0
         assert "License activated: PRO" in result.output
-        assert "Expires: 2027-02-20" in result.output
-        # Verify license file was written
-        license_file = tmp_path / ".evo" / "license.json"
-        assert license_file.exists()
-        data = json.loads(license_file.read_text())
-        assert data["license_key"] == "pro_test_key_123"
 
     def test_license_activate_invalid(self, runner):
-        """Invalid key → exit 1, 'Invalid license key'."""
-        with patch("evolution.license._validate_key", return_value=None):
+        """Invalid key → exit 1, activation failed."""
+        mock_result = {"success": False, "error": "Invalid or expired license key"}
+
+        with patch("evolution.license.activate_license", return_value=mock_result):
             result = runner.invoke(main, ["license", "activate", "bad_key"])
 
         assert result.exit_code == 1
-        assert "Invalid license key" in result.output
+        assert "Activation failed" in result.output
 
 
 # ──────────────── TestNotificationsList ────────────────

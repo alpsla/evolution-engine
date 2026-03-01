@@ -13,7 +13,7 @@ Usage:
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -234,7 +234,7 @@ class HistoryManager:
         """Save an advisory snapshot. Returns the snapshot file path."""
         self.history_dir.mkdir(parents=True, exist_ok=True)
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         ts = now.strftime("%Y%m%d-%H%M%S-%f")
         target = self.history_dir / f"{ts}.json"
 

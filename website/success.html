@@ -114,7 +114,7 @@
         <h3>Activate in 2 steps:</h3>
         <ol>
           <li>Install (if you haven't already):<br><code>pip install evolution-engine</code></li>
-          <li>Activate your license:<br><code>evo license activate</code> <span style="color: var(--text-dim)">&larr; paste your key when prompted</span></li>
+          <li>Activate your license:<br><code>evo license activate YOUR_KEY_HERE</code><br><span style="color: var(--text-dim)">Copy the key above and replace YOUR_KEY_HERE</span></li>
         </ol>
         <p style="color: var(--text-dim); font-size: 0.85rem; margin-top: 16px;">
           Your key is also saved to your Stripe account. You can retrieve it anytime from your billing portal.
@@ -149,7 +149,7 @@
           } else {
             document.getElementById('license-key').innerHTML =
               '<span style="color: var(--accent)">License key generation is taking longer than expected. ' +
-              'Please check your email or contact info@codequal.dev</span>';
+              'Please contact info@codequal.dev for assistance.</span>';
           }
         })
         .catch(() => {

@@ -23,6 +23,7 @@ from http.server import BaseHTTPRequestHandler
 _rate_limits: dict[str, list[float]] = {}
 _MAX_REQUESTS_PER_DAY = 5
 _MAX_FIELD_LENGTH = 1000
+_MAX_PAYLOAD_SIZE = 10240  # 10KB
 
 _VALID_FAMILIES = {
     "ci", "deployment", "dependency", "security", "monitoring",
@@ -68,6 +69,8 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             length = int(self.headers.get("Content-Length", 0))
+            if length > _MAX_PAYLOAD_SIZE:
+                return self._json({"error": "Payload too large"}, 413)
             data = json.loads(self.rfile.read(length).decode("utf-8"))
         except (json.JSONDecodeError, ValueError):
             return self._json({"error": "Invalid JSON"}, 400)
@@ -98,49 +101,62 @@ class handler(BaseHTTPRequestHandler):
         _rate_limits[rate_key].append(now)
 
         github_token = os.environ.get("GITHUB_BOT_TOKEN")
-        github_repo = os.environ.get("GITHUB_REPO", "alpsla/evolution_monitor")
+        github_repo = os.environ.get("GITHUB_REPO", "alpsla/evolution-engine")
 
         if not github_token:
+            import hashlib as _hl
             log_entry = {
                 "type": "adapter_request",
                 "adapter_name": adapter_name,
                 "family": family,
                 "description": description,
                 "use_case": use_case,
-                "email": email,
+                "email_hash": _hl.sha256(email.lower().encode()).hexdigest()[:16] if email else "",
                 "timestamp": now,
             }
             print(json.dumps(log_entry))
             _axiom_send(log_entry)
             return self._json({"success": True, "message": "Request recorded."})
 
-        issue_body = f"""## Adapter Request: {adapter_name}
+        issue_body = f"""## Adapter Request
+
+**Name:**
+```
+{adapter_name}
+```
 
 **Family:** {family}
 
 **Use Case:**
-{use_case or '_Not specified_'}
+```
+{use_case or 'Not specified'}
+```
 
 **Additional Details:**
-{description or '_Not specified_'}
+```
+{description or 'Not specified'}
+```
 
 ---
 _Submitted via codequal.dev adapter request form._
 _Vote with a thumbs-up if you'd also like this adapter!_
 """
 
-        # Log email to Axiom only (never in public GitHub issues)
+        # Log email hash to Axiom only (never in public GitHub issues)
         if email:
+            import hashlib as _hl
             _axiom_send({
                 "type": "adapter_request_contact",
                 "adapter_name": adapter_name,
                 "family": family,
-                "email": email,
+                "email_hash": _hl.sha256(email.lower().encode()).hexdigest()[:16],
                 "timestamp": now,
             })
 
+        # Title uses sanitized adapter_name; family is from a fixed allowlist
+        safe_title = adapter_name.replace("`", "").replace("\n", " ")[:80]
         issue_data = {
-            "title": f"Adapter request: {adapter_name} ({family})",
+            "title": f"Adapter request: {safe_title} ({family})",
             "body": issue_body,
             "labels": ["adapter-request"],
         }

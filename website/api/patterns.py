@@ -8,6 +8,9 @@ Storage: Upstash Redis (Vercel KV) — single JSON blob at key evo:patterns.
 Env vars: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
 """
 
+import base64
+import hashlib
+import hmac as hmac_mod
 import json
 import os
 import re
@@ -111,6 +114,57 @@ def _redis_set(data: dict) -> bool:
         return True
     except Exception:
         return False
+
+
+# Lua script for atomic compare-and-set using a version field.
+# Returns 1 on success, or the current data string on version mismatch.
+_CAS_LUA = """
+local current = redis.call('GET', KEYS[1])
+if current == false then
+    redis.call('SET', KEYS[1], ARGV[2])
+    return 1
+end
+local ok, parsed = pcall(cjson.decode, current)
+if not ok then
+    redis.call('SET', KEYS[1], ARGV[2])
+    return 1
+end
+if tostring(parsed['_v'] or 0) ~= ARGV[1] then
+    return current
+end
+redis.call('SET', KEYS[1], ARGV[2])
+return 1
+"""
+
+
+def _redis_cas(expected_version: int, data: dict) -> tuple[bool, dict | None]:
+    """Atomic compare-and-set. Returns (success, conflict_data)."""
+    url = os.environ.get("UPSTASH_REDIS_REST_URL")
+    token = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
+    if not url or not token:
+        return False, None
+
+    try:
+        payload = json.dumps([
+            "EVAL", _CAS_LUA, "1", _REDIS_KEY,
+            str(expected_version), json.dumps(data),
+        ]).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        resp = urllib.request.urlopen(req, timeout=5)
+        result = json.loads(resp.read().decode("utf-8")).get("result")
+
+        if result == 1:
+            return True, None
+        if isinstance(result, str):
+            return False, json.loads(result)
+        return False, None
+    except Exception:
+        return False, None
 
 
 # ─── Validation ───
@@ -273,6 +327,47 @@ def _validate_attestations(attestations: list) -> list[dict]:
     return valid
 
 
+# ─── License Key Validation ───
+
+def _validate_license_key(key: str) -> dict | None:
+    """Validate a signed license key using EVO_LICENSE_SIGNING_KEY.
+
+    Same HMAC verification as activate-license.py.
+    Returns parsed payload dict if valid, None otherwise.
+    """
+    signing_key = os.environ.get("EVO_LICENSE_SIGNING_KEY")
+    if not signing_key:
+        return None
+
+    try:
+        decoded = base64.b64decode(key).decode("utf-8")
+        if "." not in decoded:
+            return None
+
+        payload_str, signature = decoded.rsplit(".", 1)
+        payload = json.loads(payload_str)
+
+        expected_sig = hmac_mod.new(
+            signing_key.encode("utf-8"),
+            payload_str.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+
+        if not hmac_mod.compare_digest(signature, expected_sig):
+            return None
+
+        # Check expiration if present
+        if "expires" in payload:
+            expires = datetime.fromisoformat(payload["expires"])
+            now = datetime.now(expires.tzinfo)
+            if now > expires:
+                return None
+
+        return payload
+    except (ValueError, json.JSONDecodeError, KeyError):
+        return None
+
+
 # ─── Rate Limiting ───
 
 def _check_rate_limit(instance_id: str) -> bool:
@@ -412,6 +507,20 @@ class handler(BaseHTTPRequestHandler):
         if not isinstance(level, int) or level not in (1, 2):
             return self._json({"error": "Invalid level (must be 1 or 2)"}, 400)
 
+        # ── Authenticate: require valid license key ──
+        license_key = data.get("license_key", "")
+        if not license_key or not isinstance(license_key, str):
+            return self._json({"error": "Missing license_key — pattern push requires a valid license"}, 403)
+
+        license_payload = _validate_license_key(license_key)
+        if license_payload is None:
+            _axiom_send({
+                "type": "pattern_push_auth_failed",
+                "country": self.headers.get("x-vercel-ip-country", ""),
+                "timestamp": time.time(),
+            })
+            return self._json({"error": "Invalid or expired license key"}, 403)
+
         # Level 1: metadata only — just log it
         if level == 1:
             _axiom_send({
@@ -446,13 +555,27 @@ class handler(BaseHTTPRequestHandler):
         if not validated and errors:
             return self._json({"error": "All patterns rejected", "details": errors}, 400)
 
-        # Merge into store
+        # Merge into store with optimistic concurrency (CAS retry)
+        _MAX_CAS_RETRIES = 3
         store = _redis_get()
-        for p in validated:
-            _merge_pattern(store, p, instance_id)
+        for _attempt in range(_MAX_CAS_RETRIES):
+            version = store.get("_v", 0)
+            for p in validated:
+                _merge_pattern(store, p, instance_id)
+            store["_v"] = version + 1
 
-        if not _redis_set(store):
-            return self._json({"error": "Storage write failed"}, 500)
+            success, conflict_data = _redis_cas(version, store)
+            if success:
+                break
+            if conflict_data:
+                store = conflict_data  # retry with fresh data
+                continue
+            # Fallback to plain SET if CAS unavailable
+            if not _redis_set(store):
+                return self._json({"error": "Storage write failed"}, 500)
+            break
+        else:
+            return self._json({"error": "Storage conflict, please retry"}, 409)
 
         # Compute quorum and family stats for the entire store
         all_patterns = list(store.get("patterns", {}).values())

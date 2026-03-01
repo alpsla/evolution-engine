@@ -262,10 +262,11 @@ class TestGitHubIssueCreation:
              patch("urllib.request.urlopen", return_value=mock_response):
             _invoke("POST", _valid_body(email="contact@user.com"))
 
-        # Axiom should have received the email in a separate event
+        # Axiom should have received the email hash (not plaintext) in a separate event
         contact_events = [e for e in axiom_events if e.get("type") == "adapter_request_contact"]
         assert len(contact_events) == 1
-        assert contact_events[0]["email"] == "contact@user.com"
+        assert "email_hash" in contact_events[0]
+        assert "email" not in contact_events[0]  # plaintext email must NOT be logged
 
     def test_github_api_failure_graceful_fallback(self, monkeypatch):
         monkeypatch.setenv("GITHUB_BOT_TOKEN", "ghp_test_token")
