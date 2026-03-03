@@ -3,7 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/evolution-engine)](https://pypi.org/project/evolution-engine/)
 [![Python 3.10+](https://img.shields.io/pypi/pyversions/evolution-engine)](https://pypi.org/project/evolution-engine/)
 [![License: BSL 1.1](https://img.shields.io/badge/license-BSL%201.1-blue)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1728%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-1749%20passing-brightgreen)]()
 
 **AI coding tools write correct code that silently breaks your architecture. Evolution Engine detects the drift, shows you the exact commit, and lets your AI fix it — with evidence.**
 
@@ -11,8 +11,7 @@ Calibrated on 90+ open-source repos. 6.18M signals analyzed. Your code never lea
 
 **[codequal.dev](https://codequal.dev)** | [Quickstart](QUICKSTART.md) | [PyPI](https://pypi.org/project/evolution-engine/)
 
-<!-- TODO: Replace with actual demo GIF after recording with VHS -->
-<!-- ![evo demo](demo.gif) -->
+![Evolution Engine CLI Demo](docs/images/demo.gif)
 
 ---
 
@@ -27,18 +26,33 @@ Evolution Engine is a **drift detector for AI-assisted development**. It learns 
 ```
   evo analyze .              What changed? Is it unusual for THIS repo?
        |
-  evo investigate .          AI pinpoints the root cause commit + drift pattern
+  evo analyze . --show-prompt   Copy the investigation prompt with evidence
        |
-  evo fix . --dry-run        Generates an evidence-backed prompt for your AI tool
-       |
-  You + your AI tool         Paste the prompt into Cursor / Claude Code / Copilot
+  You + your AI tool         Paste into Claude Code / Cursor / Copilot to fix
        |
   evo analyze . --verify     Did the fix resolve the drift? Or make it worse?
        |
   evo accept . 1 2           Expected change? Accept it. Move on.
 ```
 
-EE generates the evidence and the prompt — you bring your own AI tool to apply the fix. Then EE verifies whether the drift resolved. No other tool closes this loop.
+EE generates the evidence and the prompt — you bring your own AI tool to investigate and fix. Then EE verifies whether the drift resolved. No other tool closes this loop.
+
+### Sample Reports
+
+<table>
+<tr>
+<td width="50%"><strong>Analyze Report</strong></td>
+<td width="50%"><strong>Verification Report</strong></td>
+</tr>
+<tr>
+<td><a href="docs/images/report-analyze.png"><img src="docs/images/report-analyze.png" alt="Analyze Report" width="400"></a></td>
+<td><a href="docs/images/report-verify.png"><img src="docs/images/report-verify.png" alt="Verification Report" width="400"></a></td>
+</tr>
+<tr>
+<td><em>Findings, patterns, and investigation prompt</em></td>
+<td><em>Verification banner shows what resolved</em></td>
+</tr>
+</table>
 
 ### How It Works (5-Phase Pipeline)
 
@@ -105,7 +119,7 @@ Free tier covers Path 1 (CLI). Pro unlocks Path 2 (hooks) and Path 3 (CI integra
 GITHUB_TOKEN=ghp_xxx            # Unlocks CI, deployment, security adapters
 GITLAB_TOKEN=glpat-xxx          # Unlocks GitLab CI, releases adapters
 EVO_LICENSE_KEY=xxx              # Pro features (free tier works without)
-ANTHROPIC_API_KEY=sk-ant-xxx    # For evo investigate / evo fix (Pro)
+ANTHROPIC_API_KEY=sk-ant-xxx    # For evo fix automated loop (Pro)
 ```
 
 ---
@@ -158,7 +172,7 @@ evo analyze [path]               # Detect adapters, run full pipeline
 evo analyze . --families git,ci  # Override auto-detection
 evo report [path]                # Generate HTML report from last run
 evo status                       # Show detected adapters and event counts
-evo investigate [path]           # AI root cause analysis (Pro)
+evo analyze . --show-prompt      # Copy investigation prompt for your AI tool
 evo fix [path] --dry-run         # Generate evidence-backed fix prompt (Pro)
 evo fix [path] --dry-run --residual  # Iteration-aware prompt (what's fixed vs still broken)
 evo fix [path]                   # Automated fix-verify loop with CLI agent (Pro, advanced)
@@ -314,7 +328,7 @@ evolution-engine/
 │   ├── pattern_validator.py       # Pattern package validation
 │   ├── pattern_scaffold.py        # Pattern package scaffolding
 │   ├── report_generator.py        # Standalone HTML report generator
-│   ├── investigator.py            # AI investigation (evo investigate, Pro)
+│   ├── investigator.py            # AI investigation engine (Pro)
 │   ├── fixer.py                   # AI fix-verify loop (evo fix, Pro)
 │   ├── adapter_validator.py       # 13-check adapter certification
 │   ├── adapter_scaffold.py        # Package scaffolding + AI prompt gen

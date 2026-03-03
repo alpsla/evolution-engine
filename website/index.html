@@ -86,29 +86,10 @@
       <a href="#pricing" class="btn btn-outline" data-i18n="hero.cta_pro">Get Pro</a>
     </div>
 
-    <div class="terminal">
-      <div class="terminal-bar">
-        <div class="terminal-dot red"></div>
-        <div class="terminal-dot yellow"></div>
-        <div class="terminal-dot green"></div>
-      </div>
-      <div class="terminal-body">
-        <div><span class="prompt">$</span> <span class="cmd">pip install evolution-engine</span></div>
-        <div><span class="prompt">$</span> <span class="cmd">evo analyze .</span></div>
-        <div class="output">&nbsp;</div>
-        <div class="output">Detected: git, pip, GitHub Actions, GitHub Releases</div>
-        <div class="output">Phase 1: 247 events ingested (4 families)</div>
-        <div class="output">Phase 2: 12 signals computed</div>
-        <div class="output">Phase 3: Explanations generated</div>
-        <div class="output">Phase 4: 3 patterns matched (44 universal)</div>
-        <div class="output">Phase 5: Advisory generated</div>
-        <div class="output">&nbsp;</div>
-        <div><span class="highlight">ADVISORY</span> <span class="output">2 significant changes detected</span></div>
-        <div class="output">  <span class="highlight">HIGH</span> File dispersion spiked after CI failure (3.2x above baseline)</div>
-        <div class="output">  <span class="warning" style="color: #F59E0B">MEDIUM</span> Dependency count grew 18% in 7 days</div>
-        <div class="output">&nbsp;</div>
-        <div class="success">Saved to .evo/phase5/advisory.json</div>
-      </div>
+    <div class="demo-video" style="margin-top: 2rem; max-width: 800px; margin-left: auto; margin-right: auto; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+      <video autoplay loop muted playsinline style="width: 100%; display: block;">
+        <source src="assets/demo.mp4" type="video/mp4">
+      </video>
     </div>
   </div>
 </section>
@@ -169,8 +150,30 @@
       <div class="step">
         <div class="step-number">3</div>
         <h3 data-i18n="how_it_works.step3_title">Act</h3>
-        <p data-i18n="how_it_works.step3_desc">Read the advisory, investigate with AI, or set up the GitHub Action for continuous monitoring.</p>
-        <code data-copy="evo investigate .">evo investigate .<span class="copy-tooltip">Copied!</span></code>
+        <p data-i18n="how_it_works.step3_desc">Copy the prompt, paste into your AI tool (Claude Code, Cursor, Copilot), fix the drift, then verify.</p>
+        <code data-copy="evo analyze . --show-prompt">evo analyze . --show-prompt<span class="copy-tooltip">Copied!</span></code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Sample Reports ─── -->
+<section class="reports" style="padding: 4rem 0;">
+  <div class="container">
+    <h2 class="section-title">Sample Reports</h2>
+    <p class="section-subtitle">Every analysis generates an interactive HTML report. After your AI applies a fix, run <code style="background: rgba(255,255,255,0.1); padding: 0.2rem 0.5rem; border-radius: 4px;">evo analyze . --verify</code> to see what resolved.</p>
+    <div style="display: flex; justify-content: center; gap: 1.5rem; margin-top: 2rem; flex-wrap: wrap;">
+      <div style="text-align: center;">
+        <a href="sample-report.html" target="_blank" class="btn btn-outline" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.9rem 1.8rem; font-size: 1rem;">
+          <span style="font-size: 1.2rem;">&#128202;</span> Analyze Report
+        </a>
+        <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.5rem;">Drift detected — findings, patterns, AI prompt</p>
+      </div>
+      <div style="text-align: center;">
+        <a href="sample-report-verify.html" target="_blank" class="btn btn-outline" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.9rem 1.8rem; font-size: 1rem;">
+          <span style="font-size: 1.2rem;">&#9989;</span> Verification Report
+        </a>
+        <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.5rem;">After fix — what resolved, improved, or persists</p>
       </div>
     </div>
   </div>

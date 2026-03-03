@@ -207,7 +207,8 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verb
             click.echo(f"  Manage with `evo accepted list`")
 
         if status_info.get("level") in ("action_required", "needs_attention"):
-            click.echo(f"\n  Run `evo investigate .` for AI-powered root cause analysis")
+            click.echo(f"\n  Run `evo analyze . --show-prompt` to copy the investigation prompt")
+            click.echo(f"  Paste into Claude Code, Cursor, or Copilot to investigate and fix")
             click.echo(f"  Run `evo accept . <N>` to dismiss expected changes")
             click.echo(f"  Run `evo analyze . --verify` after fixes to confirm resolution")
 
