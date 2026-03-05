@@ -147,7 +147,8 @@ def main():
 @click.option("--no-report", is_flag=True, help="Skip HTML report generation")
 @click.option("--open/--no-open", "open_browser", default=None, help="Open HTML report in browser (default: auto-detect TTY)")
 @click.option("--verify", is_flag=True, help="Compare results against previous run after analysis")
-def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verbose, show_prompt, no_report, open_browser, verify):
+@click.option("--lang", type=click.Choice(["en", "de", "es"]), default=None, help="Report language (default: auto-detect)")
+def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verbose, show_prompt, no_report, open_browser, verify, lang):
     """Analyze a repository. Detects adapters automatically."""
     from evolution.orchestrator import Orchestrator
 
@@ -165,15 +166,23 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verb
         families=families_list,
     )
 
-    result = orch.run(
-        scope=scope,
-        json_output=json_output,
-        quiet=quiet,
-        verbose=verbose,
-    )
+    try:
+        result = orch.run(
+            scope=scope,
+            json_output=json_output,
+            quiet=quiet,
+            verbose=verbose,
+        )
+    except Exception as e:
+        if "InvalidGitRepository" in type(e).__name__:
+            click.echo(f"Error: {os.path.abspath(path)} is not a git repository", err=True)
+            sys.exit(1)
+        raise
 
     # Telemetry: prompt on first analyze, track completion
     from evolution.telemetry import prompt_consent
+    from evolution.config import EvoConfig as _EvoConfig
+    _first_run = not _EvoConfig().get("telemetry.prompted", False)
     prompt_consent()
 
     if json_output:
@@ -276,7 +285,7 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verb
             from evolution.report_generator import generate_report
 
             evo_path = Path(evo_dir) if evo_dir else Path(path) / ".evo"
-            html = generate_report(evo_path, verification=verify_diff)
+            html = generate_report(evo_path, verification=verify_diff, lang=lang)
             report_path = evo_path / "report.html"
             report_path.write_text(html)
 
@@ -315,9 +324,10 @@ def analyze(path, token, families, evo_dir, json_output, llm, scope, quiet, verb
         except Exception:
             pass  # Never let notifications break analyze
 
-    # Post-analyze sharing prompt (one-time, TTY only)
+    # Post-analyze sharing prompt (one-time, TTY only, skip on first run)
     if (result["status"] == "complete"
             and not json_output and not quiet
+            and not _first_run
             and result.get("shareable_patterns", 0) > 0
             and sys.stdout.isatty()):
         try:
@@ -2133,7 +2143,8 @@ def license_activate(key):
 @click.option("--open", "open_browser", is_flag=True, help="Open in browser after generating")
 @click.option("--serve", is_flag=True, help="Start local server for interactive report (blocking)")
 @click.option("--verify", is_flag=True, help="Include verification banner comparing last two runs")
-def report(path, output, evo_dir, title, open_browser, serve, verify):
+@click.option("--lang", type=click.Choice(["en", "de", "es"]), default=None, help="Report language (default: auto-detect)")
+def report(path, output, evo_dir, title, open_browser, serve, verify, lang):
     """Generate an HTML report from the latest advisory."""
     from evolution.report_generator import generate_report
 
@@ -2165,7 +2176,7 @@ def report(path, output, evo_dir, title, open_browser, serve, verify):
         except (json.JSONDecodeError, KeyError):
             pass
 
-    html = generate_report(evo_path, title=title, calibration_result=cal)
+    html = generate_report(evo_path, title=title, calibration_result=cal, lang=lang)
 
     output_path = Path(output) if output else evo_path / "report.html"
     output_path.write_text(html)
