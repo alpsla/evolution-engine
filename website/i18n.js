@@ -81,6 +81,19 @@
       }
     }
 
+    // Handle language-aware videos (e.g. assets/demo.mp4 → assets/demo-de.mp4)
+    var videoElements = document.querySelectorAll('[data-i18n-video]');
+    for (var v = 0; v < videoElements.length; v++) {
+      var vid = videoElements[v];
+      var baseSrc = vid.getAttribute('data-i18n-video');
+      var newSrc = currentLang === 'en' ? baseSrc + '.mp4' : baseSrc + '-' + currentLang + '.mp4';
+      var source = vid.querySelector('source');
+      if (source && source.getAttribute('src') !== newSrc) {
+        source.setAttribute('src', newSrc);
+        vid.load();
+      }
+    }
+
     // Handle "Most Popular" badge on the featured pricing card (CSS ::before content)
     var popularCard = document.querySelector('[data-i18n-popular]');
     if (popularCard) {
