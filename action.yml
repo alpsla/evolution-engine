@@ -1,0 +1,604 @@
+name: "Evolution Engine Analyze"
+description: "Analyze repository for development process anomalies, post PR comments, and optionally investigate findings with AI."
+author: "Evolution Engine"
+
+branding:
+  icon: "activity"
+  color: "blue"
+
+inputs:
+  github-token:
+    description: "GitHub token for API access. CI/releases/security analysis requires Pro license (EVO_LICENSE_KEY)."
+    required: false
+    default: ${{ github.token }}
+  comment:
+    description: "Post analysis results as a PR comment"
+    required: false
+    default: "true"
+  investigate:
+    description: "Run AI investigation on High/Critical findings"
+    required: false
+    default: "false"
+  anthropic-api-key:
+    description: "Anthropic API key for AI investigation (required if investigate=true)"
+    required: false
+  suggest-fixes:
+    description: "Add fix suggestions as inline review comments"
+    required: false
+    default: "false"
+  families:
+    description: "Comma-separated family override (e.g. git,ci,dependency)"
+    required: false
+  evo-version:
+    description: "Evolution Engine version to install (default: latest)"
+    required: false
+    default: "latest"
+  python-version:
+    description: "Python version to use"
+    required: false
+    default: "3.11"
+  skip-install:
+    description: "Skip pip install (use if evolution-engine is already installed)"
+    required: false
+    default: "false"
+  accept-secret:
+    description: "Shared secret for permanent acceptance webhook (enables /evo accept permanent)"
+    required: false
+
+outputs:
+  status:
+    description: "Analysis status (complete, no_events, error)"
+    value: ${{ steps.analyze.outputs.status }}
+  significant-changes:
+    description: "Number of significant changes detected"
+    value: ${{ steps.analyze.outputs.significant_changes }}
+  advisory-json:
+    description: "Path to the advisory JSON file"
+    value: ${{ steps.analyze.outputs.advisory_json }}
+  comment-id:
+    description: "ID of the PR comment (for updates)"
+    value: ${{ steps.comment.outputs.comment_id }}
+
+runs:
+  using: "composite"
+  steps:
+    # ── /evo accept handler ──
+    # If triggered by an issue_comment containing "/evo accept", update the
+    # existing EE comment to accepted state and exit early.
+    - name: Handle /evo accept
+      id: accept
+      if: github.event_name == 'issue_comment' && contains(github.event.comment.body, '/evo accept')
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        COMMENT_BODY: ${{ github.event.comment.body }}
+        COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+        COMMENT_ASSOC: ${{ github.event.comment.author_association }}
+        PR_NUMBER: ${{ github.event.issue.number }}
+      run: |
+        # Check author association — only MEMBER, OWNER, COLLABORATOR can accept
+        if [[ "$COMMENT_ASSOC" != "MEMBER" && "$COMMENT_ASSOC" != "OWNER" && "$COMMENT_ASSOC" != "COLLABORATOR" ]]; then
+          echo "Ignoring /evo accept from $COMMENT_ASSOC (requires MEMBER, OWNER, or COLLABORATOR)"
+          echo "accepted=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        AUTHOR="$COMMENT_AUTHOR"
+
+        # Parse scope from comment: "/evo accept permanent" vs "/evo accept"
+        if echo "$COMMENT_BODY" | grep -qi '/evo accept permanent'; then
+          SCOPE="permanent"
+        else
+          SCOPE="this-pr"
+        fi
+
+        # Find existing EE comment
+        EXISTING=$(gh api \
+          "/repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+          --jq '.[] | select(.body | startswith("## Evolution Engine")) | .id' \
+          2>/dev/null | head -1)
+
+        if [ -z "$EXISTING" ]; then
+          echo "No Evolution Engine comment found on PR #${PR_NUMBER}"
+          echo "accepted=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        echo "accepted=true" >> "$GITHUB_OUTPUT"
+        echo "comment_id=$EXISTING" >> "$GITHUB_OUTPUT"
+        echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+        echo "accepted_by=$AUTHOR" >> "$GITHUB_OUTPUT"
+        echo "scope=$SCOPE" >> "$GITHUB_OUTPUT"
+
+    - name: Set up Python (for accept)
+      if: steps.accept.outputs.accepted == 'true'
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Update PR comment to accepted state
+      if: steps.accept.outputs.accepted == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        COMMENT_ID="${{ steps.accept.outputs.comment_id }}"
+        SCOPE="${{ steps.accept.outputs.scope }}"
+        ACCEPTED_BY="${{ steps.accept.outputs.accepted_by }}"
+
+        # Fetch existing comment body (the source of truth — no cache needed)
+        gh api \
+          "/repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" \
+          --jq '.body' > /tmp/ee_comment_body.txt 2>/dev/null
+
+        if [ ! -s /tmp/ee_comment_body.txt ]; then
+          echo "Could not fetch comment body"
+          exit 0
+        fi
+
+        # Transform the comment in-place: add accepted banner, remove action sections
+        python3 -c "
+        import json, re, sys
+
+        with open('/tmp/ee_comment_body.txt') as f:
+            body = f.read()
+
+        scope = '${SCOPE}'
+        username = '${ACCEPTED_BY}'
+
+        if scope == 'permanent':
+            scope_label = 'Accepted permanently'
+        else:
+            scope_label = 'Accepted for this PR'
+
+        # Remove any existing acceptance banner before inserting new one
+        body = re.sub(r'\n✅ \*\*Accepted[^\n]*\n', '', body)
+
+        # Insert accepted banner after the first heading
+        header_match = re.search(r'^(## Evolution Engine[^\n]*\n)', body)
+        if header_match:
+            end = header_match.end()
+            banner = '\n✅ **' + scope_label + '** — findings acknowledged as intentional.\n'
+            body = body[:end] + banner + body[end:]
+
+        # Remove action sections (analysis comments)
+        body = re.sub(r'\n---\n\n### What To Do Next.*', '', body, flags=re.DOTALL)
+        # Remove continue fixing section (verification comments)
+        body = re.sub(r'\n### Continue Fixing.*', '', body, flags=re.DOTALL)
+        # Remove report link line
+        body = re.sub(r'\n\U0001f4ca \[View Full Report\][^\n]*', '', body)
+        # Remove trailing footer
+        body = re.sub(r'\n<sub>[^<]*</sub>\s*$', '', body)
+
+        # Add accepted footer
+        body = body.rstrip() + '\n\n<sub>Accepted by @' + username + '</sub>'
+
+        with open('/tmp/ee_patch.json', 'w') as f:
+            json.dump({'body': body}, f)
+        "
+
+        # PATCH the comment with the modified body
+        gh api \
+          --method PATCH \
+          "/repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" \
+          --input /tmp/ee_patch.json \
+          2>/dev/null || true
+
+        echo "Updated comment #${COMMENT_ID} to accepted state"
+
+    - name: Push permanent acceptances to webhook
+      if: steps.accept.outputs.accepted == 'true' && steps.accept.outputs.scope == 'permanent'
+      shell: bash
+      env:
+        EVO_ACCEPT_SECRET: ${{ inputs.accept-secret }}
+      run: |
+        if [ -z "$EVO_ACCEPT_SECRET" ]; then
+          echo "No accept-secret configured — skipping webhook push"
+          exit 0
+        fi
+
+        if [ ! -s /tmp/ee_comment_body.txt ]; then
+          echo "No comment body to parse"
+          exit 0
+        fi
+
+        # Parse family:metric pairs from the findings table in the comment body
+        python3 -c "
+        import hashlib, hmac, json, sys, urllib.request, os
+
+        secret = os.environ['EVO_ACCEPT_SECRET']
+        repo = '${{ github.repository }}'
+        signature = hmac.new(secret.encode(), repo.encode(), hashlib.sha256).hexdigest()
+
+        with open('/tmp/ee_comment_body.txt') as f:
+            body = f.read()
+
+        # Extract family/metric from table rows:
+        #   | badge Risk | family | metric | current | normal | desc |
+        entries = []
+        for line in body.split('\n'):
+            if '|' not in line or line.startswith('|:') or '---' in line:
+                continue
+            cells = [c.strip() for c in line.split('|')]
+            if len(cells) >= 4:
+                family = cells[2]
+                metric = cells[3]
+                if family and metric and family != 'Family' and metric != 'Metric':
+                    entries.append({
+                        'key': f'{family}:{metric}',
+                        'family': family,
+                        'metric': metric,
+                        'reason': 'Accepted on PR #${{ steps.accept.outputs.pr_number }}',
+                        'accepted_by': '${{ steps.accept.outputs.accepted_by }}',
+                    })
+
+        if not entries:
+            sys.exit(0)
+
+        payload = json.dumps({'repo': repo, 'signature': signature, 'entries': entries}).encode()
+        req = urllib.request.Request(
+            'https://codequal.dev/api/accept',
+            data=payload,
+            headers={'Content-Type': 'application/json'},
+            method='POST',
+        )
+        try:
+            resp = urllib.request.urlopen(req, timeout=10)
+            print(f'Webhook response: {resp.read().decode()}')
+        except Exception as e:
+            print(f'Webhook push failed (non-fatal): {e}')
+        " 2>/dev/null || true
+
+        # Exit early — skip all analysis steps
+        echo "Early exit: /evo accept handled"
+
+    # ── Main analysis flow (skipped if /evo accept was handled) ──
+
+    - name: Set up Python
+      if: steps.accept.outputs.accepted != 'true'
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install Evolution Engine
+      if: steps.accept.outputs.accepted != 'true' && inputs.skip-install != 'true'
+      shell: bash
+      env:
+        EVO_VERSION: ${{ inputs.evo-version }}
+      run: |
+        if [ "$EVO_VERSION" = "latest" ]; then
+          pip install evolution-engine
+        else
+          pip install "evolution-engine==$EVO_VERSION"
+        fi
+
+    - name: Restore previous advisory (for verification on subsequent pushes)
+      if: steps.accept.outputs.accepted != 'true' && inputs.comment == 'true' && github.event_name == 'pull_request'
+      uses: actions/cache/restore@v4
+      with:
+        path: .evo/phase5/advisory.json.prev
+        key: evo-advisory-${{ github.event.pull_request.number }}-
+        restore-keys: |
+          evo-advisory-${{ github.event.pull_request.number }}-
+
+    - name: Restore cached acceptances
+      if: steps.accept.outputs.accepted != 'true' && inputs.comment == 'true' && github.event_name == 'pull_request'
+      uses: actions/cache/restore@v4
+      with:
+        path: .evo/accepted.json
+        key: evo-accepted-${{ github.event.pull_request.number }}-
+        restore-keys: |
+          evo-accepted-${{ github.event.pull_request.number }}-
+
+    - name: Pull permanent acceptances from webhook
+      if: steps.accept.outputs.accepted != 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        EVO_ACCEPT_SECRET: ${{ inputs.accept-secret }}
+      run: |
+        if [ -z "$EVO_ACCEPT_SECRET" ]; then
+          exit 0
+        fi
+
+        mkdir -p .evo
+
+        python3 -c "
+        import hashlib, hmac, json, sys, urllib.request, os
+
+        repo = '${{ github.repository }}'
+        secret = os.environ.get('EVO_ACCEPT_SECRET', '')
+        if not secret:
+            sys.exit(0)
+
+        sig = hmac.new(secret.encode(), repo.encode(), hashlib.sha256).hexdigest()
+        url = f'https://codequal.dev/api/accept?repo={repo}&sig={sig}'
+        try:
+            req = urllib.request.Request(url, method='GET')
+            resp = urllib.request.urlopen(req, timeout=10)
+            data = json.loads(resp.read().decode())
+        except Exception as e:
+            print(f'Webhook pull failed (non-fatal): {e}')
+            sys.exit(0)
+
+        remote_entries = data.get('entries', [])
+        if not remote_entries:
+            sys.exit(0)
+
+        # Merge into local accepted.json
+        local_path = '.evo/accepted.json'
+        try:
+            local = json.load(open(local_path))
+        except (FileNotFoundError, json.JSONDecodeError):
+            local = {'version': 2, 'accepted': []}
+
+        existing_keys = {e['key'] for e in local.get('accepted', [])}
+        added = 0
+        for re_entry in remote_entries:
+            key = re_entry.get('key', '')
+            if key and key not in existing_keys:
+                local.setdefault('accepted', []).append({
+                    'key': key,
+                    'family': re_entry.get('family', ''),
+                    'metric': re_entry.get('metric', ''),
+                    'reason': re_entry.get('reason', 'Permanent acceptance from webhook'),
+                    'accepted_at': re_entry.get('accepted_at', ''),
+                    'from_advisory': '',
+                    'scope': {'type': 'permanent'},
+                })
+                existing_keys.add(key)
+                added += 1
+
+        if added > 0:
+            with open(local_path, 'w') as f:
+                json.dump(local, f, indent=2)
+            print(f'Merged {added} permanent acceptance(s) from webhook')
+        " 2>/dev/null || true
+
+    - name: Backup previous advisory before analysis (cleanup deletes it)
+      if: steps.accept.outputs.accepted != 'true' && github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        if [ -f .evo/phase5/advisory.json.prev ]; then
+          cp .evo/phase5/advisory.json.prev /tmp/evo_prev_advisory.json
+          echo "Backed up previous advisory for verification"
+        fi
+
+    - name: Detect sources
+      id: sources
+      if: steps.accept.outputs.accepted != 'true'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        mkdir -p .evo
+        evo sources --json > .evo/sources.json 2>/dev/null || echo '{}' > .evo/sources.json
+
+    - name: Run analysis
+      id: analyze
+      if: steps.accept.outputs.accepted != 'true'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        EVO_LICENSE_KEY: ${{ env.EVO_LICENSE_KEY || '' }}
+        INPUT_FAMILIES: ${{ inputs.families }}
+        INPUT_TOKEN: ${{ inputs.github-token }}
+      run: |
+        mkdir -p .evo
+
+        ARGS="--json --quiet"
+        if [ -n "$INPUT_FAMILIES" ]; then
+          ARGS="$ARGS --families $INPUT_FAMILIES"
+        fi
+        if [ -n "$INPUT_TOKEN" ]; then
+          ARGS="$ARGS --token $INPUT_TOKEN"
+        fi
+
+        # Run analysis
+        RESULT=$(evo analyze . $ARGS 2>/dev/null || echo '{"status":"error"}')
+        echo "$RESULT" > .evo/analysis_result.json
+
+        # Extract outputs
+        STATUS=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','error'))")
+        CHANGES=$(echo "$RESULT" | python3 -c "import sys,json; r=json.load(sys.stdin); print(r.get('advisory',{}).get('significant_changes',0))")
+
+        echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+        echo "significant_changes=$CHANGES" >> "$GITHUB_OUTPUT"
+        echo "advisory_json=$(pwd)/.evo/phase5/advisory.json" >> "$GITHUB_OUTPUT"
+
+    - name: Generate HTML report
+      if: steps.accept.outputs.accepted != 'true' && steps.analyze.outputs.status == 'complete'
+      shell: bash
+      run: |
+        evo report . --output .evo/report.html --no-open 2>/dev/null || true
+
+    - name: Upload report artifact
+      id: report
+      if: steps.accept.outputs.accepted != 'true' && steps.analyze.outputs.status == 'complete' && github.event_name == 'pull_request'
+      uses: actions/upload-artifact@v4
+      with:
+        name: evolution-report-PR${{ github.event.pull_request.number }}
+        path: .evo/report.html
+        if-no-files-found: ignore
+
+    - name: Run AI investigation
+      if: steps.accept.outputs.accepted != 'true' && inputs.investigate == 'true' && steps.analyze.outputs.significant_changes != '0'
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+      run: |
+        if [ -n "$ANTHROPIC_API_KEY" ]; then
+          evo investigate . --agent anthropic 2>/dev/null || true
+        else
+          echo "Skipping AI investigation: no ANTHROPIC_API_KEY provided"
+        fi
+
+    - name: Format and post PR comment
+      id: comment
+      if: steps.accept.outputs.accepted != 'true' && inputs.comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        # Build report artifact URL
+        REPORT_URL=""
+        if [ -f .evo/report.html ]; then
+          REPORT_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        fi
+
+        # Build format_comment.py args
+        FORMAT_ARGS="--advisory .evo/phase5/advisory.json --output .evo/pr_comment.md"
+
+        if [ -f .evo/investigation/investigation.json ]; then
+          FORMAT_ARGS="$FORMAT_ARGS --investigation .evo/investigation/investigation.json"
+        fi
+        if [ -f .evo/sources.json ]; then
+          FORMAT_ARGS="$FORMAT_ARGS --sources .evo/sources.json"
+        fi
+        if [ -f .evo/phase5/investigation_prompt.txt ]; then
+          FORMAT_ARGS="$FORMAT_ARGS --prompt .evo/phase5/investigation_prompt.txt"
+        fi
+        if [ -f .evo/diagnostics.json ]; then
+          FORMAT_ARGS="$FORMAT_ARGS --diagnostics .evo/diagnostics.json"
+        fi
+        if [ -n "$REPORT_URL" ]; then
+          FORMAT_ARGS="$FORMAT_ARGS --report-url $REPORT_URL"
+        fi
+
+        python3 "${{ github.action_path }}/format_comment.py" \
+          $FORMAT_ARGS \
+          2>/dev/null || true
+
+        if [ ! -f .evo/pr_comment.md ]; then
+          echo "No comment to post (analysis may have found no issues)"
+          exit 0
+        fi
+
+        # Find existing EE comment via REST API (returns numeric IDs)
+        EXISTING=$(gh api \
+          "/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+          --jq '.[] | select(.body | startswith("## Evolution Engine")) | .id' \
+          2>/dev/null | head -1)
+
+        if [ -n "$EXISTING" ]; then
+          # Update existing comment
+          gh api \
+            --method PATCH \
+            "/repos/${{ github.repository }}/issues/comments/$EXISTING" \
+            -f body="$(cat .evo/pr_comment.md)" \
+            2>/dev/null || true
+          echo "comment_id=$EXISTING" >> "$GITHUB_OUTPUT"
+        else
+          # Create new comment
+          RESULT=$(gh api \
+            --method POST \
+            "/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            -f body="$(cat .evo/pr_comment.md)" \
+            2>/dev/null || echo '{}')
+          COMMENT_ID=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
+          echo "comment_id=$COMMENT_ID" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Post inline fix suggestions
+      if: steps.accept.outputs.accepted != 'true' && inputs.suggest-fixes == 'true' && inputs.investigate == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        # Only if investigation produced results
+        if [ ! -f .evo/investigation/investigation.json ]; then
+          echo "No investigation results — skipping fix suggestions"
+          exit 0
+        fi
+
+        python3 -c "
+        import json, sys
+        from evolution.inline_suggestions import extract_suggestions, format_review_payload
+
+        investigation = json.load(open('.evo/investigation/investigation.json'))
+        advisory = json.load(open('.evo/phase5/advisory.json'))
+        suggestions = extract_suggestions(investigation, advisory)
+
+        if not suggestions:
+            print('No inline suggestions to post')
+            sys.exit(0)
+
+        sha = '${{ github.event.pull_request.head.sha }}'
+        payload = format_review_payload(suggestions, commit_sha=sha)
+        json.dump(payload, open('.evo/review_payload.json', 'w'), indent=2)
+        print(f'Prepared {len(suggestions)} inline suggestion(s)')
+        " 2>/dev/null || true
+
+        if [ -f .evo/review_payload.json ]; then
+          gh api \
+            --method POST \
+            "/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews" \
+            --input .evo/review_payload.json \
+            2>/dev/null || true
+        fi
+
+    - name: Verify against previous (on subsequent pushes)
+      if: steps.accept.outputs.accepted != 'true' && inputs.comment == 'true' && github.event_name == 'pull_request' && github.event.action == 'synchronize'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        # The cache restores advisory.json.prev before analysis, but evo analyze
+        # cleans .evo/phase5/. Check for the backup copy saved before analysis.
+        if [ -f /tmp/evo_prev_advisory.json ]; then
+          cp /tmp/evo_prev_advisory.json .evo/phase5/advisory.json.prev
+        fi
+
+        if [ -f .evo/phase5/advisory.json.prev ]; then
+          evo verify .evo/phase5/advisory.json.prev --path . --quiet 2>/dev/null || true
+
+          # Build report artifact URL
+          REPORT_URL=""
+          if [ -f .evo/report.html ]; then
+            REPORT_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          fi
+
+          # Build format args for verification comment
+          FORMAT_ARGS="--verification .evo/phase5/verification.json --output .evo/pr_comment.md"
+
+          # Use residual prompt if available, otherwise fall back to investigation prompt
+          if [ -f .evo/phase5/residual_prompt.txt ]; then
+            FORMAT_ARGS="$FORMAT_ARGS --residual-prompt .evo/phase5/residual_prompt.txt"
+          elif [ -f .evo/phase5/investigation_prompt.txt ]; then
+            FORMAT_ARGS="$FORMAT_ARGS --residual-prompt .evo/phase5/investigation_prompt.txt"
+          fi
+          if [ -n "$REPORT_URL" ]; then
+            FORMAT_ARGS="$FORMAT_ARGS --report-url $REPORT_URL"
+          fi
+
+          python3 "${{ github.action_path }}/format_comment.py" \
+            $FORMAT_ARGS \
+            2>/dev/null || true
+
+          if [ -f .evo/pr_comment.md ]; then
+            EXISTING=$(gh api \
+              "/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+              --jq '.[] | select(.body | startswith("## Evolution Engine")) | .id' \
+              2>/dev/null | head -1)
+
+            if [ -n "$EXISTING" ]; then
+              gh api \
+                --method PATCH \
+                "/repos/${{ github.repository }}/issues/comments/$EXISTING" \
+                -f body="$(cat .evo/pr_comment.md)" \
+                2>/dev/null || true
+            fi
+          fi
+        fi
+
+    - name: Cache advisory for verification on next push
+      if: steps.accept.outputs.accepted != 'true' && inputs.comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        cp .evo/phase5/advisory.json .evo/phase5/advisory.json.prev 2>/dev/null || true
+
+    - name: Save advisory cache
+      if: steps.accept.outputs.accepted != 'true' && inputs.comment == 'true' && github.event_name == 'pull_request'
+      uses: actions/cache/save@v4
+      with:
+        path: .evo/phase5/advisory.json.prev
+        key: evo-advisory-${{ github.event.pull_request.number }}-${{ github.run_id }}
