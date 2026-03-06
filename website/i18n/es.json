@@ -216,6 +216,7 @@
     "toc_build_adapter": "Crea tu propio adaptador",
     "toc_adapter_contract": "Contrato de adaptador",
     "toc_submit_adapter": "Envía tu adaptador",
+    "no_ai_callout": "<strong>Sin APIs de IA, sin claves, ningún dato sale de tu máquina.</strong> EE es un detector de drift puramente estadístico. Analiza tu historial de git, logs de CI y cambios de dependencias localmente — sin llamadas a LLM, sin APIs en la nube, sin telemetría por defecto. Cuando quieras una investigación con IA, copias el prompt en tu propia herramienta de IA (ChatGPT, Claude, Cursor, Copilot) — a tu propio ritmo y nivel de confianza. EE nunca envía tu código o datos a ningún lugar.",
     "quickstart_title": "Inicio rápido",
     "quickstart_install": "Instalar",
     "quickstart_analyze": "Analizar un repositorio",
