@@ -56,5 +56,10 @@ lawyer-review-packet-*
 # Coverage reports
 coverage.xml
 
+# Demo artifacts (regenerable via vhs *.tape)
+demo-repo/
+*.gif
+*.mp4
+
 # Claude project memory
 .claude/
