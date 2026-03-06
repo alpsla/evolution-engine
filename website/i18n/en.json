@@ -11,6 +11,8 @@
   "hero": {
     "title": "Know when your codebase drifts before it breaks",
     "subtitle": "Cross-correlate signals from git, CI, dependencies, and deployments. Local-first, zero-config, evidence-based.",
+    "detail": "Cross-correlate signals from git, CI, dependencies, and deployments. Local-first, zero-config, evidence-based.",
+    "no_ai": "No AI APIs, no keys — your code never leaves your machine. Bring your own AI tool when you want deeper investigation.",
     "cta_install": "Install Free",
     "cta_pro": "Get Pro"
   },

@@ -11,6 +11,8 @@
   "hero": {
     "title": "Erkennen Sie Codebase-Drift, bevor es zu Problemen kommt",
     "subtitle": "Korrelieren Sie Signale aus Git, CI, Abhängigkeiten und Deployments. Lokal, ohne Konfiguration, evidenzbasiert.",
+    "detail": "Korrelieren Sie Signale aus Git, CI, Abhängigkeiten und Deployments. Lokal, ohne Konfiguration, evidenzbasiert.",
+    "no_ai": "Keine KI-APIs, keine Schlüssel — Ihr Code verlässt nie Ihren Rechner. Nutzen Sie Ihr eigenes KI-Tool, wenn Sie tiefere Untersuchungen wünschen.",
     "cta_install": "Kostenlos installieren",
     "cta_pro": "Pro holen"
   },

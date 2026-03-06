@@ -11,6 +11,8 @@
   "hero": {
     "title": "Detecta la deriva de tu código antes de que cause problemas",
     "subtitle": "Correlaciona señales de git, CI, dependencias y despliegues. Local, sin configuración, basado en evidencia.",
+    "detail": "Correlaciona señales de git, CI, dependencias y despliegues. Local, sin configuración, basado en evidencia.",
+    "no_ai": "Sin APIs de IA, sin claves — tu código nunca sale de tu máquina. Usa tu propia herramienta de IA cuando quieras una investigación más profunda.",
     "cta_install": "Instalar gratis",
     "cta_pro": "Obtener Pro"
   },
