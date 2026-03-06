@@ -1889,6 +1889,11 @@ def _build_prompt(scope, period_from, period_to, changes, commits, files,
         "",
         "4. AFTER FIXING: Run `evo analyze . --verify` to confirm deviations decreased.",
         "   If a change was intentional, accept it: `evo accept . <N>`.",
+        "",
+        "5. FINDING SUMMARIES: At the end, include a section like this:",
+        "   ## Finding Summaries",
+        "   - [family/metric]: One plain-English sentence for a non-technical reader.",
+        "   (This lets the user run `evo enrich . --from response.txt` to store friendly descriptions.)",
     ])
 
     return "\n".join(lines)
