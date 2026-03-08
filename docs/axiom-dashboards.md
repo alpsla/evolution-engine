@@ -2,6 +2,7 @@
 
 APL queries for the 5 Axiom dashboards. Copy-paste into Axiom web UI.
 Dataset: `evo` | Retention: 30 days
+Note: Axiom flattens nested `properties.*` to top-level fields.
 
 ---
 
@@ -10,7 +11,7 @@ Dataset: `evo` | Retention: 30 days
 ### MRR Tracker (cumulative subscribers × $19)
 ```apl
 ['evo']
-| where event in ("license_generated", "license_revoked")
+| where event == "license_generated" or event == "license_revoked"
 | extend delta = iff(event == "license_generated", 19, -19)
 | summarize mrr = sum(delta) by bin(_time, 1d)
 | sort by _time asc
@@ -20,7 +21,7 @@ Dataset: `evo` | Retention: 30 days
 ### Revenue Events Timeline
 ```apl
 ['evo']
-| where event in ("license_generated", "license_revoked", "payment_failed")
+| where event == "license_generated" or event == "license_revoked" or event == "payment_failed"
 | summarize count() by event, bin(_time, 1d)
 ```
 
@@ -34,7 +35,7 @@ Dataset: `evo` | Retention: 30 days
 ### Checkout Conversion Funnel
 ```apl
 ['evo']
-| where event in ("checkout_started", "license_generated", "license_retrieved")
+| where event == "checkout_started" or event == "license_generated" or event == "license_retrieved"
 | summarize count() by event
 ```
 
@@ -60,7 +61,7 @@ Dataset: `evo` | Retention: 30 days
 ### License Funnel (daily)
 ```apl
 ['evo']
-| where event in ("checkout_started", "license_generated", "license_retrieved", "analyze_complete")
+| where event == "checkout_started" or event == "license_generated" or event == "license_retrieved" or event == "analyze_complete"
 | extend stage = case(
     event == "checkout_started", "1_checkout",
     event == "license_generated", "2_license",
@@ -70,11 +71,10 @@ Dataset: `evo` | Retention: 30 days
 | summarize count() by stage
 ```
 
-### Active Users (unique anon_ids, 7d/30d)
+### Active Users (unique anon_ids)
 ```apl
 ['evo']
 | where type == "telemetry" and event == "analyze_complete"
-| where _time > ago(7d)
 | summarize dcount(anon_id)
 ```
 
@@ -82,15 +82,14 @@ Dataset: `evo` | Retention: 30 days
 ```apl
 ['evo']
 | where event == "analyze_complete"
-| extend tier = tostring(properties.license_tier)
-| summarize count() by tier
+| summarize count() by tostring(license_tier)
 ```
 
 ### Feature Gate Hits
 ```apl
 ['evo']
 | where event == "analyze_complete"
-| where toint(properties.gated_families_count) > 0
+| where toint(gated_families_count) > 0
 | summarize gate_hits = count(), unique_users = dcount(anon_id) by bin(_time, 1d)
 ```
 
@@ -125,7 +124,7 @@ Dataset: `evo` | Retention: 30 days
 ```apl
 ['evo']
 | where event == "analyze_complete"
-| extend dur = todouble(properties.duration_seconds)
+| extend dur = todouble(duration_seconds)
 | summarize avg_dur = avg(dur),
             p50 = percentile(dur, 50),
             p95 = percentile(dur, 95)
@@ -136,21 +135,21 @@ Dataset: `evo` | Retention: 30 days
 ```apl
 ['evo']
 | where event == "adapter_execution"
-| summarize count() by tostring(properties.family)
+| summarize count() by tostring(family)
 ```
 
 ### Adapter No-Data Diagnostics (which adapters return 0)
 ```apl
 ['evo']
 | where event == "adapter_diagnostic"
-| summarize count() by tostring(properties.family), tostring(properties.status)
+| summarize count() by tostring(family), tostring(status)
 ```
 
 ### Unconnected Services (community adapter demand)
 ```apl
 ['evo']
 | where event == "sources"
-| mv-expand svc = properties.unconnected_services
+| mv-expand svc = unconnected_services
 | summarize demand = count() by tostring(svc)
 | top 20 by demand
 ```
@@ -158,9 +157,9 @@ Dataset: `evo` | Retention: 30 days
 ### AI Agent Usage (investigate + fix)
 ```apl
 ['evo']
-| where event in ("investigate", "fix")
+| where event == "investigate" or event == "fix"
 | summarize count(),
-            avg_dur = avg(todouble(properties.duration_seconds))
+            avg_dur = avg(todouble(duration_seconds))
   by event, bin(_time, 1d)
 ```
 
@@ -168,16 +167,16 @@ Dataset: `evo` | Retention: 30 days
 ```apl
 ['evo']
 | where event == "accept"
-| summarize total_accepted = sum(toint(properties.count)),
+| summarize total_accepted = sum(toint(count)),
             sessions = count()
-  by tostring(properties.scope), bin(_time, 7d)
+  by tostring(scope), bin(_time, 7d)
 ```
 
 ### Pattern Sync Activity
 ```apl
 ['evo']
 | where event == "pattern_sync"
-| summarize count() by tostring(properties.action), bin(_time, 1d)
+| summarize count() by tostring(action), bin(_time, 1d)
 ```
 
 ---
@@ -194,7 +193,7 @@ Dataset: `evo` | Retention: 30 days
 ```apl
 ['evo']
 | where event == "error"
-| summarize errors = count() by tostring(properties.error_type), bin(_time, 1h)
+| summarize errors = count() by tostring(error), bin(_time, 1h)
 ```
 
 ### Webhook Error Rate
@@ -207,11 +206,11 @@ Dataset: `evo` | Retention: 30 days
 ### Pattern Registry Health
 ```apl
 ['evo']
-| where event in ("pattern_push", "pattern_pull")
-| extend rejected = toint(rejected)
+| where event == "pattern_push" or event == "pattern_pull"
+| extend rej = toint(rejected)
 | summarize pushes = countif(event == "pattern_push"),
             pulls = countif(event == "pattern_pull"),
-            total_rejected = sum(rejected)
+            total_rejected = sum(rej)
   by bin(_time, 1d)
 ```
 
@@ -224,18 +223,17 @@ Dataset: `evo` | Retention: 30 days
 ['evo']
 | where event == "adapter_execution"
 | summarize executions = count(),
-            avg_events = avg(todouble(properties.event_count)),
-            failures = countif(properties.success == false)
-  by tostring(properties.family)
+            avg_events = avg(todouble(event_count)),
+            failures = countif(success == false)
+  by tostring(family)
 ```
 
 ### Tier 2 Unlock Rate
 ```apl
 ['evo']
 | where event == "analyze_complete"
-| extend tier = tostring(properties.license_tier)
-| summarize pro = countif(tier == "pro"),
-            free = countif(tier == "free")
+| summarize pro = countif(license_tier == "pro"),
+            free = countif(license_tier == "free")
   by bin(_time, 7d)
 | extend pro_pct = round(100.0 * pro / (pro + free), 1)
 ```
@@ -250,7 +248,7 @@ Dataset: `evo` | Retention: 30 days
 ### Quorum Tracking
 ```apl
 ['evo']
-| where event in ("pattern_push", "pattern_pull")
+| where event == "pattern_push" or event == "pattern_pull"
 | summarize latest_quorum = max(toint(quorum_met_count)) by bin(_time, 1d)
 ```
 

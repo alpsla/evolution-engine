@@ -1,28 +1,30 @@
 # Evolution Engine — Launch Plan
 
-> **Actionable roadmap for solo-founder beta launch.**
+> **Actionable roadmap for solo-founder launch.**
 >
 > Compiled from research on: solo founder positioning, EU AI Act compliance,
 > Stripe beta discounts, and existing documentation audit.
 >
 > **Created:** February 11, 2026
-> **Last updated:** February 12, 2026
+> **Last updated:** March 8, 2026
+> **Launch day:** Tuesday, March 10, 2026
+> **Status:** All pre-launch blockers resolved. All accounts created. All drafts ready. Axiom + Vercel verified.
 
 ---
 
-## 1. Pre-Launch Blockers (This Week)
+## 1. Pre-Launch Blockers — ALL RESOLVED ✅
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | PyPI publication | **BLOCKER** | `python -m build && twine upload dist/*` — test on TestPyPI first |
-| 2 | Stripe e2e test | **BLOCKER** | Full test matrix below (Section 2.1), including FOUNDING50 coupon |
-| 3 | Lawyer review | **IN PROGRESS** | PDFs sent for review (`docs/legal/*.pdf`); after sign-off → upload corrected docs → translator verification |
-| 4 | Translation review | Blocked on #3 | DE/ES translations need native speaker validation after lawyer corrections |
-| 5 | Language switcher deploy | Done | Pushed 2026-02-11 (absolute paths + Vercel routes) |
-| 6 | Report improvements | Done | Severity badges, risk banners, grouped cards, IP sanitization |
-| 7 | GitLab manual testing | **BLOCKER** | 7-scenario test matrix (Section 12.2) — code verified, needs manual walkthrough |
-| 8 | User review flow testing | **BLOCKER** | End-to-end: analyze → accept → investigate → fix → verify (Section 12.4) |
-| 9 | Accept deviations | Done | `evo accept` + `evo accepted` (list/remove/clear), 12 tests |
+| 1 | PyPI publication | **Done** ✅ | v0.3.0 on PyPI (pure Python + 4 Cython wheels + sdist) |
+| 2 | Stripe e2e test | **Done** ✅ | Full matrix verified (checkout, webhook, license, renewal, cancel) |
+| 3 | Lawyer review | **Done** ✅ | All recommendations implemented (Feb 22), confirmation packet sent |
+| 4 | Translation review | **Done** ✅ | DE/ES translations on all website pages |
+| 5 | Language switcher deploy | **Done** ✅ | Pushed 2026-02-11 (absolute paths + Vercel routes) |
+| 6 | Report improvements | **Done** ✅ | Severity badges, risk banners, grouped cards, IP sanitization |
+| 7 | GitLab manual testing | **Done** ✅ | Pipeline passing, MR comment posted, update-in-place works |
+| 8 | User review flow testing | **Done** ✅ | E2E test plan: 15/16 passed, live Stripe checkout verified |
+| 9 | Accept deviations | **Done** ✅ | `evo accept` + `evo accepted` (list/remove/clear), 12 tests |
 
 ### 1.1 GitLab Compatibility Testing
 
@@ -38,20 +40,13 @@ Before launch, verify Evolution Engine works with GitLab-hosted repositories:
 
 ---
 
-## 2. Stripe Beta Discount Setup
+## 2. Stripe Discount Setup — COMPLETE ✅
 
 **Approach: 50% coupon for 3 months (auto-expires)**
 
-### Steps:
-1. **Dashboard -> Products -> Coupons -> New**
-   - Percentage off: 50%
-   - Duration: Repeating, 3 months
-   - Max redemptions: 50
-   - Redemption deadline: set to beta end date
+Coupon created and tested in live mode.
 
-2. **Create promotion code** from the coupon:
-   - Code: `FOUNDING50`
-   - This is what beta testers enter at checkout
+1. **Coupon:** `FOUNDING50` — 50% off, 3 months, max 50 redemptions
 
 3. **Code change** — add `allow_promotion_codes=True` to checkout session:
    ```python
@@ -107,70 +102,42 @@ Run all tests in Stripe test mode before launch:
 
 ---
 
-## 3. Beta Program Structure
+## 3. Launch Strategy (Public Launch — No Beta Gate)
 
-### Cohort
-- **Target: 30 active testers** (recruit 50-60, expect 50% to engage regularly)
-- Solo founder can support 30 without it becoming a second job
-- Local-first = no infrastructure scaling concerns
-
-### Two Phases
-
-**Month 1 — Private Alpha (10 users)**
-- High-touch: DM each user, offer 15-min call
-- Focus: installation issues, false positive rates, critical bugs
-- Source: Reddit posts to targeted subreddits
-
-**Months 2-3 — Private Beta (30-50 users)**
-- Lower-touch: weekly update email, respond to issues within 24 hours
-- Focus: pattern quality, GitHub Action reliability, PR comment usefulness
-- Source: Show HN + Reddit + community posts
+> **Decision (Mar 2026):** Canceled private beta. Launching publicly on Mar 10. Free tier is open to everyone, Pro requires subscription. No application form, no gated access.
 
 ### Feedback Collection
-- **Primary:** GitHub Issues with `beta-feedback` label
-- **Secondary:** Monthly 5-question survey (Tally/Typeform)
-  1. How often did you run `evo` this week?
-  2. Did it surface anything you didn't already know?
-  3. What was confusing or broken?
-  4. What feature would make you recommend it?
-  5. NPS (1-10)
-- **Do NOT create Discord/Slack yet** — wait until 100+ active users
+- **Primary:** GitHub Issues + GitHub Discussions (enabled on repo)
+- **Secondary:** Email at info@codequal.dev
+- **Community:** CodeQual Discord server (5 channels, announcement-ready)
 
-### Beta Application Form (4 fields)
-- GitHub username
-- Primary repo you'd analyze
-- Current monitoring tools (Dependabot, Snyk, Datadog, etc.)
-- How did you hear about Evolution Engine?
-
-### Promises & Non-Promises
-
-**Promise:** Direct founder access, roadmap influence, founding member pricing, 1-week notice for breaking changes.
-
-**Don't promise:** SLAs, guaranteed response times, specific feature delivery, permanent beta pricing.
+### CTA Path
+Every post routes to: `pip install evolution-engine` → `evo analyze .` → codequal.dev for Pro.
+No beta form, no waitlist. Direct install.
 
 ---
 
-## 4. Finding Beta Testers
+## 4. User Acquisition Channels
 
-### Tier 1: Reddit Posts (First 10-20 users)
+### Tier 1: Reddit Posts
 
-Reddit is the primary acquisition channel. No cold emails, no DMs to strangers.
+Reddit is a primary acquisition channel. No cold emails, no DMs to strangers.
 
 | Subreddit | Angle | Key message |
 |-----------|-------|-------------|
 | **r/devops** | CI + dependency correlation | "I built a CLI that correlates CI failures with dependency changes to find which updates actually break things" |
-| **r/programming** | Cross-signal methodology | "What 43 open-source repos taught me about predicting CI failures from git patterns" |
+| **r/programming** | Cross-signal methodology | "What 200+ open-source repos taught me about predicting CI failures from git patterns" |
 | **r/selfhosted** | Local-first, privacy | "Your code never leaves your machine — a local-first CLI for codebase evolution analysis" |
 | **r/Python** | 5-phase pipeline, Cython | "Building a 5-phase analysis pipeline in Python with Cython for the hot path" |
 | **r/commandline** | Terminal demo | "Terminal demo: correlating git, CI, and deployment signals in one command" |
-| **r/opensource** | Pattern dataset | "I'm open-sourcing correlation patterns from 43 repos — here's what I found" |
+| **r/opensource** | Pattern dataset | "I'm open-sourcing correlation patterns from 200+ repos — here's what I found" |
 
 **Rules:**
 - Disclose authorship clearly: "I built this" / "I'm the developer of..."
 - Lead with insight, not tool promotion — teach something valuable even without EE
-- Respond to every comment within 4 hours
-- Space posts 3-5 days apart — never post to multiple subreddits on the same day
-- Include beta application link in each post
+- Respond to every comment within 4 hours (HN: within 30 min on launch day)
+- **Launch day exception:** simultaneous blast across different platforms (PH, HN, Dev.to, LinkedIn, Reddit, Discord, Bluesky, Mastodon). After day 1, stagger Reddit subs 1+ days apart.
+- CTA: `pip install evolution-engine` + codequal.dev + GitHub repo
 
 ### Tier 2: DE/ES Social Media
 
@@ -198,6 +165,7 @@ Reddit is the primary acquisition channel. No cold emails, no DMs to strangers.
 - No cold emails or DMs to maintainers
 - No mass outreach campaigns
 - No paid ads (organic first, no ROI at this scale)
+- No gated beta — public launch, anyone can install
 
 ---
 
@@ -223,10 +191,9 @@ Operate under a consistent alias across all platforms to protect employment at c
 - No live video without a presenter (see below)
 - No personal email — use a dedicated project email
 - Don't buy ads yet (organic first)
-- Don't create empty Discord/Slack communities
 - Don't hire a content writer (devs detect non-technical marketing instantly)
-- Don't launch on all channels simultaneously (stagger by 2-3 days)
 - Don't position against tools — position as the aggregation layer
+- Discord exists (CodeQual server) — use for announcements and community, not primary support
 
 ### Presenter Option (Video/Audio)
 
@@ -258,16 +225,31 @@ For content that requires a human presence:
 3. **"Local-First Developer Tools: Why Your Code Should Never Leave Your Machine"**
    — Privacy positioning. Will resonate on Mastodon, r/selfhosted.
 
-4. **"I Analyzed 40 Repos to Find a 1.6% False Positive Rate — Here's My Methodology"**
+4. **"I Analyzed 200+ Repos to Find a 1.6% False Positive Rate — Here's My Methodology"**
    — Technical credibility for accuracy-focused developers.
 
 5. **"Building a 5-Phase Analysis Pipeline in Python (With Cython for the Hot Path)"**
    — Implementation deep-dive. Attracts Python contributors.
 
-### Comparison Pages (on codequal.dev)
-- "EE vs Snyk" — "Snyk scans vulnerabilities. We correlate its signals with your git and CI patterns."
-- "EE vs Datadog" — "Datadog monitors production. We analyze development patterns."
-- "EE vs SonarQube" — Complementary, not competitive. Aggregation layer positioning.
+### Comparison / FAQ Canned Answers (for HN, Reddit, PH comments)
+
+**"How is this different from Snyk?"**
+> Snyk scans for known vulnerabilities. EE correlates Snyk's signals with your git patterns, CI failures, and dependency changes to find *structural* drift — not CVEs. They're complementary.
+
+**"How is this different from Datadog?"**
+> Datadog monitors production. EE analyzes development patterns — before code ships. Different stage of the lifecycle.
+
+**"How is this different from SonarQube?"**
+> SonarQube checks code quality per-file. EE checks cross-signal patterns across your entire SDLC — git + CI + deps + deployments. SonarQube finds bugs; EE finds architectural drift.
+
+**"Why not just use Cursor/Copilot?"**
+> EE doesn't replace AI coding tools — it monitors what they produce. AI tools write correct code that silently drifts your architecture. EE detects the drift, then hands evidence back to your AI tool to fix it.
+
+**"Why should I trust the patterns?"**
+> Calibrated on 200+ public repos, 6.18M signals, 2.1M commits. 44 validated patterns. 1.6% false positive rate. Everything runs locally — verify for yourself.
+
+**"Is this really open source?"**
+> Dual-licensed. CLI, adapters, and plugins are MIT. Core analysis engine (Phases 2-5) is BSL 1.1, which converts to MIT in 2029. Free tier covers full git + dependency analysis.
 
 ### Open Source as Marketing
 - Publish `universal_patterns.json` as standalone repo: `codequal/universal-repo-patterns`
@@ -307,85 +289,58 @@ The `evo investigate` and `evo fix` features use third-party AI (Claude/ChatGPT)
 
 ## 8. Launch Timeline
 
-### Week 0 (Current — Feb 11-14)
-- [x] Report improvements (severity, grouping, IP sanitization)
-- [x] Language switcher fix deployed
-- [x] Accept deviations (`evo accept` + `evo accepted`) — 12 tests
-- [x] Legal docs converted to PDF for lawyer review (5 docs)
-- [x] GitLab compatibility verified in code (516 commits, 677 events, 8 adapters)
-- [ ] Lawyer review of ToS + Privacy — **in progress**, awaiting sign-off
-- [ ] Stripe sandbox e2e test (full matrix — Section 2.1)
-- [ ] GitLab manual testing (7 scenarios — Section 12.2)
-- [ ] User review flow testing (analyze → accept → investigate → fix → verify — Section 12.4)
-- [ ] Translation validation (DE/ES) — blocked on lawyer review
+> **Note:** Original timeline was Feb-based. Actual launch shifted to **Tuesday Mar 10**.
+> Detailed daily calendar: `docs/marketing/LAUNCH_TRACKER.md`
 
-### Week 1 (Feb 17-21) — Technical Readiness
-- [ ] **BLOCKER: Production license signing key** — do ALL of these before first real customer:
-  1. Generate key: `python3 -c "import secrets; print(secrets.token_urlsafe(32))"`
-  2. Save to password manager (this key is permanent — rotating it invalidates all paid licenses)
-  3. Set on Vercel: `EVO_LICENSE_SIGNING_KEY` env var (Production + Preview)
-  4. Set in GitHub Actions secrets: `EVO_LICENSE_SIGNING_KEY` (used by cibuildwheel to bake into Cython binaries)
-  5. Rebuild + publish wheels (key is embedded in compiled `license.so`, not readable as plaintext)
-  6. Verify: purchase with test Stripe → activate with `evo activate` → confirm Pro features work
-- [ ] Switch Stripe to live mode (only after signing key is deployed end-to-end)
-- [ ] PyPI TestPyPI upload + test install on clean machine
-- [ ] PyPI production upload
-- [ ] Add `allow_promotion_codes=True` to checkout handler
-- [ ] Create Stripe coupon (FOUNDING50, 50% off, 3 months, max 50)
-- [ ] Add AI transparency disclosure to CLI (`evo investigate`, `evo fix`)
-- [x] Add `run_number` + timestamps to telemetry (activation/retention metrics)
-- [x] Set up Axiom dashboard + monitors (5 dashboards, 3 alerts — Feb 26)
-- [ ] Record terminal demo (asciinema, no face/voice — alias only)
-- [ ] README hero section with terminal demo embed
+### Pre-Launch (Feb 11 – Mar 9) — ALL COMPLETE ✅
+- [x] All blockers resolved (lawyer, Stripe, GitLab, PyPI, signing key)
+- [x] v0.3.0 published to PyPI (pure Python + 4 Cython wheels + sdist)
+- [x] Stripe live mode verified (checkout, renewal, cancel, FOUNDING50 coupon)
+- [x] 6 Axiom dashboards + Alerts & Failures dashboard
+- [x] Terminal demo recorded (VHS, 2392 frames)
+- [x] README polished (4 badges, demo GIF, report screenshots)
+- [x] GitHub repo: 13 topics, Discussions enabled
+- [x] All accounts created: Dev.to, PH, Bluesky, Mastodon, IndieHackers, Discord, Reddit, LinkedIn, Cursor
+- [x] Pre-launch listings: AlternativeTo, StackShare, FutureTools, console.dev, 5 Awesome List PRs
+- [x] GitHub Marketplace listing live
+- [x] 9 launch day drafts in `docs/marketing/day-01-tue-mar-10/`
+- [x] Vercel verified: site, docs, i18n, API, pattern registry, checkout
 
-### Week 2 (Feb 24-28) — Reddit Launch + Beta Applications
-- [ ] Create beta application form (Tally/Google Form)
-- [ ] Publish first Reddit post (**r/devops** — CI+dependency correlation angle)
-- [ ] Write blog post #1 ("What 43 Repos Taught Me")
-- [ ] Draft DE/ES social media posts (German LinkedIn, Spanish Twitter thread)
-- [ ] Goal: 10 beta applications
+### Day 1 — Tuesday Mar 10 (LAUNCH DAY)
+- [ ] 09:00 — Product Hunt auto-launches (scheduled)
+- [ ] 09:00 — Hacker News Show HN post
+- [ ] 09:30 — Dev.to launch article
+- [ ] 09:30 — LinkedIn company page post
+- [ ] 09:30 — Cursor Forum showcase post
+- [ ] 10:00 — Reddit r/vibecoding + r/devops
+- [ ] 10:00 — Discord #announcements
+- [ ] All day — Bluesky + Mastodon posts
+- [ ] All day — monitor and reply to every comment (HN: within 30 min)
 
-### Week 3-4 (Mar 3-14) — Reddit Momentum + Alpha Support
-- [ ] Post to **r/programming** (technical deep-dive)
-- [ ] Post to **r/selfhosted** (local-first angle)
-- [ ] High-touch alpha support (DM each tester, offer calls)
-- [ ] Fix critical bugs from alpha feedback
-- [ ] Write blog post #2 ("Why Dependency Updates Break Code")
-- [ ] Draft Show HN post + first comment
-- [ ] Monitor Reddit, engage every commenter
-- [ ] Collect beta sign-ups from Reddit engagement
-- [ ] Post to r/Python, r/commandline (staggered)
+### Days 2-10 (Mar 11-20) — Staggered Rollout
+- [ ] Wed Mar 11: r/programming, Hashnode cross-post, TLDR AI submit
+- [ ] Thu Mar 12: r/git, r/VibeCodeDevs, Ben's Bites submit
+- [ ] Fri Mar 13: r/ChatGPT, Hugging Face blog, AI Native Dev
+- [ ] Sat Mar 14: r/opensource, console.dev
+- [ ] Mon Mar 16: r/selfhosted, CrewAI Discord, Indie Hackers
+- [ ] Tue Mar 17: r/MachineLearning, Continue.dev, Sourcegraph
+- [ ] Wed Mar 18: r/AI_Agents, W&B, MLOps Slack
+- [ ] Thu Mar 19: r/sideproject, LangChain, HackerNoon
+- [ ] Fri Mar 20: LinkedIn DE, GitHub Actions forum, GitLab forum
 
-### Week 5 (Mar 17-21) — Show HN + DE Social Media
-- [ ] **Monday: Show HN** (the main event)
-  - Monitor comments for 12 hours, reply within 30 min
-  - Post on Twitter/X linking to HN discussion
-- [ ] **Tuesday: German LinkedIn post** (privacy/local-first angle)
-- [ ] **Wednesday: Mastodon** (fosstodon, German/English)
-- [ ] **Thursday: r/de_EDV** (German IT community)
-- [ ] Goal: expand to 30-50 beta testers
+### Week 3 (Mar 23-27) — International + Content
+- [ ] Mon Mar 23: r/de_EDV (German), Dev.to Blog #2
+- [ ] Tue Mar 24: Mastodon (fosstodon + chaos.social)
+- [ ] Wed Mar 25: Heise Developer pitch, The New Stack pitch
+- [ ] Thu Mar 26: InfoQ pitch, DZone tutorial
+- [ ] Fri Mar 27: Dev.to Blog #3, podcast pitches (Changelog, Latent Space, devtools.fm)
 
-### Week 6-7 (Mar 24 - Apr 4) — ES Social Media + Momentum
-- [ ] Spanish Twitter thread
-- [ ] Dev.to cross-post (Spanish, canonical to codequal.dev/es/)
-- [ ] r/programacion post
-- [ ] Write comparison pages (vs Snyk, vs Datadog)
-- [ ] Ask beta users for genuine reviews
-
-### Weeks 8-12 (Apr 7 - May 16) — Beta Sustain
-- [ ] One blog post per week
-- [ ] Monthly feedback survey
-- [ ] Ship improvements based on feedback
-- [ ] Daily Twitter/X engagement (5-10 min)
-- [ ] Track: activation rate, weekly active users, NPS
-
-### Week 13 (May 19) — Beta End / GA Decision
-- [ ] Coupon auto-expires
-- [ ] Send transition email at week 11
-- [ ] Monitor churn rate at full-price transition
-- [ ] If churn >40%, offer $14/month founding member rescue
-- [ ] Collect exit interviews from churned users
-- [ ] Decide: GA launch or extend beta
+### Week 4+ (Mar 30+) — Spanish + Conferences
+- [ ] Dev.to Spanish translation
+- [ ] Platzi community
+- [ ] Medium (Better Programming)
+- [ ] Lobste.rs (need invite)
+- [ ] CFP: WeAreDevelopers Berlin (Jul 2026), PyCon
 
 ---
 
@@ -397,7 +352,7 @@ The `evo investigate` and `evo fix` features use third-party AI (Claude/ChatGPT)
 | GitHub stars | 200+ | 500+ |
 | Free tier activations | 200-500 | 500+ cumulative |
 | Pro conversions | 10-25 ($190-475 MRR) | 30-50 ($570-950 MRR) |
-| Beta NPS | 30+ | 40+ |
+| User NPS | 30+ | 40+ |
 | FP rate (real repos) | <2% | <1.5% |
 
 ### 9.1 Leading Indicators (Axiom Dashboard)
@@ -416,7 +371,7 @@ These are the signals that predict retention and conversion. All derived from th
 
 ### 9.2 Axiom Dashboard & Monitors Setup
 
-**Dashboard — create before beta launch (Week 1):**
+**Dashboard — COMPLETE ✅ (6 dashboards + Alerts & Failures):**
 
 1. **Overview panel**: total events/day, unique `anon_id`s/day, version distribution
 2. **Activation funnel**: run_number=1 → run_number=2 → run_number=5 (by cohort week)
@@ -430,7 +385,7 @@ These are the signals that predict retention and conversion. All derived from th
 | Monitor | Condition | Priority |
 |---------|-----------|----------|
 | Webhook failures | >2 `webhook_error` events in 1 hour | Critical |
-| Zero telemetry | No `analyze_complete` events in 24 hours (after beta starts) | High |
+| Zero telemetry | No `analyze_complete` events in 24 hours (after launch) | High |
 | Activation drop | Week-over-week activation rate drops >20% | Medium |
 | Error spike | >10 errors of any type in 1 hour | High |
 
@@ -468,7 +423,7 @@ These are the signals that predict retention and conversion. All derived from th
 
 ## 12. Manual Testing Guide (New Features)
 
-Test everything implemented in this session before moving to beta.
+Test everything implemented in this session before launch.
 
 ### 12.1 Run History Feature
 
@@ -711,11 +666,10 @@ evo fix /path/to/repo --dry-run
 
 ## 13. Supporting Materials Checklist
 
-### Week 1 (Before Launch)
-- [ ] Terminal demo recording (asciinema, no face/voice, alias watermark)
-- [ ] README hero section with demo embed and quick-start
-- [ ] Beta application form (Tally) with 4 fields
-- [ ] Blog post #1 draft: "What 43 Open-Source Repos Taught Me About CI Failure Patterns"
+### Week 1 (Before Launch) — ALL COMPLETE ✅
+- [x] Terminal demo recording (VHS, 2392 frames, 3.1MB)
+- [x] README hero section with demo GIF + report screenshots
+- [x] Blog post #1: launch article (`docs/marketing/day-01-tue-mar-10/devto.md`)
 
 ### Week 2 (Before Reddit)
 - [ ] **r/devops post draft:** Lead with CI+dependency correlation insight, include demo link
@@ -738,7 +692,7 @@ evo fix /path/to/repo --dry-run
 
 **English Twitter thread (template):**
 ```
-1/ I analyzed 43 open-source repos and found that CI failures correlate with
+1/ I analyzed 200+ open-source repos and found that CI failures correlate with
    file dispersion in commits — not just test coverage.
 
 2/ When a commit touches files across 5+ directories, CI failure rate jumps
@@ -777,14 +731,9 @@ Open source, pipeline de 5 fases, Python + Cython.
 
 ---
 
-> **Bottom line:** The product is feature-complete (586 tests). The remaining blockers are:
+> **Bottom line:** The product is feature-complete (1770 tests, v0.3.0 on PyPI). All blockers resolved.
+> All pre-launch prep complete. **Launch day: Tuesday Mar 10, 2026.**
 >
-> 1. **Lawyer review** (in progress) — sign-off on ToS + Privacy, then corrected docs to translator
-> 2. **GitLab manual testing** — 7-scenario walkthrough (code verified, needs hands-on run)
-> 3. **Stripe E2E testing** — full matrix including FOUNDING50 beta discount coupon
-> 4. **User review flow** — end-to-end: analyze → accept → investigate → fix → verify
-> 5. **PyPI publication** — `python -m build && twine upload dist/*`
->
-> Once testing is complete (estimated: 2-3 days after lawyer sign-off), beta recruiting
-> begins with Reddit posts (r/devops first), followed by DE/ES social media outreach and
-> a Show HN launch in week 5. All activity under a consistent alias — no identity exposure.
+> See `docs/marketing/LAUNCH_TRACKER.md` for the detailed daily calendar with UTM links and post metrics.
+> All channel drafts are in `docs/marketing/day-01-tue-mar-10/` (9 ready-to-post drafts).
+> All activity under the CodeQual brand — no identity exposure.

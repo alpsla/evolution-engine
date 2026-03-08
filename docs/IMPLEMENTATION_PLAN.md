@@ -1,6 +1,6 @@
 # Evolution Engine — Implementation Plan
 
-> **Last updated:** March 2, 2026 | 1749 tests passing | v0.3.0 (beta) | 44 universal patterns | 7 signal families | 100+ repos calibrated
+> **Last updated:** March 8, 2026 | 1770 tests passing | v0.3.0 | 44 universal patterns | 7 signal families | 200+ repos calibrated
 >
 > This document tracks remaining work for launch and post-launch.
 > For completed implementation history, see `IMPLEMENTATION_PLAN_v1.md`.
@@ -24,7 +24,7 @@ All core engine work is done. Summary of shipped features:
 | Accept deviations — scoped (permanent, commits, dates, this-run) | ✅ | `evolution/accepted.py` |
 | Run history — snapshot, compare, clean | ✅ | `evolution/history.py` |
 | Pattern distribution — PyPI auto-fetch, KB sync, registry | ✅ | `evolution/pattern_registry.py`, `kb_sync.py` |
-| 44 universal patterns from 100+ repos (3 calibration rounds) | ✅ | `evolution/data/universal_patterns.json` |
+| 44 universal patterns from 200+ repos (3 calibration rounds) | ✅ | `evolution/data/universal_patterns.json` |
 | License system — free/pro tiers, HMAC-signed keys, Stripe checkout | ✅ | `evolution/license.py` |
 | Cython compilation + CI wheels (Linux/macOS/Windows) | ✅ | `build_cython.py`, `.github/workflows/build-wheels.yml` |
 | Website — codequal.dev on Vercel (landing, docs, privacy, Stripe, pattern registry) | ✅ | `website/` |
@@ -161,7 +161,7 @@ All core engine work is done. Summary of shipped features:
 
 ### Adapter Expansion (New Families & Metrics)
 
-Calibration across 90+ repos showed pattern discovery has saturated with the current 4 families (git, ci, deployment, dependency). Adding new adapters unlocks new cross-family pattern combinations. Now at 6 families (+ testing, coverage).
+Calibration across 200+ repos (3 rounds) showed pattern discovery has saturated with the current 4 families (git, ci, deployment, dependency). Adding new adapters unlocks new cross-family pattern combinations. Now at 6 families (+ testing, coverage).
 
 **Sorted by priority (severity of impact on pattern discovery):**
 
@@ -453,7 +453,7 @@ From data-flow audit and lawyer review — items not yet resolved:
 
 ### Consolidated Priority List (Feb 27, updated)
 
-All pre-launch work complete. **1749 tests passing**, v0.3.0 on PyPI. Now in launch phase.
+All pre-launch work complete. **1770 tests passing**, v0.3.0 on PyPI. Launch day: **Tuesday Mar 10, 2026**.
 
 #### Blockers (Must Complete Before Beta Launch)
 
@@ -479,18 +479,53 @@ All complete.
 | **S5** | **Google Search Console** — verify codequal.dev, submit sitemap | Low | External | **Complete** ✅ (verified + sitemap submitted) |
 | **S6** | **Deploy SEO changes** — robots.txt/sitemap.xml/meta tags live on all pages | Low | External | **Complete** ✅ |
 
-#### Launch Phase (Current — Target Week of Mar 3)
+#### Launch Phase (Current — Launch Day: Tuesday Mar 10)
 
 | Priority | Task | Effort | Status |
 |----------|------|--------|--------|
 | **L1** | **Record terminal demo** — 6-scene VHS recording (install→sources→analyze→prompt→verify→closing) | Low | **Complete** ✅ |
-| **L2** | **Create accounts** (alias) — Twitter/X, Bluesky, fosstodon.org, Dev.to, IndieHackers, Product Hunt | Low | Pending |
+| **L2** | **Create accounts** (alias) — Dev.to, Product Hunt, Bluesky, Mastodon, IndieHackers, Discord, Reddit, LinkedIn, Cursor Forum | Low | **Complete** ✅ |
 | **L3** | **Update README + website** — demo GIF/video, sample reports, fix `evo investigate` → `--show-prompt` flow | Low | **Complete** ✅ |
-| **L4** | **Review & personalize channel drafts** — `docs/marketing/CHANNEL_DRAFTS.md` | Low | **Complete** ✅ |
-| **L5** | **Day 0: Big Bang** — HN + Product Hunt + Twitter/X + Bluesky + Dev.to + IndieHackers | Medium | Pending |
-| **L6** | **Week 1: Reddit wave** — r/Python, r/devops, r/opensource, r/commandline, r/selfhosted, r/AI_Agents (1/day) | Medium | Pending |
-| **L7** | **Week 2: German + LinkedIn** — r/de_EDV, LinkedIn EN/DE, Mastodon, Heise pitch | Medium | Pending |
-| **L8** | **Week 3-4: Spanish + content** — Spanish Twitter, Platzi, The New Stack, HackerNoon, podcast pitches | Medium | Pending |
+| **L4** | **Review & personalize channel drafts** — `docs/marketing/day-01-tue-mar-10/` (9 drafts) | Low | **Complete** ✅ |
+| **L5** | **Pre-launch listings** — AlternativeTo, StackShare, FutureTools, console.dev, 5 GitHub Awesome List PRs | Low | **Complete** ✅ |
+| **L6** | **GitHub repo polish** — 13 topics, Discussions enabled, test badge updated to 1770 | Low | **Complete** ✅ |
+| **L7** | **Axiom dashboards** — 6 dashboards verified, Alerts & Failures dashboard created, queries fixed (flat fields, no `in`) | Low | **Complete** ✅ |
+| **L8** | **Vercel verification** — site, docs, i18n, API, pattern registry, checkout flow all verified working | Low | **Complete** ✅ |
+| **L9** | **Day 1 (Mar 10): Simultaneous launch** — PH + HN + Dev.to + LinkedIn + Cursor + r/vibecoding + r/devops + Discord + Bluesky + Mastodon | Medium | Ready — drafts in `docs/marketing/day-01-tue-mar-10/` |
+| **L10** | **Days 2-10: Staggered rollout** — r/programming, r/git, r/ChatGPT, r/opensource, r/selfhosted, AI communities | Medium | Pending — see `docs/marketing/LAUNCH_TRACKER.md` |
+| **L11** | **Week 3+: International** — German (r/de_EDV, LinkedIn DE, Mastodon), Spanish (Platzi, Dev.to ES) | Medium | Pending |
+
+**L2 — Accounts Created (Mar 6-8):**
+- Dev.to: `codequal` via GitHub OAuth
+- Product Hunt: CodeQual, listing scheduled for Mar 10
+- Bluesky: @codequal.bsky.social, banner + bio
+- Mastodon: @codequal@mastodon.social, banner + bio + extra fields
+- IndieHackers: codequal account
+- Discord: CodeQual server with 5 channels
+- Reddit: account created, 3 subreddit drafts
+- LinkedIn: CodeQual company page
+- Cursor Forum: registered
+
+**L5 — Pre-launch Listings (Mar 6-8):**
+- AlternativeTo: listed, pricing corrected to Subscription
+- StackShare: #208 in Monitoring, 2 followers
+- FutureTools: submitted
+- console.dev: email pitch sent
+- GitHub Awesome Lists: 5 PRs open (jamesmurdza, mahseema, ai-for-developers, ColinEberhardt, ikaijua)
+- GitHub Marketplace: action.yml at repo root, v0.3.0 release
+
+**L6 — GitHub Repo Polish (Mar 8):**
+- Topics: ai, ci-cd, cli, code-quality, developer-tools, devops, drift-detection, open-source, python, github-actions, gitlab-ci, monitoring, static-analysis
+- Discussions enabled for launch day Q&A
+- Test badge updated: 1749 → 1770
+
+**L7 — Axiom Dashboards (Mar 8):**
+- Fixed chart-level time overrides (7d hardcoded → inherit from dashboard)
+- Fixed query field names: `properties.*` → flat top-level fields (Axiom flattens on ingest)
+- Fixed `in (...)` syntax → `or` chains (Axiom doesn't support `in`)
+- Created "Alerts & Failures" dashboard (9 charts: payment, webhook, CLI errors, checkout drop-off, adapter failures, pattern rejections, error timeline, error log)
+- Deleted sample "HTTP logs" dashboard (Axiom default, not our data)
+- Query reference docs updated: `docs/axiom-dashboards.md`, `docs/axiom-alerts-dashboard.md`
 
 **L4 review notes (Mar 1):** Fixed 3 issues across all 15+ channel drafts:
 1. Repo count: "48 repos" → "100+ repos across 3 calibration rounds" (was undercounting v1+v2+v3)
@@ -630,16 +665,16 @@ Major UX overhaul of the HTML report (`evolution/report_generator.py`) based on 
 
 | # | Task | Effort | Blocker? |
 |---|------|--------|----------|
-| 42 | **Community beta** — announce, gather feedback | Low | No — begins once B1-B8 verified |
+| 42 | **Public launch** — simultaneous blast across 10 channels, staggered rollout days 2-10 | Medium | Ready — Mar 10 |
 
-See `docs/LAUNCH_PLAN.md` for detailed beta program, launch timeline, and go-to-market strategy.
-See `docs/marketing/MARKETING_PLAN.md` for detailed execution plan, social media calendar, and channel strategy.
+See `docs/LAUNCH_PLAN.md` for launch timeline and go-to-market strategy.
+See `docs/marketing/LAUNCH_TRACKER.md` for daily calendar, UTM links, and post metrics.
 
 ---
 
 ## Post-Beta Month 2: License Hardening
 
-License system currently validates offline via HMAC-signed keys. No protection against key sharing across machines. Acceptable for beta (50 users, trust-based) but must be hardened before scaling past ~200 users.
+License system currently validates offline via HMAC-signed keys. No protection against key sharing across machines. Acceptable for early users (trust-based) but must be hardened before scaling past ~200 users.
 
 **Completed (Feb 22, 2026):**
 - [x] Remove `pro-trial` backdoor from production code (test-only via `_is_test_environment()`)

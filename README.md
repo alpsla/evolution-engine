@@ -7,7 +7,7 @@
 
 **AI coding tools write correct code that silently breaks your architecture. Evolution Engine detects the drift, shows you the exact commit, and lets your AI fix it — with evidence.**
 
-Calibrated on 90+ open-source repos. 6.18M signals analyzed. Your code never leaves your machine.
+Calibrated on 200+ open-source repos. 6.18M signals analyzed. Your code never leaves your machine.
 
 **[codequal.dev](https://codequal.dev)** | [Quickstart](QUICKSTART.md) | [PyPI](https://pypi.org/project/evolution-engine/)
 
@@ -71,7 +71,7 @@ Your Repo → Phase 1 (Record events) → Phase 2 (Detect deviation from YOUR ba
 | **Phase 1** | Records immutable events — commits, builds, deps, releases |
 | **Phase 2** | Computes per-repo baselines, flags statistical deviation (MAD/IQR) |
 | **Phase 3** | Explains signals in human language — PM-friendly, evidence-backed |
-| **Phase 4** | Matches against 44 validated patterns from 90+ repos |
+| **Phase 4** | Matches against 44 validated patterns from 200+ repos |
 | **Phase 5** | Prioritized advisory with severity, evidence, and action items |
 
 ---
@@ -382,7 +382,7 @@ evolution-engine/
 
 AI coding tools are generating more code than ever. Teams ship faster — but structural quality is invisible until something breaks. EE provides the missing feedback loop: a guardrail that tells you (and your AI) when development patterns drift from what's normal for your project.
 
-Calibrated on **90+ open-source repos**, **6.18 million SDLC signals**, and **2.1 million commits**. 44 validated cross-signal patterns. 1.6% false positive rate.
+Calibrated on **200+ open-source repos**, **6.18 million SDLC signals**, and **2.1 million commits**. 44 validated cross-signal patterns. 1.6% false positive rate.
 
 ## Open-Core Model
 
