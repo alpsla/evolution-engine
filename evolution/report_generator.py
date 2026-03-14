@@ -289,12 +289,19 @@ def generate_report(
     # Load adapter diagnostics (why Tier 2 families have 0 signals)
     diagnostics = _load_diagnostics(evo_dir)
 
-    # Detect Pro license
+    # Detect Pro license — check live license OR infer from advisory
+    # (if Tier 2 families like ci/deployment/security have data, analysis was Pro)
+    _TIER2_FAMILIES = {"ci", "deployment", "security", "error_tracking"}
     try:
         from evolution.license import is_pro as _is_pro
         user_is_pro = _is_pro(str(repo_dir))
     except Exception:
         user_is_pro = False
+    if not user_is_pro:
+        # Infer from advisory: if Tier 2 families produced changes, was Pro
+        advisory_families = set(advisory.get("summary", {}).get("families_affected", []))
+        if advisory_families & _TIER2_FAMILIES:
+            user_is_pro = True
 
     return _render_html(advisory, evidence, title, calibration_result, remote_url,
                         verification, sources_info, evo_dir, diagnostics,
