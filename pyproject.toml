@@ -1,6 +1,6 @@
 [project]
 name = "evolution-engine"
-version = "0.3.1"
+version = "0.3.2"
 description = "Git-native codebase evolution indexer"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -58,10 +58,11 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.setuptools]
-packages = ["evolution", "evolution.adapters", "evolution.adapters.git", "evolution.adapters.ci", "evolution.adapters.testing", "evolution.adapters.dependency", "evolution.adapters.config", "evolution.adapters.schema", "evolution.adapters.security", "evolution.adapters.deployment", "evolution.adapters.error_tracking", "evolution.agents"]
+packages = ["evolution", "evolution.adapters", "evolution.adapters.git", "evolution.adapters.ci", "evolution.adapters.testing", "evolution.adapters.dependency", "evolution.adapters.config", "evolution.adapters.schema", "evolution.adapters.security", "evolution.adapters.deployment", "evolution.adapters.error_tracking", "evolution.agents", "evolution.i18n"]
 
 [tool.setuptools.package-data]
 evolution = ["data/*.json"]
+"evolution.i18n" = ["*.json"]
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
