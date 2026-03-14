@@ -106,6 +106,7 @@
     { "src": "/sample-report-verify.html", "dest": "/sample-report-verify.html" },
     { "src": "/sample-report-verify-de.html", "dest": "/sample-report-verify-de.html" },
     { "src": "/sample-report-verify-es.html", "dest": "/sample-report-verify-es.html" },
+    { "src": "/reports/aws-cdk", "dest": "/report-aws-cdk.html" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

@@ -837,6 +837,7 @@ Two comprehensive audits (5 deep audits each: security, business logic, architec
 - Trend dashboard — multi-run advisory comparison over time
 - API Service / SaaS tier
 - Web Dashboard
+- **Sample report translations (DE/ES)** — current sample reports are not properly translated; regenerate with correct i18n strings (lower priority than B2B report generation)
 
 ---
 

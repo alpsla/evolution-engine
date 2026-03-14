@@ -407,12 +407,16 @@ _SEVERITY_DISPLAY = {
 }
 
 
-def pattern_risk_assessment(pattern: dict) -> dict:
+def pattern_risk_assessment(pattern: dict, change_direction: str | None = None) -> dict:
     """Assess a pattern's risk, impact, and recommendation.
 
     Args:
         pattern: Dict with sources, metrics, correlation/correlation_strength,
                  description, etc.
+        change_direction: Optional "up" or "down" override from the actual
+            change deviation. When a pattern is shown inline with a specific
+            change, the recommendation should match the actual direction, not
+            the pattern's general correlation sign.
 
     Returns:
         Dict with severity, severity_display, impact, recommendation.
@@ -427,7 +431,7 @@ def pattern_risk_assessment(pattern: dict) -> dict:
         # Skip presence metrics (they indicate triggers, not outcomes)
         if m.endswith("_presence"):
             continue
-        direction = "up" if corr >= 0 else "down"
+        direction = change_direction or ("up" if corr >= 0 else "down")
         key = (m, direction)
         if key in _PATTERN_RISK:
             candidate = _PATTERN_RISK[key]

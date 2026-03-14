@@ -1038,18 +1038,18 @@ def _build_change_card(c, index=0, remote_url="", commits_by_sha=None,
     INLINE_VISIBLE_LIMIT = 3
     inline_patterns_html = ""
     if matched_patterns:
-        # Sort by severity (most critical first)
+        # Sort by severity (most critical first), using the change's actual direction
         sorted_patterns = sorted(
             matched_patterns,
-            key=lambda p: _severity_rank(pattern_risk_assessment(p)["severity"]),
+            key=lambda p: _severity_rank(pattern_risk_assessment(p, change_direction=insight_dir)["severity"]),
             reverse=True,
         )
         visible = sorted_patterns[:INLINE_VISIBLE_LIMIT]
         hidden = sorted_patterns[INLINE_VISIBLE_LIMIT:]
-        pattern_items = "\n".join(_build_inline_pattern(p) for p in visible)
+        pattern_items = "\n".join(_build_inline_pattern(p, change_direction=insight_dir) for p in visible)
         overflow_html = ""
         if hidden:
-            hidden_items = "\n".join(_build_inline_pattern(p) for p in hidden)
+            hidden_items = "\n".join(_build_inline_pattern(p, change_direction=insight_dir) for p in hidden)
             overflow_html = (
                 f'    <details class="inline-patterns-overflow">\n'
                 f'      <summary>{t("patterns.show_more", n=len(hidden), heading=t("patterns.supporting_evidence").lower())}</summary>\n'
@@ -1098,17 +1098,17 @@ def _build_change_card(c, index=0, remote_url="", commits_by_sha=None,
     )
 
 
-def _build_inline_pattern(p):
+def _build_inline_pattern(p, change_direction=None):
     """Build a compact inline pattern for embedding within a change card."""
-    risk = pattern_risk_assessment(p)
+    risk = pattern_risk_assessment(p, change_direction=change_direction)
     severity = risk["severity"]
     sev_display = risk["severity_display"]
     recommendation = risk["recommendation"]
     impact = risk["impact"]
 
-    # Include merged recommendations/impacts from subset elimination
-    extra_recs = p.get("_merged_recommendations") or []
-    extra_impacts = p.get("_merged_impacts") or []
+    # Include merged recommendations/impacts from subset elimination (deduplicated)
+    extra_recs = [r for r in (p.get("_merged_recommendations") or []) if r not in recommendation]
+    extra_impacts = [i for i in (p.get("_merged_impacts") or []) if i not in impact]
     if extra_impacts:
         impact += " " + " ".join(extra_impacts)
     if extra_recs:
@@ -1140,9 +1140,9 @@ def _build_pattern_card(p, badge_label):
 
     badge_style = ' style="background: var(--color-warning);"' if badge_label == t("patterns.emerging_pattern") else ""
 
-    # Include merged recommendations/impacts from subsumed subset patterns
-    extra_impacts = p.get("_merged_impacts") or []
-    extra_recs = p.get("_merged_recommendations") or []
+    # Include merged recommendations/impacts from subsumed subset patterns (deduplicated)
+    extra_impacts = [i for i in (p.get("_merged_impacts") or []) if i not in impact]
+    extra_recs = [r for r in (p.get("_merged_recommendations") or []) if r not in recommendation]
     full_impact = impact
     if extra_impacts:
         full_impact += " " + " ".join(extra_impacts)
