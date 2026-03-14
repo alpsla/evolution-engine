@@ -831,6 +831,42 @@ class Phase5Engine:
             for t in evidence["timeline"][:15]:
                 evidence_text.append(f"  {t['timestamp'][:16]} [{t['family']}] {t['event']}")
 
+        # Collect candidate patterns that lack a semantic description
+        patterns_needing_desc = []
+        for p in advisory.get("candidate_patterns") or []:
+            if not p.get("description_semantic"):
+                families = ", ".join(p.get("families") or p.get("sources", []))
+                metrics = ", ".join(p.get("metrics", []))
+                stat_desc = p.get("description") or p.get("description_statistical", "")
+                pid = p.get("pattern_id", "")
+                patterns_needing_desc.append(
+                    f"  - Pattern {pid[:12]}: [{families}] metrics={metrics}"
+                    + (f" — {stat_desc[:120]}" if stat_desc else "")
+                )
+        for p in advisory.get("pattern_matches") or []:
+            if not p.get("description_semantic"):
+                families = ", ".join(p.get("families") or p.get("sources", []))
+                metrics = ", ".join(p.get("metrics", []))
+                stat_desc = p.get("description") or p.get("description_statistical", "")
+                pid = p.get("pattern_id", "")
+                patterns_needing_desc.append(
+                    f"  - Pattern {pid[:12]}: [{families}] metrics={metrics}"
+                    + (f" — {stat_desc[:120]}" if stat_desc else "")
+                )
+
+        pattern_prompt = ""
+        if patterns_needing_desc:
+            pattern_prompt = (
+                "\n"
+                "The following correlation patterns were detected but lack human-readable\n"
+                "descriptions. For each, provide a one-sentence explanation of *why* these\n"
+                "metrics move together (the causal mechanism, not just the correlation):\n\n"
+                + "\n".join(patterns_needing_desc)
+                + "\n\n"
+                "## Pattern Descriptions\n"
+                "- [pattern_id]: One sentence explaining why these metrics are linked.\n"
+            )
+
         prompt = (
             f"Development pattern shift detected in {scope} during "
             f"{period['from'][:10]} to {period['to'][:10]}.\n\n"
@@ -849,6 +885,7 @@ class Phase5Engine:
             "\n"
             "## Finding Summaries\n"
             "- [family/metric]: One sentence explaining what happened and why it matters.\n"
+            + pattern_prompt
         )
 
         return prompt

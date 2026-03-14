@@ -267,6 +267,42 @@ class Investigator:
         return summaries
 
     @staticmethod
+    def extract_pattern_descriptions(text: str) -> dict[str, str]:
+        """Parse the Pattern Descriptions section from an AI investigation response.
+
+        Looks for a section like:
+            ## Pattern Descriptions
+            - [abc123]: Large commits cause longer builds because ...
+            - [def456]: Dependency updates trigger test failures ...
+
+        Returns:
+            Mapping of pattern_id (prefix) to semantic description string.
+            Empty dict if the section is missing or unparseable.
+        """
+        match = re.search(
+            r"#+\s*Pattern\s+Descriptions\s*\n(.*?)(?=\n#+\s|\Z)",
+            text,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if not match:
+            return {}
+
+        descriptions: dict[str, str] = {}
+        section = match.group(1)
+
+        for line_match in re.finditer(
+            r"^[-*]\s+\[?([a-zA-Z0-9_-]+)\]?\s*:[ \t]*(\S[^\n]*)",
+            section,
+            re.MULTILINE,
+        ):
+            pid = line_match.group(1).strip()
+            desc = line_match.group(2).strip()
+            if desc:
+                descriptions[pid] = desc
+
+        return descriptions
+
+    @staticmethod
     def _format_patterns(advisory: dict) -> str:
         """Format pattern matches for additional context."""
         sections = []

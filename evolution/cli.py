@@ -885,7 +885,10 @@ def enrich(path, from_file, evo_dir):
 
     advisory_path.write_text(json.dumps(advisory, indent=2))
 
-    # 2. Update matching patterns in knowledge store
+    # 2. Extract pattern descriptions (if present)
+    pattern_descs = Investigator.extract_pattern_descriptions(text)
+
+    # 3. Update matching patterns in knowledge store
     kb_updated = 0
     try:
         from evolution.knowledge_store import KnowledgeStore
@@ -893,21 +896,37 @@ def enrich(path, from_file, evo_dir):
         if kb_path.exists():
             ks = KnowledgeStore(str(kb_path))
             for pattern in ks.list_patterns():
-                sources = pattern.get("sources", [])
-                metrics = pattern.get("metrics", [])
-                # Match pattern to summaries by source/metric pairs
-                for src in sources:
-                    for met in metrics:
-                        key = f"{src}/{met}"
-                        if key in summaries and not pattern.get("description_semantic"):
-                            ks.update_pattern(pattern["pattern_id"], {
-                                "description_semantic": summaries[key],
-                            })
-                            kb_updated += 1
+                pid = pattern.get("pattern_id", "")
+
+                # Match by pattern_id prefix from Pattern Descriptions section
+                for desc_pid, desc_text in pattern_descs.items():
+                    if pid.startswith(desc_pid) and not pattern.get("description_semantic"):
+                        ks.update_pattern(pid, {
+                            "description_semantic": desc_text,
+                        })
+                        kb_updated += 1
+                        break
+
+                # Match by family/metric from Finding Summaries section
+                if not pattern.get("description_semantic"):
+                    sources = pattern.get("sources", [])
+                    metrics = pattern.get("metrics", [])
+                    for src in sources:
+                        for met in metrics:
+                            key = f"{src}/{met}"
+                            if key in summaries:
+                                ks.update_pattern(pid, {
+                                    "description_semantic": summaries[key],
+                                })
+                                kb_updated += 1
+                                break
+                        else:
+                            continue
+                        break
     except Exception:
         pass  # KB update is best-effort
 
-    # 3. Regenerate HTML report
+    # 4. Regenerate HTML report
     report_regenerated = False
     try:
         from evolution.report_generator import generate_report
@@ -919,13 +938,16 @@ def enrich(path, from_file, evo_dir):
         pass  # Report regeneration is best-effort
 
     click.echo(f"Enriched {enriched_count} finding(s) with friendly descriptions.")
+    if pattern_descs:
+        click.echo(f"Found {len(pattern_descs)} pattern description(s).")
     if kb_updated:
         click.echo(f"Updated {kb_updated} pattern(s) in knowledge base.")
     if report_regenerated:
         click.echo("HTML report regenerated.")
 
     from evolution.telemetry import track_event
-    track_event("cli_command", {"command": "enrich", "findings_enriched": enriched_count})
+    track_event("cli_command", {"command": "enrich", "findings_enriched": enriched_count,
+                                "patterns_described": len(pattern_descs)})
 
 
 # ─────────────────── evo status ───────────────────

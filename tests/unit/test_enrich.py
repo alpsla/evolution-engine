@@ -308,6 +308,181 @@ class TestReportDescriptionPriority:
         assert "user-friendly-summary" in html
 
 
+# ──────────────── Pattern description extraction ────────────────
+
+
+class TestExtractPatternDescriptions:
+    def test_basic_extraction(self):
+        text = """
+## Pattern Descriptions
+- [abc123def456]: Large commits cause longer builds because more test suites run.
+- [789xyz]: Dependency updates trigger test failures due to breaking API changes.
+"""
+        result = Investigator.extract_pattern_descriptions(text)
+        assert result == {
+            "abc123def456": "Large commits cause longer builds because more test suites run.",
+            "789xyz": "Dependency updates trigger test failures due to breaking API changes.",
+        }
+
+    def test_without_brackets(self):
+        text = """
+## Pattern Descriptions
+- abc123: Large commits correlate with build time increases.
+"""
+        result = Investigator.extract_pattern_descriptions(text)
+        assert result == {
+            "abc123": "Large commits correlate with build time increases.",
+        }
+
+    def test_missing_section_returns_empty(self):
+        text = """
+## Finding Summaries
+- [git/files_touched]: Something happened.
+"""
+        result = Investigator.extract_pattern_descriptions(text)
+        assert result == {}
+
+    def test_empty_description_skipped(self):
+        text = """
+## Pattern Descriptions
+- [abc123]:
+- [def456]: Valid description.
+"""
+        result = Investigator.extract_pattern_descriptions(text)
+        assert result == {"def456": "Valid description."}
+
+    def test_stops_at_next_section(self):
+        text = """
+## Pattern Descriptions
+- [abc123]: Pattern explanation.
+
+## Recommended Fix Order
+1. Fix the thing
+"""
+        result = Investigator.extract_pattern_descriptions(text)
+        assert result == {"abc123": "Pattern explanation."}
+
+    def test_case_insensitive_header(self):
+        text = """
+### pattern descriptions
+- [abc123]: Pattern explanation.
+"""
+        result = Investigator.extract_pattern_descriptions(text)
+        assert result == {"abc123": "Pattern explanation."}
+
+    def test_empty_input(self):
+        assert Investigator.extract_pattern_descriptions("") == {}
+
+    def test_pattern_ids_with_hyphens_and_underscores(self):
+        text = """
+## Pattern Descriptions
+- [pat-123_abc]: Some explanation.
+"""
+        result = Investigator.extract_pattern_descriptions(text)
+        assert result == {"pat-123_abc": "Some explanation."}
+
+
+# ──────────────── Investigation prompt pattern section ────────────────
+
+
+class TestInvestigationPromptPatternSection:
+    def test_prompt_includes_pattern_descriptions_request(self):
+        """When candidate patterns lack description_semantic, prompt should ask for them."""
+        from evolution.phase5_engine import Phase5Engine
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as td:
+            engine = Phase5Engine.__new__(Phase5Engine)
+            engine.output_path = Path(td)
+
+            advisory = {
+                "period": {"from": "2026-01-01", "to": "2026-02-09"},
+                "scope": "test-repo",
+                "changes": [
+                    {
+                        "family": "git",
+                        "metric": "files_touched",
+                        "normal": {"mean": 3.0},
+                        "current": 20,
+                        "deviation_stddev": 5.7,
+                    },
+                ],
+                "candidate_patterns": [
+                    {
+                        "pattern_id": "abc123def456",
+                        "families": ["git", "ci"],
+                        "metrics": ["files_touched", "run_duration"],
+                        "description": "files_touched correlates with run_duration at 0.85",
+                    },
+                ],
+                "pattern_matches": [],
+                "evidence": {},
+            }
+
+            prompt = engine._format_investigation_prompt(advisory)
+            assert "Pattern Descriptions" in prompt
+            assert "abc123def456" in prompt[:len(prompt)]  # pattern_id truncated to 12
+            assert "files_touched" in prompt
+            assert "run_duration" in prompt
+
+    def test_prompt_skips_patterns_with_semantic_desc(self):
+        """Patterns that already have description_semantic should not be listed."""
+        from evolution.phase5_engine import Phase5Engine
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as td:
+            engine = Phase5Engine.__new__(Phase5Engine)
+            engine.output_path = Path(td)
+
+            advisory = {
+                "period": {"from": "2026-01-01", "to": "2026-02-09"},
+                "scope": "test-repo",
+                "changes": [
+                    {
+                        "family": "git",
+                        "metric": "files_touched",
+                        "normal": {"mean": 3.0},
+                        "current": 20,
+                        "deviation_stddev": 5.7,
+                    },
+                ],
+                "candidate_patterns": [
+                    {
+                        "pattern_id": "abc123",
+                        "families": ["git"],
+                        "metrics": ["files_touched"],
+                        "description_semantic": "Already described.",
+                    },
+                ],
+                "pattern_matches": [],
+                "evidence": {},
+            }
+
+            prompt = engine._format_investigation_prompt(advisory)
+            assert "Pattern Descriptions" not in prompt
+
+    def test_prompt_no_patterns_no_section(self):
+        """No candidate patterns = no Pattern Descriptions section."""
+        from evolution.phase5_engine import Phase5Engine
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as td:
+            engine = Phase5Engine.__new__(Phase5Engine)
+            engine.output_path = Path(td)
+
+            advisory = {
+                "period": {"from": "2026-01-01", "to": "2026-02-09"},
+                "scope": "test-repo",
+                "changes": [],
+                "candidate_patterns": [],
+                "pattern_matches": [],
+                "evidence": {},
+            }
+
+            prompt = engine._format_investigation_prompt(advisory)
+            assert "Pattern Descriptions" not in prompt
+
+
 # ──────────────── Investigation prompt ────────────────
 
 
