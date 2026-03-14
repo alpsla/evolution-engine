@@ -182,7 +182,7 @@
   },
   "adapters": {
     "title": "Amplíe su cobertura",
-    "intro": "Evolution Engine tiene <strong>{n} patrones universales</strong> aprendidos de más de 58 repositorios open-source. Cuantas más familias de señales conecte, más patrones entre familias podrán detectarse.",
+    "intro": "Evolution Engine tiene <strong>{n} patrones universales</strong> aprendidos de más de 200 repositorios open-source. Cuantas más familias de señales conecte, más patrones entre familias podrán detectarse.",
     "available_title": "Adaptadores disponibles",
     "available_subtitle": "Habilite estos adaptadores para desbloquear familias de señales adicionales y detección de patrones entre familias.",
     "how_to_title": "Cómo conectar un adaptador",

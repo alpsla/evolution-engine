@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Informe de Evolución — demo-repo</title>
+<title>Evolution Advisory</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -107,6 +107,18 @@ pre { background: var(--color-bg-subtle); padding: 1em; border-radius: 8px;
 .technical-detail summary:hover { text-decoration: underline; }
 .pattern-card { background: var(--color-bg-subtle); border: 1px solid var(--color-border);
   border-radius: 8px; padding: 1.5em; margin-bottom: 1.5em; }
+.inline-patterns { margin-top: 1em; border-top: 1px dashed var(--color-border); padding-top: 0.75em; }
+.inline-patterns-header { font-weight: 600; font-size: 9pt; color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5em; }
+.inline-pattern { background: var(--color-bg-subtle); border: 1px solid var(--color-border);
+  border-radius: 6px; padding: 0.75em 1em; margin-bottom: 0.5em; }
+.inline-pattern-desc { font-size: 10pt; margin: 0.5em 0; color: var(--color-text); }
+.inline-pattern .pattern-recommendation { font-size: 9pt; margin-top: 0.5em; }
+.inline-pattern .pattern-impact { font-size: 9pt; margin: 0.5em 0; padding: 0.75em; }
+.inline-pattern .severity-badge { font-size: 8pt; }
+.inline-patterns-overflow summary { font-size: 9pt; color: var(--color-text-muted);
+  cursor: pointer; margin: 0.5em 0; }
+.inline-patterns-overflow summary:hover { text-decoration: underline; }
 .severity-badge { display: inline-block; padding: 0.25em 0.75em; border-radius: 4px;
   font-weight: 600; font-size: 9pt; margin-left: 0.5em; }
 .severity-badge.severity-critical { background: #dc2626; color: white; }
@@ -609,83 +621,77 @@ document.addEventListener('DOMContentLoaded', function() {
     <path d="M33 20L38 28L33 36" stroke="#F8F9FA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
   <div class="cover-brand">CodeQual</div>
-  <h1>Informe de Evolución</h1>
+  <h1>Evolution Advisory</h1>
   <div class="cover-metadata">
     <p><strong>Proyecto:</strong> demo-repo</p>
-    <p><strong>Período:</strong> Jan 17, 2026 at 12:16 AM to Feb 17, 2026 at 01:25 AM</p>
-    <p><strong>ID del Informe:</strong> <code>42fb958339be87f8</code></p>
-    <p><strong>Generado:</strong> Mar 03, 2026 at 02:11 AM</p>
+    <p><strong>Período:</strong> Dec 01, 2025 at 12:00 AM a Mar 21, 2026 at 10:00 AM</p>
+    <p><strong>ID de aviso:</strong> <code>evo-demo-2026-03-21</code></p>
+    <p><strong>Generado:</strong> Mar 21, 2026 at 10:00 AM</p>
   </div>
 </div>
 <section class="executive-summary">
   <h2>Resumen Ejecutivo</h2>
   <div class="summary-cards">
-    <div class="summary-card"><div class="summary-value">4</div><div class="summary-label">Cambios Significativos</div></div>
-    <div class="summary-card"><div class="summary-value">1</div><div class="summary-label">Áreas Afectadas</div></div>
-    <div class="summary-card"><div class="summary-value">25</div><div class="summary-label">Patrones Detectados</div></div>
-    <div class="summary-card"><div class="summary-value">0</div><div class="summary-label">Nuevas Observaciones</div></div>
+    <div class="summary-card"><div class="summary-value">3</div><div class="summary-label">Cambios significativos</div></div>
+    <div class="summary-card"><div class="summary-value">3</div><div class="summary-label">Áreas afectadas</div></div>
+    <div class="summary-card"><div class="summary-value">5</div><div class="summary-label">Patrones detectados</div></div>
+    <div class="summary-card"><div class="summary-value">5</div><div class="summary-label">Nuevas observaciones</div></div>
   </div>
-  <p class="summary-families"><strong>Áreas afectadas:</strong> 📝 Control de Versiones</p>
-  <p class="confidence-note">Basado en 20 commits anteriores</p>
+  <p class="summary-families"><strong>Áreas afectadas:</strong> 📝 Control de Versiones ⚙️ CI / Compilación 📦 Dependencias</p>
+  <p class="confidence-note">Basado en 2 commits anteriors</p>
 </section>
 <section class="sources-section">
   <h2>Qué puede ver EE</h2>
-  <p class="sources-subtitle">6 conectados, 4 disponibles</p>
+  <p class="sources-subtitle">5 conectado(s), 3 disponible(s)</p>
   <div class="sources-grid">
-    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #f59e0b">⚙️</span><div><div class="source-name">CI / Build</div><div class="source-adapter">via GitHub Actions</div><div class="source-status source-status-pro">Pro</div></div></div><div class="source-detail">Disponible con Evolution Engine Pro. <a href="https://codequal.dev/#pricing" class="source-doc-link">Ver planes &rarr;</a></div></div>
-    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #8b5cf6">📦</span><div><div class="source-name">Dependencias</div><div class="source-adapter">via npm</div><div class="source-status source-status-quiet">Conectado &mdash; Sin Desviaciones</div></div></div><div class="source-detail">190 señales analizadas &mdash; todas dentro del rango normal</div></div>
-    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #3b82f6">📝</span><div><div class="source-name">Control de Versiones</div><div class="source-adapter">via Git</div><div class="source-status source-status-active">Activo</div></div></div></div>
-    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #06b6d4">🚀</span><div><div class="source-name">Despliegue</div><div class="source-adapter">via GitHub Releases</div><div class="source-status source-status-pro">Pro</div></div></div><div class="source-detail">Disponible con Evolution Engine Pro. <a href="https://codequal.dev/#pricing" class="source-doc-link">Ver planes &rarr;</a></div></div>
-    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #ef4444">🔒</span><div><div class="source-name">Seguridad</div><div class="source-adapter">via GitHub Security</div><div class="source-status source-status-pro">Pro</div></div></div><div class="source-detail">Disponible con Evolution Engine Pro. <a href="https://codequal.dev/#pricing" class="source-doc-link">Ver planes &rarr;</a></div></div>
-    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #10b981">🧪</span><div><div class="source-name">Pruebas</div><div class="source-adapter">via Jest</div><div class="source-status source-status-pro">Pro</div></div></div><div class="source-detail">Disponible con Evolution Engine Pro. <a href="https://codequal.dev/#pricing" class="source-doc-link">Ver planes &rarr;</a></div></div>
-    <div class="source-card source-card-disconnected"><div class="source-card-header"><span class="source-icon" style="color: #dc2626; opacity: 0.5">🚨</span><div><div class="source-name">Sentry</div><div class="source-status source-status-disconnected">No Conectado</div></div></div><div class="source-detail">Set <code>SENTRY_AUTH_TOKEN</code> to pull error tracking data from Sentry. <a href="https://codequal.dev/docs/integrations" class="source-doc-link">Guía de configuración &rarr;</a></div></div>
-    <div class="source-card source-card-disconnected"><div class="source-card-header"><span class="source-icon" style="color: #ea580c; opacity: 0.5">🚨</span><div><div class="source-name">PagerDuty</div><div class="source-status source-status-disconnected">No Conectado</div></div></div><div class="source-detail">Detected: &#x27;pagerduty&#x27; imported in packages/core/src/config/maintenance/monitoring.config.ts; &#x27;pagerduty&#x27; imported in packages/core/src/monitoring/enhanced-monitoring-service.js. Install <code>evo-adapter-pagerduty</code> or check <code>docs/guides/INTEGRATIONS.md</code> for setup.</div></div>
-    <div class="source-card source-card-disconnected"><div class="source-card-header"><span class="source-icon" style="color: #7c3aed; opacity: 0.5">📈</span><div><div class="source-name">OpenTelemetry</div><div class="source-status source-status-disconnected">No Conectado</div></div></div><div class="source-detail">Detected: &#x27;@opentelemetry/api&#x27; in package-lock.json; &#x27;@opentelemetry/sdk-trace-base&#x27; in package-lock.json. Install <code>evo-adapter-otel</code> or check <code>docs/guides/INTEGRATIONS.md</code> for setup.</div></div>
-    <div class="source-card source-card-disconnected"><div class="source-card-header"><span class="source-icon" style="color: #7c3aed; opacity: 0.5">📈</span><div><div class="source-name">Prometheus</div><div class="source-status source-status-disconnected">No Conectado</div></div></div><div class="source-detail">Detected: &#x27;prom-client&#x27; in package-lock.json; &#x27;prom-client&#x27; imported in packages/core/src/monitoring/production-monitoring.ts. Install <code>evo-adapter-prometheus</code> or check <code>docs/guides/INTEGRATIONS.md</code> for setup.</div></div>
+    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #3b82f6">📝</span><div><div class="source-name">Control de Versiones</div><div class="source-adapter">vía Git</div><div class="source-status source-status-active">Activo</div></div></div></div>
+    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #f59e0b">⚙️</span><div><div class="source-name">CI / Compilación</div><div class="source-adapter">vía GitHub Actions</div><div class="source-status source-status-active">Activo</div></div></div></div>
+    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #06b6d4">🚀</span><div><div class="source-name">Despliegue</div><div class="source-adapter">vía GitHub Releases</div><div class="source-status source-status-quiet">Conectado</div></div></div><div class="source-detail">Token configurado. Estos datos se analizan automáticamente al ejecutar via GitHub Action o GitLab CI. <a href="https://codequal.dev/docs/integrations" class="source-doc-link">Guía de configuración →</a></div></div>
+    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #8b5cf6">📦</span><div><div class="source-name">Dependencias</div><div class="source-adapter">vía pip</div><div class="source-status source-status-active">Activo</div></div></div></div>
+    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #ef4444">🔒</span><div><div class="source-name">Seguridad</div><div class="source-adapter">vía GitHub Security</div><div class="source-status source-status-quiet">Conectado</div></div></div><div class="source-detail">Token configurado. Estos datos se analizan automáticamente al ejecutar via GitHub Action o GitLab CI. <a href="https://codequal.dev/docs/integrations" class="source-doc-link">Guía de configuración →</a></div></div>
+    <div class="source-card source-card-disconnected"><div class="source-card-header"><span class="source-icon" style="color: #10b981; opacity: 0.5">🧪</span><div><div class="source-name">Testing</div><div class="source-status source-status-disconnected">No conectado</div></div></div><div class="source-detail">Generate test results: <code>pytest --junitxml=junit.xml</code> or equivalent, then re-run analysis. <a href="https://codequal.dev/docs/integrations" class="source-doc-link">Guía de configuración →</a></div></div>
+    <div class="source-card source-card-disconnected"><div class="source-card-header"><span class="source-icon" style="color: #059669; opacity: 0.5">📊</span><div><div class="source-name">Cobertura de código</div><div class="source-status source-status-disconnected">No conectado</div></div></div><div class="source-detail">Generate coverage reports: <code>pytest --cov --cov-report=xml</code> or equivalent, then re-run analysis. <a href="https://codequal.dev/docs/integrations" class="source-doc-link">Guía de configuración →</a></div></div>
+    <div class="source-card source-card-disconnected"><div class="source-card-header"><span class="source-icon" style="color: #dc2626; opacity: 0.5">🚨</span><div><div class="source-name">Seguimiento de errores</div><div class="source-status source-status-disconnected">No conectado</div></div></div><div class="source-detail">Set <code>SENTRY_AUTH_TOKEN</code> to pull error tracking data from Sentry. <a href="https://codequal.dev/docs/integrations" class="source-doc-link">Guía de configuración →</a></div></div>
   </div>
 </section>
-<section class="verification-banner verify-no-change">
+<section class="verification-banner verify-improving">
   <div class="verify-header">
-    <span class="verify-icon">↔️</span>
+    <span class="verify-icon">📈</span>
     <div>
-      <div class="verify-title">Verificación de Corrección: Sin cambios aún</div>
+      <div class="verify-title">Verificación de corrección: Progreso detectado</div>
       <div class="verify-subtitle">Comparando con el análisis anterior</div>
     </div>
   </div>
-  <div class="verify-chips"><span class="verify-chip verify-chip-flat">➖ 4 sin mejorar</span></div>
+  <div class="verify-chips"><span class="verify-chip verify-chip-resolved">✅ 2 resuelto(s)</span><span class="verify-chip verify-chip-improving">📈 2 mejorando</span><span class="verify-chip verify-chip-flat">➖ 1 sin mejora</span></div>
   <table class="verify-table">
     <thead><tr><th>Área</th><th>Señal</th><th>Antes</th><th>Después / Normal</th><th>Tendencia</th></tr></thead>
-    <tbody><tr><td>Control de Versiones</td><td>Files Changed</td><td>73</td><td>73<span class="verify-baseline"> / 3</span></td><td class="verify-trend-flat">➖ volvió a la normalidad</td></tr>
-<tr><td>Control de Versiones</td><td>Change Dispersion</td><td>0</td><td>0<span class="verify-baseline"> / 1.54</span></td><td class="verify-trend-flat">➖ volvió a la normalidad</td></tr>
-<tr><td>Control de Versiones</td><td>Co-change Novelty</td><td>0</td><td>0<span class="verify-baseline"> / 0.93</span></td><td class="verify-trend-warn">➖ aún desviándose activamente</td></tr>
-<tr><td>Control de Versiones</td><td>Change Locality</td><td>0</td><td>0<span class="verify-baseline"> / 0.67</span></td><td class="verify-trend-stabilized">➖ estabilizado en nuevo nivel</td></tr></tbody>
+    <tbody><tr class="verify-resolved"><td>Control de Versiones</td><td>Dispersión de cambios</td><td colspan="2">Resuelto</td><td>✅</td></tr>
+<tr class="verify-resolved"><td>Despliegue</td><td>Cadencia de releases</td><td colspan="2">Resuelto</td><td>✅</td></tr>
+<tr><td>Control de Versiones</td><td>Archivos modificados</td><td>47</td><td>8<span class="verify-baseline"> / 3</span></td><td class="verify-trend-good">📉 mejorando</td></tr>
+<tr><td>CI / Compilación</td><td>Duración de compilación</td><td>892</td><td>340<span class="verify-baseline"> / 165</span></td><td class="verify-trend-good">📉 mejorando</td></tr>
+<tr><td>Dependencias</td><td>Total de dependencias</td><td>104</td><td>104<span class="verify-baseline"> / 86</span></td><td class="verify-trend-warn">➖ aún desviando activamente</td></tr></tbody>
   </table>
-  <div class="verify-note">
-    <strong>Pico transitorio:</strong> Pico puntual de un commit anterior. La métrica ha vuelto a su valor base. Se puede aceptar con seguridad.
-  </div>
-  <div class="verify-note-stabilized">
-    <strong>Drift estabilizado:</strong> Un commit anterior desplazó esta métrica a un nuevo nivel y se mantuvo ahí. El modelo estadístico absorbió el cambio, pero el valor difiere del valor base original. Considere si este cambio fue intencional.
-  </div>
   <div class="verify-note-warn">
-    <strong>Desviación activa:</strong> Esta métrica sigue desviándose activamente en los datos más recientes. Se recomienda investigación.
+    <strong>Desviación activa:</strong> Esta métrica sigue desviando activamente en los datos más recientes. Se recomienda investigar.
   </div>
 </section>
 <section class="key-findings">
   <h2>Hallazgos Principales</h2>
   <ul class="findings-list">
-    <li><strong>Control de Versiones</strong> mostró desviaciones significativas en Files Changed, Change Dispersion, Co-change Novelty, Change Locality.</li>
-    <li>25 patrones conocidos detectados.</li>
+    <li><strong>Control de Versiones</strong> mostró desviaciones moderadas en Archivos modificados.</li>
+    <li><strong>CI / Compilación</strong> mostró desviaciones moderadas en Duración de compilación.</li>
+    <li><strong>Dependencias</strong> mostró desviaciones significativas en Total de dependencias.</li>
+    <li>4 patrón(es) conocido(s) detectado(s). 1 patrón(es) nuevo(s) descubierto(s).</li>
   </ul>
 </section>
 <section class="changes-detected page-break-before">
   <h2>Qué cambió en su código</h2>
   <p style="color: var(--color-text-muted); margin-bottom: 1.5em;">
-    Hemos detectado 4 cambios que difieren de los patrones
-    normales de su proyecto. Cada cambio muestra lo que típicamente ocurre versus lo que observamos esta vez.
+    Hemos detectado 3 cambios que difieren de los patrones normales de su proyecto. Cada cambio muestra lo que típicamente ocurre versus lo que observamos esta vez.
   </p>
   <div class="progress-tracker no-print" id="progressTracker">
-    <span id="resolvedCount">0</span> de 4 resueltos
-    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%;" data-total="4"></div></div>
+    <span id="resolvedCount">0</span> de 3 resueltos
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%;" data-total="3"></div></div>
   </div>
   <div class="severity-filters no-print">
     <button class="btn btn-filter active" onclick="filterChanges('all', this)">Todos</button>
@@ -693,60 +699,72 @@ document.addEventListener('DOMContentLoaded', function() {
     <button class="btn btn-filter" onclick="filterChanges('deviation-medium', this)">Medio</button>
     <button class="btn btn-filter" onclick="filterChanges('deviation-low', this)">Bajo</button>
   </div>
-  <div class="change-card deviation-high" id="change-git-files_touched">
+  <div class="change-card deviation-medium" id="change-git-files_touched">
   <div class="change-card-header">
     <span class="family-icon">📝</span>
     <div>
-      <div class="metric-name">Files Changed</div>
+      <div class="metric-name">Archivos modificados</div>
       <div class="family-label">Control de Versiones</div>
     </div>
   </div>
-  <div class="user-friendly-summary"><strong>Qué significa:</strong> Se modificaron más archivos de lo habitual en este commit.</div>
+  <div class="user-friendly-summary"><strong>Qué significa esto:</strong> More files changed than usual in this commit.</div>
   <div class="bar-chart">
     <div class="bar-chart-row">
       <div class="bar-label">Típico:</div>
-      <div class="bar-container"><div class="bar-fill normal" style="width: 4%"></div></div>
+      <div class="bar-container"><div class="bar-fill normal" style="width: 38%"></div></div>
       <div class="bar-value">3.00</div>
     </div>
     <div class="bar-chart-row">
       <div class="bar-label">Esta vez:</div>
       <div class="bar-container"><div class="bar-fill" style="width: 100%"></div></div>
-      <div class="bar-value">73</div>
+      <div class="bar-value">8</div>
     </div>
   </div>
-  <div class="deviation-badge">47.2x por encima del rango típico</div>
-  <div class="commit-attribution">Trigger: <a href="https://github.com/alpsla/codequal/commit/24dbe49e325263302d0df3caf85e654260fcfdd3" target="_blank" class="commit-link"><code>24dbe49e</code></a> rex(#7): Run Live Tier 3 Test - AI Fixer with Pattern Creati</div>
-  <div class="trend-subtitle trend-returning">↘ Volvió al valor base</div>
+  <div class="deviation-badge">2.1x por encima del rango típico</div>
+  <div class="commit-attribution">Desencadenante: <a href="https://github.com/demo-org/demo-repo/commit/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0" target="_blank" class="commit-link"><code>a1b2c3d4</code></a> refactor: split auth migration into focused modules</div>
+  <div class="inline-patterns">
+    <div class="inline-patterns-header">Evidencia de Respaldo</div>
+    <div class="inline-pattern severity-border-watch">
+  <span class="severity-badge severity-watch">👁️ Worth Monitoring</span>
+  <p class="inline-pattern-desc">When many files change in a single commit, CI build times increase proportionally due to broader test coverage being triggered.</p>
+  <div class="pattern-impact"><strong>Qué significa esto:</strong> Commits are touching more files than usual, increasing review burden and risk of regressions.</div>
+  <div class="pattern-recommendation"><strong>Recomendación:</strong> Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.</div>
+</div>
+<div class="inline-pattern severity-border-watch">
+  <span class="severity-badge severity-watch">👁️ Worth Monitoring</span>
+  <p class="inline-pattern-desc">Large commits that touch many files tend to also introduce new dependencies, suggesting feature branches that bundle dependency additions with implementation.</p>
+  <div class="pattern-impact"><strong>Qué significa esto:</strong> Commits are touching more files than usual, increasing review burden and risk of regressions.</div>
+  <div class="pattern-recommendation"><strong>Recomendación:</strong> Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.</div>
+</div>
+  </div>
   <div class="change-actions no-print" id="actions-0">
     <div class="accept-group">
-      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(0)">Aceptar &mdash; Esperado</button>
+      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(0)">Aceptar — Esperado</button>
       <div class="accept-menu" id="accept-menu-0">
-        <button onclick="acceptFinding(0, 'permanent', 'evo accept . 1 --reason &quot;Expected behavior&quot;')">Aceptar permanentemente<span class="accept-hint">No marcar esta señal de nuevo</span></button>
-        <button onclick="acceptFinding(0, 'this-run', 'evo accept . 1 --scope this-run --reason &quot;Expected behavior&quot;')">Aceptar solo para esta ejecución<span class="accept-hint">Descartar ahora, marcar en el próximo análisis</span></button>
+        <button onclick="acceptFinding(0, 'permanent', 'evo accept . 1 --reason &quot;Expected behavior&quot;')">Aceptar permanentemente<span class="accept-hint">No volver a marcar esta señal</span></button>
+        <button onclick="acceptFinding(0, 'this-run', 'evo accept . 1 --scope this-run --reason &quot;Expected behavior&quot;')">Aceptar solo para esta ejecución<span class="accept-hint">Descartar ahora, marcar de nuevo en el próximo análisis</span></button>
       </div>
     </div>
     <button class="btn btn-action btn-fix" onclick="toggleFixPrompt(0)">Corregir con IA</button>
   </div>
   <div class="fix-prompt-panel no-print" id="fix-prompt-0">
     <div class="fix-prompt-header">
-      <strong>Prompt de Investigación de Drift</strong>
-      <button class="btn btn-copy-sm" onclick="copyFixPrompt(0)">Copy</button>
+      <strong>Prompt de investigación de deriva</strong>
+      <button class="btn btn-copy-sm" onclick="copyFixPrompt(0)">Copiar</button>
     </div>
-    <pre class="fix-prompt-text" id="fix-prompt-text-0">Development pattern shift detected in Version Control.\n\nSIGNAL: Files Changed is 47.2x above the typical baseline (observed: 73, typical: 3.00).\nTRIGGER COMMIT: 24dbe49e — rex(#7): Run Live Tier 3 Test - AI Fixer with Pattern Creation\n\nFILES CHANGED IN TRIGGER (73):\n  - packages/agents/src/fix-agent/__tests__/live-tier3-ai.test.js\n  - packages/agents/src/fix-agent/__tests__/live-tier3-ai.test.ts\n  - packages/agents/src/fix-agent/agents/ai-fixer-agent.js\n  - packages/agents/src/fix-agent/ai-fix-prompts.js\n  - packages/agents/src/fix-agent/fix-pattern-registry/ai-fixer-verifier.js\n  - packages/agents/src/fix-agent/fix-pattern-registry/fix-capture-api.js\n  - packages/agents/src/fix-agent/fix-pattern-registry/fix-pattern-applicator.js\n  - packages/agents/src/fix-agent/fix-pattern-registry/fix-pattern-guidance.js\n  - packages/agents/src/fix-agent/fix-pattern-registry/fix-pattern-registry.js\n  - packages/agents/src/fix-agent/fix-pattern-registry/fix-security-validator.js\n  - packages/agents/src/fix-agent/fix-pattern-registry/index.js\n  - packages/agents/src/fix-agent/fix-pattern-registry/rule-normalizer.js\n  - packages/agents/src/fix-agent/fix-pattern-registry/supabase-pattern-store.js\n  - packages/agents/src/fix-agent/fix-pattern-registry/tool-revalidator.js\n  - packages/agents/src/fix-agent/fix-pattern-registry/types.js\n  ... and 58 more\n\nRECENT COMMITS (20 total, showing top 5):\n  656a61f5 — Session 91: Fix tier-specific report formatting
+    <pre class="fix-prompt-text" id="fix-prompt-text-0">Development pattern shift detected in Control de Versiones.\n\nSIGNAL: Archivos modificados is 2.1x above the typical baseline (observed: 8, typical: 3.00).\nTRIGGER COMMIT: a1b2c3d4 — refactor: split auth migration into focused modules\n\nRECENT COMMITS (2 total, showing top 5):\n  a1b2c3d4 — refactor: split auth migration into focused modules
 
-1. PRO tier (5 files)\n  d03b8861 — Session 92: Report formatting fixes and test updates
-
-- Fix  (4 files)\n  eb004c09 — Session 92: Add tool validation test for spectral and graphq (3 files)\n  077b17c0 — Session 92: Complete tool validation report - all 13 tools v (2 files)\n  e52ac84c — rex(#5): Fix JDepend to use source-based analysis when no co (6 files)\n  ... and 15 more commits\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit 24dbe49e — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
+Broke t (8 files)\n  b2c3d4e5 — fix: optimize CI pipeline caching for auth deps (2 files)\n\nCORRELATED PATTERNS:\n  [WATCH] When many files change in a single commit, CI build times increase proportionally due to broader test coverage being triggered.\n    → Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.\n  [WATCH] Large commits that touch many files tend to also introduce new dependencies, suggesting feature branches that bundle dependency additions with implementation.\n    → Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit a1b2c3d4 — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
     <div class="fix-prompt-guide">
       <strong>Usar con:</strong>
-      <span>Cursor &mdash; pegar en el chat</span>
-      <span>Claude Code &mdash; pegar en la terminal</span>
-      <span>Copilot &mdash; pegar en el panel de chat</span>
+      <span>Cursor — pegar en el chat</span>
+      <span>Claude Code — pegar en la terminal</span>
+      <span>Copilot — pegar en el panel de chat</span>
     </div>
     <div class="fix-next-steps">
       <strong>Después de la investigación:</strong>
       <ol>
-        <li>La IA sugiere correcciones &rarr; aplique los cambios a su código</li>
+        <li>La IA sugiere correcciones → aplique los cambios a su código</li>
         <li>Ejecute <code>evo analyze . --verify</code> para re-analizar y comparar con esta ejecución</li>
         <li>Si el cambio fue intencional, haga clic en <strong>Aceptar</strong> arriba para descartarlo</li>
       </ol>
@@ -754,63 +772,81 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
   <details class="technical-detail">
     <summary>Mostrar detalles técnicos</summary>
-    <p>El número de archivos modificados en este cambio fue 73. Históricamente, cambios similares tenían un valor de 3.00 &plusmn; 1.00.</p>
+    <p>El files touched para este cambio fue 8. Históricamente, cambios similares tenían un valor de 3.00 &plusmn; 1.50.</p>
   </details>
 </div>
-<div class="change-card deviation-high" id="change-git-dispersion">
+<div class="change-card deviation-medium" id="change-ci-run_duration">
   <div class="change-card-header">
-    <span class="family-icon">📝</span>
+    <span class="family-icon">⚙️</span>
     <div>
-      <div class="metric-name">Change Dispersion</div>
-      <div class="family-label">Control de Versiones</div>
+      <div class="metric-name">Duración de compilación</div>
+      <div class="family-label">CI / Compilación</div>
     </div>
   </div>
-  <div class="user-friendly-summary"><strong>Qué significa:</strong> Los cambios se concentraron en áreas relacionadas del código.</div>
+  <div class="user-friendly-summary"><strong>Qué significa esto:</strong> Build took longer than usual.</div>
   <div class="bar-chart">
     <div class="bar-chart-row">
       <div class="bar-label">Típico:</div>
-      <div class="bar-container"><div class="bar-fill normal" style="width: 100%"></div></div>
-      <div class="bar-value">1.54</div>
+      <div class="bar-container"><div class="bar-fill normal" style="width: 49%"></div></div>
+      <div class="bar-value">165.0</div>
     </div>
     <div class="bar-chart-row">
       <div class="bar-label">Esta vez:</div>
-      <div class="bar-container"><div class="bar-fill" style="width: 0%"></div></div>
-      <div class="bar-value">0.0000</div>
+      <div class="bar-container"><div class="bar-fill" style="width: 100%"></div></div>
+      <div class="bar-value">340</div>
     </div>
   </div>
-  <div class="deviation-badge">24.5x por debajo del rango típico</div>
-  <div class="commit-attribution">Trigger: <a href="https://github.com/alpsla/codequal/commit/57205c9e8f93fad6ae8de9ccda8bd92fc5620632" target="_blank" class="commit-link"><code>57205c9e</code></a> SESSION 113: Fix Quick Stats and IDE integration counts to e</div>
-  <div class="trend-subtitle trend-returning">↘ Volvió al valor base</div>
+  <div class="deviation-badge">3.9x por encima del rango típico</div>
+  <div class="commit-attribution">Desencadenante: <a href="https://github.com/demo-org/demo-repo/commit/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0" target="_blank" class="commit-link"><code>a1b2c3d4</code></a> refactor: split auth migration into focused modules</div>
+  <div class="inline-patterns">
+    <div class="inline-patterns-header">Evidencia de Respaldo</div>
+    <div class="inline-pattern severity-border-watch">
+  <span class="severity-badge severity-watch">👁️ Worth Monitoring</span>
+  <p class="inline-pattern-desc">When many files change in a single commit, CI build times increase proportionally due to broader test coverage being triggered.</p>
+  <div class="pattern-impact"><strong>Qué significa esto:</strong> Commits are touching more files than usual, increasing review burden and risk of regressions.</div>
+  <div class="pattern-recommendation"><strong>Recomendación:</strong> Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.</div>
+</div>
+<div class="inline-pattern severity-border-watch">
+  <span class="severity-badge severity-watch">👁️ Worth Monitoring</span>
+  <p class="inline-pattern-desc">Adding dependencies increases CI build time as package installation and resolution steps take longer.</p>
+  <div class="pattern-impact"><strong>Qué significa esto:</strong> The dependency count is growing, expanding the supply-chain attack surface and potential for version conflicts.</div>
+  <div class="pattern-recommendation"><strong>Recomendación:</strong> Audit new dependencies for necessity, maintenance status, and known vulnerabilities.</div>
+</div>
+<div class="inline-pattern severity-border-info">
+  <span class="severity-badge severity-info">ℹ️ Informational</span>
+  <p class="inline-pattern-desc">When CI pipelines run longer, the time between releases shortens — teams may be rushing releases to meet deadlines despite slower builds.</p>
+  <div class="pattern-impact"><strong>Qué significa esto:</strong> Builds are running faster than usual. Verify this isn&#x27;t due to skipped tests or simplified steps.</div>
+  <div class="pattern-recommendation"><strong>Recomendación:</strong> Confirm test coverage hasn&#x27;t decreased alongside faster builds.</div>
+</div>
+  </div>
   <div class="change-actions no-print" id="actions-1">
     <div class="accept-group">
-      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(1)">Aceptar &mdash; Esperado</button>
+      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(1)">Aceptar — Esperado</button>
       <div class="accept-menu" id="accept-menu-1">
-        <button onclick="acceptFinding(1, 'permanent', 'evo accept . 2 --reason &quot;Expected behavior&quot;')">Aceptar permanentemente<span class="accept-hint">No marcar esta señal de nuevo</span></button>
-        <button onclick="acceptFinding(1, 'this-run', 'evo accept . 2 --scope this-run --reason &quot;Expected behavior&quot;')">Aceptar solo para esta ejecución<span class="accept-hint">Descartar ahora, marcar en el próximo análisis</span></button>
+        <button onclick="acceptFinding(1, 'permanent', 'evo accept . 2 --reason &quot;Expected behavior&quot;')">Aceptar permanentemente<span class="accept-hint">No volver a marcar esta señal</span></button>
+        <button onclick="acceptFinding(1, 'this-run', 'evo accept . 2 --scope this-run --reason &quot;Expected behavior&quot;')">Aceptar solo para esta ejecución<span class="accept-hint">Descartar ahora, marcar de nuevo en el próximo análisis</span></button>
       </div>
     </div>
     <button class="btn btn-action btn-fix" onclick="toggleFixPrompt(1)">Corregir con IA</button>
   </div>
   <div class="fix-prompt-panel no-print" id="fix-prompt-1">
     <div class="fix-prompt-header">
-      <strong>Prompt de Investigación de Drift</strong>
-      <button class="btn btn-copy-sm" onclick="copyFixPrompt(1)">Copy</button>
+      <strong>Prompt de investigación de deriva</strong>
+      <button class="btn btn-copy-sm" onclick="copyFixPrompt(1)">Copiar</button>
     </div>
-    <pre class="fix-prompt-text" id="fix-prompt-text-1">Development pattern shift detected in Version Control.\n\nSIGNAL: Change Dispersion is 24.5x below the typical baseline (observed: 0.0000, typical: 1.54).\nTRIGGER COMMIT: 57205c9e — SESSION 113: Fix Quick Stats and IDE integration counts to exclude RESOLVED\n\nFILES CHANGED IN TRIGGER (1):\n  - packages/agents/src/two-branch/report/metadata-footer.ts\n\nRECENT COMMITS (20 total, showing top 5):\n  656a61f5 — Session 91: Fix tier-specific report formatting
+    <pre class="fix-prompt-text" id="fix-prompt-text-1">Development pattern shift detected in CI / Compilación.\n\nSIGNAL: Duración de compilación is 3.9x above the typical baseline (observed: 340, typical: 165.0).\nTRIGGER COMMIT: a1b2c3d4 — refactor: split auth migration into focused modules\n\nRECENT COMMITS (2 total, showing top 5):\n  a1b2c3d4 — refactor: split auth migration into focused modules
 
-1. PRO tier (5 files)\n  d03b8861 — Session 92: Report formatting fixes and test updates
-
-- Fix  (4 files)\n  eb004c09 — Session 92: Add tool validation test for spectral and graphq (3 files)\n  077b17c0 — Session 92: Complete tool validation report - all 13 tools v (2 files)\n  e52ac84c — rex(#5): Fix JDepend to use source-based analysis when no co (6 files)\n  ... and 15 more commits\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit 57205c9e — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
+Broke t (8 files)\n  b2c3d4e5 — fix: optimize CI pipeline caching for auth deps (2 files)\n\nCORRELATED PATTERNS:\n  [WATCH] When many files change in a single commit, CI build times increase proportionally due to broader test coverage being triggered.\n    → Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.\n  [INFO] When CI pipelines run longer, the time between releases shortens — teams may be rushing releases to meet deadlines despite slower builds.\n    → Confirm test coverage hasn&#x27;t decreased alongside faster builds.\n  [WATCH] Adding dependencies increases CI build time as package installation and resolution steps take longer.\n    → Audit new dependencies for necessity, maintenance status, and known vulnerabilities.\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit a1b2c3d4 — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
     <div class="fix-prompt-guide">
       <strong>Usar con:</strong>
-      <span>Cursor &mdash; pegar en el chat</span>
-      <span>Claude Code &mdash; pegar en la terminal</span>
-      <span>Copilot &mdash; pegar en el panel de chat</span>
+      <span>Cursor — pegar en el chat</span>
+      <span>Claude Code — pegar en la terminal</span>
+      <span>Copilot — pegar en el panel de chat</span>
     </div>
     <div class="fix-next-steps">
       <strong>Después de la investigación:</strong>
       <ol>
-        <li>La IA sugiere correcciones &rarr; aplique los cambios a su código</li>
+        <li>La IA sugiere correcciones → aplique los cambios a su código</li>
         <li>Ejecute <code>evo analyze . --verify</code> para re-analizar y comparar con esta ejecución</li>
         <li>Si el cambio fue intencional, haga clic en <strong>Aceptar</strong> arriba para descartarlo</li>
       </ol>
@@ -818,63 +854,75 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
   <details class="technical-detail">
     <summary>Mostrar detalles técnicos</summary>
-    <p>La dispersión de este cambio fue 0.0000. Históricamente, cambios similares tenían un valor de 1.54 &plusmn; 0.0425.</p>
+    <p>El run duration para este cambio fue 340. Históricamente, cambios similares tenían un valor de 165.0 &plusmn; 30.00.</p>
   </details>
 </div>
-<div class="change-card deviation-high" id="change-git-cochange_novelty_ratio">
+<div class="change-card deviation-high" id="change-dependency-dependency_count">
   <div class="change-card-header">
-    <span class="family-icon">📝</span>
+    <span class="family-icon">📦</span>
     <div>
-      <div class="metric-name">Co-change Novelty</div>
-      <div class="family-label">Control de Versiones</div>
+      <div class="metric-name">Total de dependencias</div>
+      <div class="family-label">Dependencias</div>
     </div>
   </div>
-  <div class="user-friendly-summary"><strong>Qué significa:</strong> Este cambio sigue patrones bien establecidos de co-cambios de archivos.</div>
+  <div class="user-friendly-summary"><strong>Qué significa esto:</strong> Dependency count increased.</div>
   <div class="bar-chart">
     <div class="bar-chart-row">
       <div class="bar-label">Típico:</div>
-      <div class="bar-container"><div class="bar-fill normal" style="width: 100%"></div></div>
-      <div class="bar-value">0.9321</div>
+      <div class="bar-container"><div class="bar-fill normal" style="width: 83%"></div></div>
+      <div class="bar-value">86.00</div>
     </div>
     <div class="bar-chart-row">
       <div class="bar-label">Esta vez:</div>
-      <div class="bar-container"><div class="bar-fill" style="width: 0%"></div></div>
-      <div class="bar-value">0.0000</div>
+      <div class="bar-container"><div class="bar-fill" style="width: 100%"></div></div>
+      <div class="bar-value">104</div>
     </div>
   </div>
-  <div class="deviation-badge">9.3x por debajo del rango típico</div>
-  <div class="commit-attribution">Trigger: <a href="https://github.com/alpsla/codequal/commit/c4882d9e63f08e5963092092e348e9439fc2bd2f" target="_blank" class="commit-link"><code>c4882d9e</code></a> chore: sync versions across core and agents</div>
-  <div class="trend-subtitle trend-elevated">→ Aún elevado (latest deviation: 2.7σ)</div>
+  <div class="deviation-badge">4.0x por encima del rango típico</div>
+  <div class="commit-attribution">Desencadenante: <a href="https://github.com/demo-org/demo-repo/commit/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0" target="_blank" class="commit-link"><code>a1b2c3d4</code></a> refactor: split auth migration into focused modules</div>
+  <div class="inline-patterns">
+    <div class="inline-patterns-header">Evidencia de Respaldo</div>
+    <div class="inline-pattern severity-border-watch">
+  <span class="severity-badge severity-watch">👁️ Worth Monitoring</span>
+  <p class="inline-pattern-desc">Large commits that touch many files tend to also introduce new dependencies, suggesting feature branches that bundle dependency additions with implementation.</p>
+  <div class="pattern-impact"><strong>Qué significa esto:</strong> Commits are touching more files than usual, increasing review burden and risk of regressions.</div>
+  <div class="pattern-recommendation"><strong>Recomendación:</strong> Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.</div>
+</div>
+<div class="inline-pattern severity-border-watch">
+  <span class="severity-badge severity-watch">👁️ Worth Monitoring</span>
+  <p class="inline-pattern-desc">Adding dependencies increases CI build time as package installation and resolution steps take longer.</p>
+  <div class="pattern-impact"><strong>Qué significa esto:</strong> The dependency count is growing, expanding the supply-chain attack surface and potential for version conflicts.</div>
+  <div class="pattern-recommendation"><strong>Recomendación:</strong> Audit new dependencies for necessity, maintenance status, and known vulnerabilities.</div>
+</div>
+  </div>
   <div class="change-actions no-print" id="actions-2">
     <div class="accept-group">
-      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(2)">Aceptar &mdash; Esperado</button>
+      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(2)">Aceptar — Esperado</button>
       <div class="accept-menu" id="accept-menu-2">
-        <button onclick="acceptFinding(2, 'permanent', 'evo accept . 3 --reason &quot;Expected behavior&quot;')">Aceptar permanentemente<span class="accept-hint">No marcar esta señal de nuevo</span></button>
-        <button onclick="acceptFinding(2, 'this-run', 'evo accept . 3 --scope this-run --reason &quot;Expected behavior&quot;')">Aceptar solo para esta ejecución<span class="accept-hint">Descartar ahora, marcar en el próximo análisis</span></button>
+        <button onclick="acceptFinding(2, 'permanent', 'evo accept . 3 --reason &quot;Expected behavior&quot;')">Aceptar permanentemente<span class="accept-hint">No volver a marcar esta señal</span></button>
+        <button onclick="acceptFinding(2, 'this-run', 'evo accept . 3 --scope this-run --reason &quot;Expected behavior&quot;')">Aceptar solo para esta ejecución<span class="accept-hint">Descartar ahora, marcar de nuevo en el próximo análisis</span></button>
       </div>
     </div>
     <button class="btn btn-action btn-fix" onclick="toggleFixPrompt(2)">Corregir con IA</button>
   </div>
   <div class="fix-prompt-panel no-print" id="fix-prompt-2">
     <div class="fix-prompt-header">
-      <strong>Prompt de Investigación de Drift</strong>
-      <button class="btn btn-copy-sm" onclick="copyFixPrompt(2)">Copy</button>
+      <strong>Prompt de investigación de deriva</strong>
+      <button class="btn btn-copy-sm" onclick="copyFixPrompt(2)">Copiar</button>
     </div>
-    <pre class="fix-prompt-text" id="fix-prompt-text-2">Development pattern shift detected in Version Control.\n\nSIGNAL: Co-change Novelty is 9.3x below the typical baseline (observed: 0.0000, typical: 0.9321).\nTRIGGER COMMIT: c4882d9e — chore: sync versions across core and agents\n\nFILES CHANGED IN TRIGGER (2):\n  - packages/agents/src/index.ts\n  - packages/core/src/index.ts\n\nRECENT COMMITS (20 total, showing top 5):\n  656a61f5 — Session 91: Fix tier-specific report formatting
+    <pre class="fix-prompt-text" id="fix-prompt-text-2">Development pattern shift detected in Dependencias.\n\nSIGNAL: Total de dependencias is 4.0x above the typical baseline (observed: 104, typical: 86.00).\nTRIGGER COMMIT: a1b2c3d4 — refactor: split auth migration into focused modules\n\nRECENT COMMITS (2 total, showing top 5):\n  a1b2c3d4 — refactor: split auth migration into focused modules
 
-1. PRO tier (5 files)\n  d03b8861 — Session 92: Report formatting fixes and test updates
-
-- Fix  (4 files)\n  eb004c09 — Session 92: Add tool validation test for spectral and graphq (3 files)\n  077b17c0 — Session 92: Complete tool validation report - all 13 tools v (2 files)\n  e52ac84c — rex(#5): Fix JDepend to use source-based analysis when no co (6 files)\n  ... and 15 more commits\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit c4882d9e — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
+Broke t (8 files)\n  b2c3d4e5 — fix: optimize CI pipeline caching for auth deps (2 files)\n\nCORRELATED PATTERNS:\n  [WATCH] Large commits that touch many files tend to also introduce new dependencies, suggesting feature branches that bundle dependency additions with implementation.\n    → Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.\n  [WATCH] Adding dependencies increases CI build time as package installation and resolution steps take longer.\n    → Audit new dependencies for necessity, maintenance status, and known vulnerabilities.\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit a1b2c3d4 — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
     <div class="fix-prompt-guide">
       <strong>Usar con:</strong>
-      <span>Cursor &mdash; pegar en el chat</span>
-      <span>Claude Code &mdash; pegar en la terminal</span>
-      <span>Copilot &mdash; pegar en el panel de chat</span>
+      <span>Cursor — pegar en el chat</span>
+      <span>Claude Code — pegar en la terminal</span>
+      <span>Copilot — pegar en el panel de chat</span>
     </div>
     <div class="fix-next-steps">
       <strong>Después de la investigación:</strong>
       <ol>
-        <li>La IA sugiere correcciones &rarr; aplique los cambios a su código</li>
+        <li>La IA sugiere correcciones → aplique los cambios a su código</li>
         <li>Ejecute <code>evo analyze . --verify</code> para re-analizar y comparar con esta ejecución</li>
         <li>Si el cambio fue intencional, haga clic en <strong>Aceptar</strong> arriba para descartarlo</li>
       </ol>
@@ -882,113 +930,30 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
   <details class="technical-detail">
     <summary>Mostrar detalles técnicos</summary>
-    <p>La ratio de novedad de co-cambios de este cambio fue 0.0000. Históricamente, cambios similares tenían un valor de 0.9321 &plusmn; 0.0679.</p>
-  </details>
-</div>
-<div class="change-card deviation-high" id="change-git-change_locality">
-  <div class="change-card-header">
-    <span class="family-icon">📝</span>
-    <div>
-      <div class="metric-name">Change Locality</div>
-      <div class="family-label">Control de Versiones</div>
-    </div>
-  </div>
-  <div class="user-friendly-summary"><strong>Qué significa:</strong> Los archivos modificados no suelen cambiar juntos, lo que sugiere una modificación transversal.</div>
-  <div class="bar-chart">
-    <div class="bar-chart-row">
-      <div class="bar-label">Típico:</div>
-      <div class="bar-container"><div class="bar-fill normal" style="width: 100%"></div></div>
-      <div class="bar-value">0.6667</div>
-    </div>
-    <div class="bar-chart-row">
-      <div class="bar-label">Esta vez:</div>
-      <div class="bar-container"><div class="bar-fill" style="width: 0%"></div></div>
-      <div class="bar-value">0.0000</div>
-    </div>
-  </div>
-  <div class="deviation-badge">5.4x por debajo del rango típico</div>
-  <div class="commit-attribution">Trigger: <a href="https://github.com/alpsla/codequal/commit/80fd9246f42f7cbc96dc09c7b9c1490b04dfc3eb" target="_blank" class="commit-link"><code>80fd9246</code></a> rex(109): Add BASIC/PRO tier sample reports and documentatio</div>
-  <div class="trend-subtitle trend-returning">↘ Volvió al valor base</div>
-  <div class="change-actions no-print" id="actions-3">
-    <div class="accept-group">
-      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(3)">Aceptar &mdash; Esperado</button>
-      <div class="accept-menu" id="accept-menu-3">
-        <button onclick="acceptFinding(3, 'permanent', 'evo accept . 4 --reason &quot;Expected behavior&quot;')">Aceptar permanentemente<span class="accept-hint">No marcar esta señal de nuevo</span></button>
-        <button onclick="acceptFinding(3, 'this-run', 'evo accept . 4 --scope this-run --reason &quot;Expected behavior&quot;')">Aceptar solo para esta ejecución<span class="accept-hint">Descartar ahora, marcar en el próximo análisis</span></button>
-      </div>
-    </div>
-    <button class="btn btn-action btn-fix" onclick="toggleFixPrompt(3)">Corregir con IA</button>
-  </div>
-  <div class="fix-prompt-panel no-print" id="fix-prompt-3">
-    <div class="fix-prompt-header">
-      <strong>Prompt de Investigación de Drift</strong>
-      <button class="btn btn-copy-sm" onclick="copyFixPrompt(3)">Copy</button>
-    </div>
-    <pre class="fix-prompt-text" id="fix-prompt-text-3">Development pattern shift detected in Version Control.\n\nSIGNAL: Change Locality is 5.4x below the typical baseline (observed: 0.0000, typical: 0.6667).\nTRIGGER COMMIT: 80fd9246 — rex(109): Add BASIC/PRO tier sample reports and documentation\n\nFILES CHANGED IN TRIGGER (3):\n  - docs/sample-reports/BASIC_TIER_REPORT.md\n  - docs/sample-reports/PRO_TIER_REPORT_TEMPLATE.md\n  - docs/sample-reports/README.md\n\nRECENT COMMITS (20 total, showing top 5):\n  656a61f5 — Session 91: Fix tier-specific report formatting
-
-1. PRO tier (5 files)\n  d03b8861 — Session 92: Report formatting fixes and test updates
-
-- Fix  (4 files)\n  eb004c09 — Session 92: Add tool validation test for spectral and graphq (3 files)\n  077b17c0 — Session 92: Complete tool validation report - all 13 tools v (2 files)\n  e52ac84c — rex(#5): Fix JDepend to use source-based analysis when no co (6 files)\n  ... and 15 more commits\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit 80fd9246 — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
-    <div class="fix-prompt-guide">
-      <strong>Usar con:</strong>
-      <span>Cursor &mdash; pegar en el chat</span>
-      <span>Claude Code &mdash; pegar en la terminal</span>
-      <span>Copilot &mdash; pegar en el panel de chat</span>
-    </div>
-    <div class="fix-next-steps">
-      <strong>Después de la investigación:</strong>
-      <ol>
-        <li>La IA sugiere correcciones &rarr; aplique los cambios a su código</li>
-        <li>Ejecute <code>evo analyze . --verify</code> para re-analizar y comparar con esta ejecución</li>
-        <li>Si el cambio fue intencional, haga clic en <strong>Aceptar</strong> arriba para descartarlo</li>
-      </ol>
-    </div>
-  </div>
-  <details class="technical-detail">
-    <summary>Mostrar detalles técnicos</summary>
-    <p>La localidad de cambio de este cambio fue 0.0000. Históricamente, cambios similares tenían un valor de 0.6667 &plusmn; 0.0833.</p>
+    <p>El dependency count para este cambio fue 104. Históricamente, cambios similares tenían un valor de 86.00 &plusmn; 3.00.</p>
   </details>
 </div>
 </section>
 <section class="patterns page-break-before">
-  <h2>Patrones</h2>
-  <p class="patterns-dedup-note">Change Locality y Change Dispersion se tratan como métricas relacionadas &mdash; se muestran como un solo patrón.</p>
-    <div class="risk-banner risk-banner-watch">
-  <div class="risk-banner-title">Tendencias a Observar</div>
-  <p>Varios patrones se están desplazando fuera de los rangos normales. Ninguno requiere acción inmediata, pero monitorear estas tendencias le ayudará a detectar problemas tempranamente.</p>
-  <div class="risk-banner-chips"><span class="severity-chip severity-watch">👁️ 2 Para Monitorear</span> <span class="severity-chip severity-positive">✅ 1 Patrón Saludable</span></div>
+  <h2>Información Adicional</h2>
+      <div class="risk-banner risk-banner-info">
+  <div class="risk-banner-title">Todo en orden</div>
+  <p>Los patrones detectados son informativos o saludables. Ningún problema requiere atención en este momento.</p>
+  <div class="risk-banner-chips"><span class="severity-chip severity-info">ℹ️ 1 Informational</span></div>
 </div>
   <div class="pattern-guidance">
-  <p><strong>¿Qué son los patrones?</strong> Los patrones son correlaciones recurrentes entre diferentes áreas de su proyecto. Cuando un cambio en un área (por ejemplo, un despliegue) coincide consistentemente con un comportamiento inusual en otra (por ejemplo, la dispersión del código), lo señalamos para que pueda decidir si necesita atención.</p>
-  <p><strong>¿Qué debe hacer?</strong> Concéntrese primero en los elementos marcados como <span class="severity-badge severity-critical">⚠️ Acción Requerida</span> o <span class="severity-badge severity-concern">🔍 Necesita Atención</span>. Estos indican patrones que tienen más probabilidad de afectar la calidad, estabilidad o seguridad del código. Los elementos marcados como <span class="severity-badge severity-watch">👁️ Para Monitorear</span> no necesitan acción inmediata pero deben revisarse si persisten. <span class="severity-badge severity-positive">✅ Patrón Saludable</span> e <span class="severity-badge severity-info">ℹ️ Informativo</span> confirman que las cosas funcionan como se esperaba.</p>
+  <p><strong>¿Qué son los patrones?</strong> Los patrones son correlaciones recurrentes entre diferentes áreas de su proyecto. Cuando un cambio en un área (ej. un despliegue) coincide consistentemente con comportamiento inusual en otra (ej. dispersión del código), lo señalamos para que pueda decidir si necesita atención.</p>
+  <p><strong>¿Qué debería hacer?</strong> Concéntrese primero en los elementos marcados como <span class="severity-badge severity-critical">⚠️ Acción requerida</span> o <span class="severity-badge severity-concern">🔍 Necesita atención</span>. Estos indican patrones que probablemente afecten la calidad, estabilidad o seguridad del código. Los elementos marcados como <span class="severity-badge severity-watch">👁️ Vale la pena monitorear</span> no requieren acción inmediata pero deben revisarse si persisten. <span class="severity-badge severity-positive">✅ Patrón saludable</span> e <span class="severity-badge severity-info">ℹ️ Informativo</span> confirman que las cosas funcionan como se espera.</p>
 </div>
 
-  <div class="pattern-card severity-border-watch">
-  <span class="badge">Patrón Conocido</span>
-  <span class="severity-badge severity-watch">👁️ Para Monitorear</span>
-  <h3 style="margin-top: 0.5em;"></h3>
-  <div class="pattern-meta">Change Dispersion</div>
-  <p>cuando ocurren cambios en el código, la dispersión del código tiende a aumentar.</p>
-  <div class="pattern-impact"><strong>Qué significa:</strong> Los cambios se están extendiendo a partes no relacionadas del código. Esto dificulta las revisiones y aumenta la posibilidad de efectos secundarios inesperados.</div>
-  <div class="pattern-recommendation"><strong>Recomendación:</strong> Revise los PRs recientes en busca de alcance excesivo. Considere dividir los cambios grandes en commits enfocados.</div>
-</div>
-<div class="pattern-card severity-border-watch">
-  <span class="badge">Patrón Conocido</span>
-  <span class="severity-badge severity-watch">👁️ Para Monitorear</span>
-  <h3 style="margin-top: 0.5em;"></h3>
-  <div class="pattern-meta">Files Changed</div>
-  <p>cuando ocurren cambios en el código, el número de archivos tiende a aumentar.</p>
-  <div class="pattern-impact"><strong>Qué significa:</strong> Los commits están tocando más archivos de lo habitual, aumentando la carga de revisión y el riesgo de regresiones.</div>
-  <div class="pattern-recommendation"><strong>Recomendación:</strong> Monitoree el tamaño de los PRs. Si esto persiste, investigue si las refactorizaciones grandes necesitan mejor descomposición.</div>
-</div>
-<div class="pattern-card severity-border-positive">
-  <span class="badge">Patrón Conocido</span>
-  <span class="severity-badge severity-positive">✅ Patrón Saludable</span>
-  <h3 style="margin-top: 0.5em;"></h3>
-  <div class="pattern-meta">Co-change Novelty</div>
-  <p>cuando ocurren cambios en el código, la novedad de los emparejamientos de archivos tiende a disminuir.</p>
-  <div class="pattern-impact"><strong>Qué significa:</strong> Los cambios siguen patrones de co-cambio de archivos bien establecidos. Las rutas de código que se están modificando han sido probadas juntas anteriormente.</div>
-  <div class="pattern-recommendation"><strong>Recomendación:</strong> No se necesita acción. Esto indica un desarrollo estable y predecible.</div>
+  <div class="pattern-card severity-border-info">
+  <span class="badge">Patrón conocido</span>
+  <span class="severity-badge severity-info">ℹ️ Informational</span>
+  <h3 style="margin-top: 0.5em;">Control de Versiones, Despliegue</h3>
+  <div class="pattern-meta">Dispersión de cambios, Cadencia de releases</div>
+  <p>When code changes are scattered across many directories, releases tend to be pushed out faster — possibly to ship hotfixes before the next planned release.</p>
+  <div class="pattern-impact"><strong>Qué significa esto:</strong> Releases are happening more frequently. Faster releases reduce batch size risk but may skip review steps.</div>
+  <div class="pattern-recommendation"><strong>Recomendación:</strong> Verify that quality gates (testing, review) are still being applied to faster releases.</div>
 </div>
 </section>
 <section class="investigation-section page-break-before">
@@ -1019,90 +984,52 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
   </div>
   <h3 style="margin-top: 1.5em;">Prompt de Investigación</h3>
-  <div class="prompt-preview">Development drift analysis for demo-repo (Jan 17, 2026 at 12:16 AM to Feb 17, 2026 at 01:25 AM).
+  <div class="prompt-preview">Development drift analysis for demo-repo (Dec 01, 2025 at 12:00 AM to Mar 21, 2026 at 10:00 AM).
 
 DEVIATIONS FROM BASELINE:
 
-- Version Control: Files Changed — 3.00 -&gt; 73
-- Version Control: Change Dispersion — 1.54 -&gt; 0.0000
-- Version Control: Co-change Novelty — 0.9321 -&gt; 0.0000
-- Version Control: Change Locality — 0.6667 -&gt; 0.0000
+- Version Control: Files Changed — 3.00 -&gt; 8
+- CI / Build: Build Duration — 165.0 -&gt; 340
+- Dependencies: Total Dependencies — 86.00 -&gt; 104
 
-Haga clic en &quot;Mostrar Prompt Completo&quot; para ver el prompt de investigación completo con evidencia...</div>
+Haga clic en &quot;Mostrar prompt completo&quot; para ver el prompt de investigación completo con evidencia...</div>
   <div class="action-buttons no-print">
-    <button class="btn btn-primary" onclick="copyPrompt()" id="copyBtn">Copiar Prompt al Portapapeles</button>
-    <button class="btn btn-secondary" onclick="savePromptToFile()">Guardar Prompt como Archivo</button>
-    <button class="toggle-btn" onclick="togglePrompt()" id="togglePromptBtn">Mostrar Prompt Completo</button>
+    <button class="btn btn-primary" onclick="copyPrompt()" id="copyBtn">Copiar prompt al portapapeles</button>
+    <button class="btn btn-secondary" onclick="savePromptToFile()">Guardar prompt en archivo</button>
+    <button class="toggle-btn" onclick="togglePrompt()" id="togglePromptBtn">Mostrar prompt completo</button>
   </div>
-  <pre class="prompt-full" id="fullPrompt">Development drift analysis for demo-repo (Jan 17, 2026 at 12:16 AM to Feb 17, 2026 at 01:25 AM).
+  <pre class="prompt-full" id="fullPrompt">Development drift analysis for demo-repo (Dec 01, 2025 at 12:00 AM to Mar 21, 2026 at 10:00 AM).
 
 DEVIATIONS FROM BASELINE:
 
-- Version Control / Files Changed: 73 (typical: 3.00, 47.2x above)
-- Version Control / Change Dispersion: 0.0000 (typical: 1.54, 24.5x below)
-- Version Control / Co-change Novelty: 0.0000 (typical: 0.9321, 9.3x below)
-- Version Control / Change Locality: 0.0000 (typical: 0.6667, 5.4x below)
+- Version Control / Files Changed: 8 (typical: 3.00, 2.1x above)
+- CI / Build / Build Duration: 340 (typical: 165.0, 3.9x above)
+- Dependencies / Total Dependencies: 104 (typical: 86.00, 4.0x above)
 
 RISK PATTERNS (actionable only):
 
-- [Needs Attention] when code changes occur, novelty of file pairings tends to increase.
-  (3 independent confirmations)
-  Impact: Files that don&#x27;t normally change together are being modified in the same commits. This indicates novel, untested interactions that may introduce bugs.
-  Action: Investigate which files are being combined unexpectedly. Prioritize testing these changes.
-
-- [Worth Monitoring] when code changes occur, code spread tends to increase.
-  (5 independent confirmations)
-  Impact: Changes are spreading across unrelated parts of the codebase. This makes reviews harder and increases the chance of unexpected side effects.
-  Action: Review recent PRs for scope creep. Consider breaking large changes into focused commits.
-
-- [Worth Monitoring] when code changes occur, change focus tends to decrease.
-  (2 independent confirmations)
-  Impact: Changes span files that don&#x27;t normally change together, suggesting cross-cutting concerns that may be harder to test.
-  Action: Review whether these cross-cutting changes have adequate test coverage.
-
-- [Worth Monitoring] when code changes occur, file count tends to increase.
-  (5 independent confirmations)
+- [Worth Monitoring] 2 patterns:
+    * When many files change in a single commit, CI build times increase proportionally due to broader test coverage being triggered.
+    * Large commits that touch many files tend to also introduce new dependencies, suggesting feature branches that bundle dependency additions with implementation.
   Impact: Commits are touching more files than usual, increasing review burden and risk of regressions.
   Action: Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.
 
+- [Worth Monitoring] Adding dependencies increases CI build time as package installation and resolution steps take longer.
+  Impact: The dependency count is growing, expanding the supply-chain attack surface and potential for version conflicts.
+  Action: Audit new dependencies for necessity, maintenance status, and known vulnerabilities.
 
-COMMITS (20):
 
-  656a61f5 — Session 91: Fix tier-specific report formatting (5 files)
-  d03b8861 — Session 92: Report formatting fixes and test updates (4 files)
-  eb004c09 — Session 92: Add tool validation test for spectral and graphql-cop (3 files)
-  077b17c0 — Session 92: Complete tool validation report - all 13 tools verified (2 files)
-  e52ac84c — rex(#5): Fix JDepend to use source-based analysis when no compiled classes (6 files)
-  83391a29 — rex(#6): Complete Session 93 tool validation report (2 files)
-  4cca1796 — Session 94-96: AI Fixer analysis, KB auto-filling, model selection verification (31 files)
-  801edf38 — Session 101: Complete multi-language tool validation (24 tools across 8 language (3 files)
-  fd4713cc — Session 101: Update transition document for Session 102 (1 files)
-  b20c4ca2 — rex(102): Session 102 complete - patterns and tier 2 validation (3 files)
-  ... and 10 more
+COMMITS (2):
 
-SOURCE FILES CHANGED (50):
+  a1b2c3d4 — refactor: split auth migration into focused modules (8 files)
+  b2c3d4e5 — fix: optimize CI pipeline caching for auth deps (2 files)
 
-  - docs/sample-reports/BASIC-tier-report-petclinic-pr950.md (modified)
-  - docs/sample-reports/PRO-tier-report-petclinic-pr950.md (modified)
-  - packages/agents/src/two-branch/analyzers/v9-grouped-report-formatter.ts (modified)
-  - packages/agents/tests/jest.setup.ts (modified)
-  - packages/agents/tsconfig.test.json (modified)
-  - packages/agents/src/two-branch/report/business-impact.ts (modified)
-  - packages/agents/src/two-branch/report/metadata-footer.ts (modified)
-  - packages/agents/tests/integration/test-v9-lite-e2e.ts (modified)
-  - packages/agents/tests/integration/test-tool-validation.ts (modified)
-  - rex-session-92-tool-validation.md (modified)
-  - rex-tasks.json (modified)
-  - docs/TOOL_VALIDATION_REPORT.md (modified)
-  - packages/agents/src/two-branch/tools/java/java-tool-orchestrator.ts (modified)
-  - packages/agents/tests/integration/test-outputs/attachments/group-java-lang-security-audit-active-debug-code-printstacktrace-active-debug-code-printstacktrace-medium-semgrep-fix.json (modified)
-  - packages/agents/tests/integration/test-outputs/attachments/group-java-spring-security-audit-spring-actuator-fully-enabled-spring-actuator-fully-enabled-high-semgrep-fix.json (modified)
-  - packages/agents/tests/integration/test-outputs/attachments/group-yaml-kubernetes-security-allow-privilege-escalation-no-securitycontext-allow-privilege-escalation-no-securitycontext-medium-semgrep-fix.json (modified)
-  - rex-session-93-tool-findings.md (modified)
-  - packages/agents/docs/KB_FILLING_PLAN_JAVA.md (modified)
-  - packages/agents/docs/NEXT_SESSION_95_CORRECTED.md (modified)
-  - packages/agents/docs/NEXT_SESSION_95_KB_EXPANSION.md (modified)
-  ... and 30 more
+SOURCE FILES CHANGED (4):
+
+  - src/auth/oauth2.py (modified)
+  - src/auth/middleware.py (modified)
+  - .github/workflows/test.yml (modified)
+  - requirements.txt (modified)
 
 TASKS:
 
@@ -1115,31 +1042,22 @@ TASKS:
 3. PRIORITY: Rank fixes by urgency (immediate vs. next sprint).
 
 4. AFTER FIXING: Run `evo analyze . --verify` to confirm deviations decreased.
-   If a change was intentional, accept it: `evo accept . &lt;N&gt;`.</pre>
+   If a change was intentional, accept it: `evo accept . &lt;N&gt;`.
+
+5. FINDING SUMMARIES: At the end, include a section like this:
+   ## Finding Summaries
+   - [family/metric]: One plain-English sentence for a non-technical reader.
+   (This lets the user run `evo enrich . --from response.txt` to store friendly descriptions.)</pre>
 </section>
 <section class="adapters-section page-break-before">
-  <h2>Amplíe su Cobertura</h2>
-  <div class="adapters-intro">    <p>Evolution Engine tiene <strong>44 patrones universales</strong> aprendidos de más de 58 repositorios de código abierto. Cuantas más familias de señales conecte, más patrones entre familias se pueden detectar.</p>  </div>
-  <h3>Adaptadores Disponibles</h3>
-  <p class="adapters-subtitle">Habilite estos adaptadores para desbloquear familias de señales adicionales y detección de patrones entre familias.</p>
-  <div class="adapter-grid">
-    <div class="adapter-card adapter-available"><div class="adapter-icon" style="color: #059669">📊</div><div class="adapter-name">cobertura</div><div class="adapter-family">Cobertura de Código</div><div class="adapter-desc">Cobertura de código de informes Cobertura XML — tasa de líneas, tasa de ramas</div><div class="adapter-hint">Detectado automáticamente de archivos <a href="https://codequal.dev/docs/integrations" class="source-doc-link">Guía de configuración &rarr;</a></div></div>
-  </div>
-  <div class="adapter-setup-guide">
-    <h4>Cómo conectar un adaptador</h4>
-    <ol>
-      <li><strong>Configure la variable de entorno</strong> que se muestra en la tarjeta del adaptador. Por ejemplo: <code>export GITHUB_TOKEN=$(gh auth token)</code></li>
-      <li><strong>Para adaptadores basados en archivos</strong> (Pruebas, Cobertura): genere los informes en su proyecto primero. Por ejemplo, <code>pytest --junitxml=junit.xml</code> o <code>pytest --cov --cov-report=xml</code></li>
-      <li><strong>Ejecute el análisis</strong>: <code>evo analyze .</code> &mdash; los nuevos adaptadores se detectan automáticamente</li>
-      <li><strong>Verifique</strong>: <code>evo sources</code> para confirmar qué adaptadores están activos</li>
-    </ol>
-  </div>
-  <div class="adapters-planned">    <strong>Próximamente:</strong> CI / Build, Despliegue, Feature Flags, Incidentes, Monitoreo, Quality Gate, Escaneo de Seguridad, Work Items</div>
+  <h2>Amplíe su cobertura</h2>
+  <div class="adapters-intro">    <p>Evolution Engine tiene <strong>44 patrones universales</strong> aprendidos de más de 200 repositorios open-source. Cuantas más familias de señales conecte, más patrones entre familias podrán detectarse.</p>  </div>
+  <div class="adapters-planned">    <strong>Próximamente:</strong> CI / Compilación, Despliegue, Elementos de trabajo, Escaneo de seguridad, Feature Flags, Incidentes, Monitoreo, Quality Gate  </div>
 </section>
 <footer>
   <p>Generado por <strong>CodeQual</strong> Evolution Engine</p>
-  <p style="margin-top: 0.5em;">Advisory ID: 42fb958339be87f8 &bull; Mar 03, 2026 at 02:11 AM</p>
-  <p style="margin-top: 0.5em;">Esta investigación fue generada con la asistencia de inteligencia artificial (Claude de Anthropic). El contenido generado por IA debe ser revisado por un desarrollador antes de actuar según las recomendaciones.</p>
+  <p style="margin-top: 0.5em;">ID de aviso: evo-demo-2026-03-21 • Mar 21, 2026 at 10:00 AM</p>
+  <p style="margin-top: 0.5em;">Esta investigación fue generada con la asistencia de inteligencia artificial (Claude by Anthropic). El contenido generado por IA debe ser revisado por un desarrollador antes de actuar sobre las recomendaciones.</p>
 </footer>
 </body>
 </html>

@@ -182,7 +182,7 @@
   },
   "adapters": {
     "title": "Erweitern Sie Ihre Abdeckung",
-    "intro": "Evolution Engine verfügt über <strong>{n} universelle Muster</strong>, die aus über 58 Open-Source-Repositories gelernt wurden. Je mehr Signalfamilien Sie verbinden, desto mehr familienübergreifende Muster können erkannt werden.",
+    "intro": "Evolution Engine verfügt über <strong>{n} universelle Muster</strong>, die aus über 200 Open-Source-Repositories gelernt wurden. Je mehr Signalfamilien Sie verbinden, desto mehr familienübergreifende Muster können erkannt werden.",
     "available_title": "Verfügbare Adapter",
     "available_subtitle": "Aktivieren Sie diese Adapter, um zusätzliche Signalfamilien und familienübergreifende Mustererkennung freizuschalten.",
     "how_to_title": "So verbinden Sie einen Adapter",

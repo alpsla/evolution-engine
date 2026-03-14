@@ -182,7 +182,7 @@
   },
   "adapters": {
     "title": "Expand Your Coverage",
-    "intro": "Evolution Engine has <strong>{n} universal patterns</strong> learned from 58+ open-source repositories. The more signal families you connect, the more cross-family patterns can be detected.",
+    "intro": "Evolution Engine has <strong>{n} universal patterns</strong> learned from 200+ open-source repositories. The more signal families you connect, the more cross-family patterns can be detected.",
     "available_title": "Available Adapters",
     "available_subtitle": "Enable these adapters to unlock additional signal families and cross-family pattern detection.",
     "how_to_title": "How to Connect an Adapter",

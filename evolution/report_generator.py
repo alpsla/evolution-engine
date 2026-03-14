@@ -289,13 +289,21 @@ def generate_report(
     # Load adapter diagnostics (why Tier 2 families have 0 signals)
     diagnostics = _load_diagnostics(evo_dir)
 
+    # Detect Pro license
+    try:
+        from evolution.license import is_pro as _is_pro
+        user_is_pro = _is_pro(str(repo_dir))
+    except Exception:
+        user_is_pro = False
+
     return _render_html(advisory, evidence, title, calibration_result, remote_url,
-                        verification, sources_info, evo_dir, diagnostics)
+                        verification, sources_info, evo_dir, diagnostics,
+                        is_pro=user_is_pro)
 
 
 def _render_html(advisory, evidence, title, cal=None, remote_url="",
                   verification=None, sources_info=None, evo_dir=None,
-                  diagnostics=None):
+                  diagnostics=None, is_pro=False):
     scope = advisory.get("scope", "Unknown")
     summary = advisory.get("summary", {})
     changes = advisory.get("changes", [])
@@ -321,7 +329,7 @@ def _render_html(advisory, evidence, title, cal=None, remote_url="",
 
     cover = _build_cover_page(scope, period_from, period_to, advisory_id, generated)
     exec_summary = _build_executive_summary(summary, families_affected, cal, n_commits, total_patterns)
-    sources_html = _build_sources_section(sources_info, families_affected, evo_dir, diagnostics) if sources_info else ""
+    sources_html = _build_sources_section(sources_info, families_affected, evo_dir, diagnostics, is_pro=is_pro) if sources_info else ""
     verify_html = _build_verification_banner(verification) if verification else ""
     findings_html = _build_key_findings(changes, pattern_matches, candidate_patterns, families_affected)
     # Accepted deviations — from the advisory summary (filtered by Phase 5)
@@ -1020,13 +1028,32 @@ def _build_change_card(c, index=0, remote_url="", commits_by_sha=None,
     )
 
     # Inline patterns: supporting evidence for this change
+    INLINE_VISIBLE_LIMIT = 3
     inline_patterns_html = ""
     if matched_patterns:
-        pattern_items = "\n".join(_build_inline_pattern(p) for p in matched_patterns)
+        # Sort by severity (most critical first)
+        sorted_patterns = sorted(
+            matched_patterns,
+            key=lambda p: _severity_rank(pattern_risk_assessment(p)["severity"]),
+            reverse=True,
+        )
+        visible = sorted_patterns[:INLINE_VISIBLE_LIMIT]
+        hidden = sorted_patterns[INLINE_VISIBLE_LIMIT:]
+        pattern_items = "\n".join(_build_inline_pattern(p) for p in visible)
+        overflow_html = ""
+        if hidden:
+            hidden_items = "\n".join(_build_inline_pattern(p) for p in hidden)
+            overflow_html = (
+                f'    <details class="inline-patterns-overflow">\n'
+                f'      <summary>{t("patterns.show_more", n=len(hidden), heading=t("patterns.supporting_evidence").lower())}</summary>\n'
+                f'      {hidden_items}\n'
+                f'    </details>\n'
+            )
         inline_patterns_html = (
             '  <div class="inline-patterns">\n'
             f'    <div class="inline-patterns-header">{t("patterns.supporting_evidence")}</div>\n'
             f'    {pattern_items}\n'
+            f'{overflow_html}'
             '  </div>\n'
         )
 
@@ -1533,7 +1560,8 @@ def _get_ci_hint(connected: list) -> str:
 
 
 def _build_sources_section(sources_info: dict, families_affected: list,
-                            evo_dir: Path = None, diagnostics: dict = None) -> str:
+                            evo_dir: Path = None, diagnostics: dict = None,
+                            is_pro: bool = False) -> str:
     """Build the 'What EE Can See' section showing all connected families."""
     if not sources_info:
         return ""
@@ -1603,13 +1631,22 @@ def _build_sources_section(sources_info: dict, families_affected: list,
                         f'</div>'
                     )
                 elif diag and diag.get("status") == "no_license":
-                    badge = f'<div class="source-status source-status-pro">{t("sources.pro")}</div>'
-                    detail = (
-                        '<div class="source-detail">'
-                        f'{t("sources.pro_available")} '
-                        f'<a href="https://codequal.dev/#pricing" class="source-doc-link">{t("sources.see_plans")}</a>'
-                        '</div>'
-                    )
+                    if is_pro:
+                        badge = f'<div class="source-status source-status-quiet">{t("sources.connected")}</div>'
+                        detail = (
+                            '<div class="source-detail">'
+                            f'{t("sources.token_set")} '
+                            f'{_integrations_link()}'
+                            '</div>'
+                        )
+                    else:
+                        badge = f'<div class="source-status source-status-pro">{t("sources.pro")}</div>'
+                        detail = (
+                            '<div class="source-detail">'
+                            f'{t("sources.pro_available")} '
+                            f'<a href="https://codequal.dev/#pricing" class="source-doc-link">{t("sources.see_plans")}</a>'
+                            '</div>'
+                        )
                 elif diag and diag.get("status") == "api_error":
                     badge = f'<div class="source-status source-status-warn">{t("sources.api_error")}</div>'
                     detail = (
@@ -1645,14 +1682,8 @@ def _build_sources_section(sources_info: dict, families_affected: list,
                         f'</div>'
                     )
                 else:
-                    # Fallback: no diagnostics file — use existing logic
-                    try:
-                        from evolution.license import is_pro
-                        user_is_pro = is_pro(str(evo_dir.parent) if evo_dir else None)
-                    except Exception:
-                        user_is_pro = False
-
-                    if user_is_pro:
+                    # Fallback: no diagnostics file
+                    if is_pro:
                         badge = f'<div class="source-status source-status-quiet">{t("sources.connected")}</div>'
                         detail = (
                             '<div class="source-detail">'
@@ -1661,7 +1692,6 @@ def _build_sources_section(sources_info: dict, families_affected: list,
                             '</div>'
                         )
                     else:
-                        # Fallback: no diagnostics
                         badge = f'<div class="source-status source-status-pro">{t("sources.pro")}</div>'
                         detail = (
                             '<div class="source-detail">'
@@ -2215,6 +2245,9 @@ pre { background: var(--color-bg-subtle); padding: 1em; border-radius: 8px;
 .inline-pattern .pattern-recommendation { font-size: 9pt; margin-top: 0.5em; }
 .inline-pattern .pattern-impact { font-size: 9pt; margin: 0.5em 0; padding: 0.75em; }
 .inline-pattern .severity-badge { font-size: 8pt; }
+.inline-patterns-overflow summary { font-size: 9pt; color: var(--color-text-muted);
+  cursor: pointer; margin: 0.5em 0; }
+.inline-patterns-overflow summary:hover { text-decoration: underline; }
 .severity-badge { display: inline-block; padding: 0.25em 0.75em; border-radius: 4px;
   font-weight: 600; font-size: 9pt; margin-left: 0.5em; }
 .severity-badge.severity-critical { background: #dc2626; color: white; }
