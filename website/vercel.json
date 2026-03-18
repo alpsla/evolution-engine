@@ -116,6 +116,11 @@
     { "src": "/reports/stripe-node", "dest": "/report-stripe-node.html" },
     { "src": "/reports/langchain", "dest": "/report-langchain.html" },
     { "src": "/reports/nextjs", "dest": "/report-nextjs.html" },
+    { "src": "/reports/plaid-node", "dest": "/report-plaid-node.html" },
+    { "src": "/reports/substation", "dest": "/report-substation.html" },
+    { "src": "/reports/onchainkit", "dest": "/report-onchainkit.html" },
+    { "src": "/reports/supabase", "dest": "/report-supabase.html" },
+    { "src": "/reports/goose", "dest": "/report-goose.html" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

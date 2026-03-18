@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evolution Advisory — brexhq/substation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --color-primary: #0A4D4A;
+  --color-primary-light: #0F6B67;
+  --color-secondary: #2CA58D;
+  --color-accent: #FF6B6B;
+  --color-text: #1f2937;
+  --color-text-muted: #64748B;
+  --color-border: #E2E8F0;
+  --color-bg: #FFFFFF;
+  --color-bg-subtle: #F8FAFC;
+  --color-success: #2CA58D;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #06B6D4;
+  --color-normal: #94a3b8;
+  --color-current: #2CA58D;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 11pt; line-height: 1.6; color: var(--color-text);
+  background: var(--color-bg); max-width: 1200px; margin: 0 auto; padding: 2em;
+}
+h1, h2, h3 { font-weight: 700; color: var(--color-primary); }
+h1 { font-size: 28pt; margin-bottom: 0.5em; }
+h2 { font-size: 18pt; margin-top: 1.5em; margin-bottom: 0.75em;
+  border-bottom: 2px solid var(--color-border); padding-bottom: 0.5em; }
+h3 { font-size: 14pt; margin-top: 1em; margin-bottom: 0.5em; }
+code, pre { font-family: 'SF Mono', 'Monaco', 'Courier New', monospace; font-size: 10pt; }
+code { background: var(--color-bg-subtle); padding: 0.2em 0.4em; border-radius: 4px; }
+pre { background: var(--color-bg-subtle); padding: 1em; border-radius: 8px;
+  overflow-x: auto; border: 1px solid var(--color-border); }
+.logo { width: 48px; height: 56px; margin-bottom: 1em; }
+.cover-page { min-height: 80vh; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; text-align: center; }
+.cover-page h1 { font-size: 42pt; margin-bottom: 0.5em; }
+.cover-brand { font-size: 18pt; color: var(--color-secondary); font-weight: 600;
+  margin-bottom: 2em; }
+.cover-metadata { font-size: 12pt; color: var(--color-text-muted); line-height: 2; }
+.cover-metadata p { margin: 0.5em 0; }
+.cover-metadata strong { color: var(--color-text); margin-right: 0.5em; }
+.executive-summary { margin-top: 2em; }
+.summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5em; margin: 1.5em 0; }
+.summary-card { background: var(--color-bg-subtle); border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 1.5em; text-align: center; }
+.summary-value { font-size: 32pt; font-weight: 700; color: var(--color-primary);
+  margin-bottom: 0.25em; }
+.summary-label { font-size: 11pt; color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em; }
+.summary-families { margin-top: 1em; padding: 1em; background: var(--color-bg-subtle);
+  border-radius: 8px; border-left: 4px solid var(--color-secondary); }
+.key-findings { margin-top: 1.5em; }
+.findings-list { list-style: none; padding: 0; }
+.findings-list li { padding: 0.75em 1em; margin-bottom: 0.5em; background: var(--color-bg-subtle);
+  border-left: 3px solid var(--color-secondary); border-radius: 0 6px 6px 0; line-height: 1.5; }
+.findings-list li strong { color: var(--color-primary); }
+.change-card { border: 1px solid var(--color-border); border-left: 4px solid var(--color-secondary);
+  padding: 1.5em; margin-bottom: 1.5em; background: var(--color-bg-subtle);
+  border-radius: 8px; page-break-inside: avoid; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.change-card-accepted { opacity: 0.6; border-left-color: var(--color-success) !important; }
+.accepted-badge { margin-left: auto; padding: 0.2em 0.75em; border-radius: 12px;
+  background: #d1fae5; color: #065f46; font-size: 9pt; font-weight: 600;
+  white-space: nowrap; }
+.accepted-summary { display: flex; gap: 0.75em; align-items: flex-start; padding: 1em 1.25em;
+  background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 3px solid #16a34a;
+  border-radius: 0 8px 8px 0; margin-bottom: 1.5em; font-size: 10pt; }
+.accepted-summary-icon { color: #16a34a; font-size: 14pt; font-weight: 700; line-height: 1; }
+.accepted-summary-hint { font-size: 9pt; color: var(--color-text-muted); margin-top: 0.3em; }
+.change-card.deviation-high { border-left-color: var(--color-danger); }
+.change-card.deviation-medium { border-left-color: var(--color-warning); }
+.change-card.deviation-low { border-left-color: var(--color-success); }
+.change-card-header { display: flex; align-items: center; margin-bottom: 1em; }
+.family-icon { font-size: 24pt; margin-right: 0.5em; }
+.metric-name { font-size: 14pt; font-weight: 600; color: var(--color-primary); }
+.family-label { font-size: 10pt; color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em; }
+.user-friendly-summary { background: #fff; padding: 1em; border-radius: 6px;
+  margin-bottom: 1em; border: 1px solid var(--color-border); }
+.user-friendly-summary strong { color: var(--color-primary); }
+.bar-chart { margin: 1em 0; }
+.bar-chart-row { display: flex; align-items: center; margin-bottom: 0.5em; }
+.bar-label { width: 100px; font-size: 10pt; color: var(--color-text-muted);
+  text-align: right; padding-right: 1em; }
+.bar-container { flex: 1; height: 24px; background: var(--color-border);
+  border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--color-current); border-radius: 4px 0 0 4px; }
+.bar-fill.normal { background: var(--color-normal); }
+.bar-value { margin-left: 1em; font-weight: 600; white-space: nowrap; min-width: 80px; }
+.deviation-badge { display: inline-block; background: var(--color-secondary); color: white;
+  padding: 0.25em 0.75em; border-radius: 4px; font-size: 9pt; font-weight: 600;
+  margin-top: 0.5em; }
+.technical-detail { margin-top: 0.5em; padding-top: 0.5em;
+  border-top: 1px dashed var(--color-border); font-size: 9pt;
+  color: var(--color-text-muted); font-style: italic; }
+.technical-detail summary { cursor: pointer; color: var(--color-secondary); font-weight: 500; }
+.technical-detail summary:hover { text-decoration: underline; }
+.pattern-card { background: var(--color-bg-subtle); border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 1.5em; margin-bottom: 1.5em; }
+.inline-patterns { margin-top: 1em; border-top: 1px dashed var(--color-border); padding-top: 0.75em; }
+.inline-patterns-header { font-weight: 600; font-size: 9pt; color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5em; }
+.inline-pattern { background: var(--color-bg-subtle); border: 1px solid var(--color-border);
+  border-radius: 6px; padding: 0.75em 1em; margin-bottom: 0.5em; }
+.inline-pattern-desc { font-size: 10pt; margin: 0.5em 0; color: var(--color-text); }
+.inline-pattern .pattern-recommendation { font-size: 9pt; margin-top: 0.5em; }
+.inline-pattern .pattern-impact { font-size: 9pt; margin: 0.5em 0; padding: 0.75em; }
+.inline-pattern .severity-badge { font-size: 8pt; }
+.inline-patterns-overflow summary { font-size: 9pt; color: var(--color-text-muted);
+  cursor: pointer; margin: 0.5em 0; }
+.inline-patterns-overflow summary:hover { text-decoration: underline; }
+.severity-badge { display: inline-block; padding: 0.25em 0.75em; border-radius: 4px;
+  font-weight: 600; font-size: 9pt; margin-left: 0.5em; }
+.severity-badge.severity-critical { background: #dc2626; color: white; }
+.severity-badge.severity-concern { background: #ea580c; color: white; }
+.severity-badge.severity-watch { background: #d97706; color: white; }
+.severity-badge.severity-info { background: #0284c7; color: white; }
+.severity-badge.severity-positive { background: #16a34a; color: white; }
+.pattern-impact { background: #fff; padding: 1em; border-radius: 6px;
+  margin: 0.75em 0; border: 1px solid var(--color-border); }
+.pattern-recommendation { padding: 0.75em 1em; border-radius: 6px;
+  background: var(--color-bg-subtle); border-left: 3px solid var(--color-secondary);
+  font-size: 10pt; margin-top: 0.5em; }
+.severity-border-critical { border-left: 4px solid #dc2626 !important; }
+.severity-border-concern { border-left: 4px solid #ea580c !important; }
+.severity-border-watch { border-left: 4px solid #d97706 !important; }
+.severity-border-info { border-left: 4px solid #0284c7 !important; }
+.severity-border-positive { border-left: 4px solid #16a34a !important; }
+.risk-banner { padding: 1.5em; border-radius: 8px; margin-bottom: 1.5em; }
+.risk-banner-title { font-size: 14pt; font-weight: 700; margin-bottom: 0.5em; }
+.risk-banner p { margin-bottom: 0.75em; line-height: 1.6; }
+.risk-banner-chips { display: flex; gap: 0.75em; flex-wrap: wrap; margin-top: 0.5em; }
+.severity-chip { display: inline-flex; align-items: center; gap: 0.25em; padding: 0.3em 0.75em;
+  border-radius: 4px; font-size: 9pt; font-weight: 600; background: rgba(255,255,255,0.7); }
+.risk-banner-critical { background: #fef2f2; border: 2px solid #dc2626;
+  border-left: 6px solid #dc2626; }
+.risk-banner-critical .risk-banner-title { color: #991b1b; }
+.risk-banner-concern { background: #fff7ed; border: 2px solid #ea580c;
+  border-left: 6px solid #ea580c; }
+.risk-banner-concern .risk-banner-title { color: #9a3412; }
+.risk-banner-watch { background: #fffbeb; border: 2px solid #d97706;
+  border-left: 6px solid #d97706; }
+.risk-banner-watch .risk-banner-title { color: #92400e; }
+.risk-banner-info { background: #f0f9ff; border: 2px solid #0284c7;
+  border-left: 6px solid #0284c7; }
+.risk-banner-info .risk-banner-title { color: #075985; }
+.risk-banner-positive { background: #f0fdf4; border: 2px solid #16a34a;
+  border-left: 6px solid #16a34a; }
+.risk-banner-positive .risk-banner-title { color: #166534; }
+.patterns-dedup-note { font-size: 9pt; color: var(--color-text-muted); margin-bottom: 0.75em; }
+.pattern-guidance { background: var(--color-bg-subtle); padding: 1.25em 1.5em;
+  border-radius: 8px; margin-bottom: 1.5em; border: 1px solid var(--color-border);
+  font-size: 10pt; line-height: 1.7; }
+.pattern-guidance p { margin-bottom: 0.75em; }
+.pattern-guidance p:last-child { margin-bottom: 0; }
+.pattern-guidance .severity-badge { font-size: 8pt; vertical-align: middle; }
+.investigation-expectations { background: var(--color-bg-subtle); padding: 1.25em 1.5em;
+  border-radius: 8px; margin-bottom: 1.5em; border: 1px solid var(--color-border); }
+.investigation-expectations h4 { color: var(--color-primary); margin-bottom: 0.75em; }
+.investigation-expectations ul { list-style: none; padding: 0; }
+.investigation-expectations li { padding: 0.5em 0; padding-left: 1.5em; position: relative;
+  line-height: 1.6; }
+.investigation-expectations li:before { content: '\2192'; position: absolute; left: 0;
+  color: var(--color-secondary); font-weight: 700; }
+.pattern-group-count { display: inline-block; padding: 0.2em 0.6em; border-radius: 4px;
+  font-size: 9pt; font-weight: 600; color: var(--color-text-muted);
+  background: var(--color-border); margin-left: 0.5em; }
+.grouped-pattern-list { list-style: disc; padding-left: 1.5em; margin: 0.5em 0 1em 0;
+  font-size: 10pt; line-height: 1.7; }
+.grouped-pattern-list li { margin-bottom: 0.3em; }
+.pattern-meta { display: flex; gap: 1em; margin: 0.5em 0 1em 0;
+  font-size: 10pt; color: var(--color-text-muted); }
+.badge { background: var(--color-primary); color: white; padding: 0.25em 0.75em;
+  border-radius: 4px; font-weight: 600; text-transform: uppercase; font-size: 9pt; }
+.investigation-section { background: #fff; border: 2px solid var(--color-secondary);
+  border-radius: 8px; padding: 2em; margin: 2em 0; }
+.next-steps-header { display: flex; align-items: center; gap: 0.5em; margin-bottom: 1em; }
+.next-steps-flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1em;
+  margin: 1em 0; }
+.step-card { display: flex; gap: 0.75em; padding: 1em; background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border); border-radius: 8px; }
+.step-number { width: 32px; height: 32px; min-width: 32px; border-radius: 50%;
+  background: var(--color-secondary); color: white; display: flex; align-items: center;
+  justify-content: center; font-weight: 700; font-size: 14pt; }
+.step-title { font-weight: 700; color: var(--color-primary); margin-bottom: 0.3em; }
+.step-content p { font-size: 9pt; color: var(--color-text-muted); line-height: 1.5; margin: 0; }
+.step-content code { font-size: 8.5pt; }
+@media (max-width: 768px) {
+  .next-steps-flow { grid-template-columns: 1fr; }
+}
+.action-buttons { display: flex; gap: 1em; margin: 1em 0; flex-wrap: wrap; }
+.btn { padding: 0.75em 1.5em; border-radius: 6px; font-weight: 600; font-size: 10pt;
+  cursor: pointer; border: none; transition: all 250ms ease-out; }
+.btn-primary { background: var(--color-accent); color: white; }
+.btn-primary:hover { background: #FF5252; }
+.btn-secondary { background: var(--color-secondary); color: white; }
+.btn-secondary:hover { background: var(--color-primary-light); }
+.prompt-preview { background: #f8f9fa; border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-secondary); padding: 1em; border-radius: 6px;
+  margin: 1em 0; font-size: 9pt; line-height: 1.6; max-height: 200px;
+  overflow-y: auto; white-space: pre-wrap; font-family: 'SF Mono', monospace; }
+.prompt-full { display: none; background: #f8f9fa; border: 1px solid var(--color-border);
+  padding: 1.5em; border-radius: 6px; margin: 1em 0; white-space: pre-wrap;
+  font-size: 10pt; line-height: 1.6; font-family: 'SF Mono', monospace; }
+.prompt-full.show { display: block; }
+.toggle-btn { background: white; border: 1px solid var(--color-secondary);
+  color: var(--color-secondary); padding: 0.5em 1em; border-radius: 6px;
+  cursor: pointer; font-weight: 600; font-size: 10pt; }
+.toggle-btn:hover { background: var(--color-bg-subtle); }
+.toggle-btn.active { background: var(--color-secondary); color: white; }
+.empty { color: var(--color-text-muted); font-style: italic; text-align: center; padding: 2rem; }
+.more { font-size: 9pt; color: var(--color-text-muted); margin-top: 0.5em; font-style: italic; }
+.evidence-overflow { display: none; }
+.evidence-overflow.show { display: table-row-group; }
+div.evidence-overflow { display: none; }
+div.evidence-overflow.show { display: block; }
+.pattern-overflow { margin-top: 0.5em; }
+.pattern-overflow > summary { list-style: none; display: inline-block; margin-top: 0.5em; }
+.pattern-overflow > summary::-webkit-details-marker { display: none; }
+.severity-filters { display: flex; gap: 0.5em; margin-bottom: 1.5em; flex-wrap: wrap; }
+.btn-filter { background: white; border: 1px solid var(--color-border); color: var(--color-text);
+  padding: 0.5em 1em; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 10pt;
+  transition: all 250ms ease-out; }
+.btn-filter:hover { background: var(--color-bg-subtle); border-color: var(--color-secondary); }
+.btn-filter.active { background: var(--color-secondary); color: white;
+  border-color: var(--color-secondary); }
+.change-actions { display: flex; gap: 0.5em; margin-top: 0.75em; align-items: flex-start; }
+.btn-action { background: var(--color-bg-subtle); border: 1px solid var(--color-border);
+  color: var(--color-primary); padding: 0.4em 1em; border-radius: 6px; cursor: pointer;
+  font-weight: 600; font-size: 9pt; transition: all 250ms ease-out; }
+.btn-action:hover { background: var(--color-secondary); color: white;
+  border-color: var(--color-secondary); }
+.accept-group { position: relative; }
+.accept-menu { display: none; position: absolute; top: 100%; left: 0; margin-top: 4px;
+  background: white; border: 1px solid var(--color-border); border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 10; min-width: 200px; }
+.accept-menu.show { display: block; }
+.accept-menu button { display: block; width: 100%; text-align: left; padding: 0.6em 1em;
+  border: none; background: none; cursor: pointer; font-size: 9pt; color: var(--color-text); }
+.accept-menu button:hover { background: var(--color-bg-subtle); }
+.accept-menu button:first-child { border-radius: 6px 6px 0 0; }
+.accept-menu button:last-child { border-radius: 0 0 6px 6px; }
+.accept-hint { display: block; font-size: 8pt; color: var(--color-text-muted); font-weight: 400; }
+.btn-accept.accepted { background: var(--color-success); color: white;
+  border-color: var(--color-success); pointer-events: none; }
+.btn-fix { color: var(--color-secondary); }
+.fix-prompt-panel { display: none; margin-top: 0.75em; background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border); border-radius: 8px; padding: 1em; }
+.fix-prompt-panel.show { display: block; }
+.fix-prompt-header { display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 0.5em; }
+.fix-prompt-text { background: white; border: 1px solid var(--color-border);
+  border-radius: 6px; padding: 0.75em; font-size: 9pt; white-space: pre-wrap;
+  word-break: break-word; max-height: 200px; overflow-y: auto; margin: 0; }
+.btn-copy-sm { background: var(--color-secondary); color: white; border: none;
+  padding: 0.3em 0.8em; border-radius: 4px; cursor: pointer; font-size: 8pt;
+  font-weight: 600; }
+.btn-copy-sm:hover { opacity: 0.85; }
+.fix-prompt-guide { margin-top: 0.5em; font-size: 8pt; color: var(--color-text-muted);
+  display: flex; gap: 1em; flex-wrap: wrap; }
+.fix-prompt-guide span { background: white; padding: 0.2em 0.5em; border-radius: 4px;
+  border: 1px solid var(--color-border); }
+.fix-next-steps { margin-top: 0.75em; padding: 0.75em 1em; background: white;
+  border: 1px solid var(--color-border); border-left: 3px solid var(--color-secondary);
+  border-radius: 0 6px 6px 0; font-size: 9pt; }
+.fix-next-steps strong { color: var(--color-primary); }
+.fix-next-steps ol { margin: 0.4em 0 0 1.25em; line-height: 1.8; }
+.fix-next-steps code { font-size: 8pt; }
+.progress-tracker { display: flex; align-items: center; gap: 0.75em;
+  margin-bottom: 1em; font-size: 10pt; font-weight: 600; color: var(--color-text-muted); }
+.progress-bar { flex: 1; max-width: 200px; height: 6px; background: var(--color-border);
+  border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--color-success); border-radius: 3px;
+  transition: width 300ms ease-out; }
+.commit-attribution { font-size: 9pt; color: var(--color-text-muted); margin-top: 0.5em; }
+.commit-link { color: var(--color-secondary); text-decoration: none; }
+.commit-link:hover { text-decoration: underline; }
+.confidence-note { font-size: 9pt; color: var(--color-text-muted); margin-top: 0.5em;
+  font-style: italic; }
+.change-card.filter-hidden { display: none; }
+.ide-link { font-size: 8pt; color: var(--color-secondary); text-decoration: none;
+  margin-left: 0.5em; font-weight: 600; }
+.ide-link:hover { text-decoration: underline; }
+.verification-banner { padding: 1.5em; border-radius: 8px; margin: 1.5em 0; }
+.verify-all-clear { background: #f0fdf4; border: 2px solid #16a34a; }
+.verify-improving { background: #eff6ff; border: 2px solid #2563eb; }
+.verify-no-change { background: #fefce8; border: 2px solid #ca8a04; }
+.verify-header { display: flex; align-items: center; gap: 0.75em; margin-bottom: 1em; }
+.verify-icon { font-size: 24pt; }
+.verify-title { font-size: 14pt; font-weight: 700; color: var(--color-primary); }
+.verify-subtitle { font-size: 10pt; color: var(--color-text-muted); }
+.verify-chips { display: flex; gap: 0.5em; flex-wrap: wrap; margin-bottom: 1em; }
+.verify-chip { display: inline-flex; align-items: center; gap: 0.25em; padding: 0.3em 0.75em;
+  border-radius: 4px; font-size: 9pt; font-weight: 600; }
+.verify-chip-resolved { background: #dcfce7; color: #166534; }
+.verify-chip-improving { background: #dbeafe; color: #1e40af; }
+.verify-chip-flat { background: #f5f5f4; color: #57534e; }
+.verify-chip-new { background: #fef3c7; color: #92400e; }
+.verify-table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+.verify-table th { text-align: left; padding: 0.5em 0.75em; font-weight: 600;
+  color: var(--color-primary); border-bottom: 2px solid var(--color-border); }
+.verify-table td { padding: 0.5em 0.75em; border-bottom: 1px solid var(--color-border); }
+.verify-resolved td { color: #166534; }
+.verify-trend-good { color: #2563eb; font-weight: 600; }
+.verify-trend-flat { color: #78716c; }
+.verify-note { margin-top: 1em; padding: 0.75em 1em; background: #f8fafc;
+  border-left: 3px solid var(--color-info); font-size: 10pt; color: var(--color-text-muted);
+  border-radius: 0 4px 4px 0; line-height: 1.5; }
+.verify-trend-warn { color: #dc2626; font-weight: 600; }
+.verify-trend-stabilized { color: #dc6803; font-weight: 600; }
+.verify-note-stabilized { margin-top: 1em; padding: 0.75em 1em; background: #fffbeb;
+  border-left: 3px solid #f59e0b; font-size: 10pt; color: #92400e;
+  border-radius: 0 4px 4px 0; line-height: 1.5; }
+.verify-note-warn { margin-top: 1em; padding: 0.75em 1em; background: #fef2f2;
+  border-left: 3px solid #dc2626; font-size: 10pt; color: #991b1b;
+  border-radius: 0 4px 4px 0; line-height: 1.5; }
+.trend-subtitle { font-size: 9pt; margin-top: 0.25em; color: #78716c; }
+.trend-returning { color: #166534; }
+.trend-elevated { color: #dc6803; }
+.verify-baseline { color: var(--color-text-muted); font-size: 9pt; }
+.verify-new td { color: #92400e; }
+.page-break-before { page-break-before: always; }
+.page-break-after { page-break-after: always; }
+footer { margin-top: 4em; padding-top: 2em; border-top: 1px solid var(--color-border);
+  text-align: center; color: var(--color-text-muted); font-size: 9pt; }
+footer strong { color: var(--color-secondary); }
+/* ─── Sources Section ─── */
+.sources-section { margin-top: 1.5em; }
+.sources-subtitle { color: var(--color-text-muted); margin-bottom: 1em; }
+.sources-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1em; margin: 1em 0 1.5em; }
+.source-card { border: 1px solid var(--color-border); border-radius: 8px;
+  padding: 1.2em; background: var(--color-bg); border-left: 3px solid var(--color-success);
+  transition: box-shadow 0.2s; }
+.source-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.source-card-disconnected { border-left-color: var(--color-border); background: var(--color-bg-subtle); }
+.source-card-header { display: flex; align-items: flex-start; gap: 0.75em; }
+.source-icon { font-size: 20pt; line-height: 1; }
+.source-name { font-weight: 600; font-size: 11pt; color: var(--color-primary); }
+.source-adapter { font-size: 8.5pt; color: var(--color-text-muted); margin-top: 1px; }
+.source-status { display: inline-block; padding: 0.15em 0.6em; border-radius: 12px;
+  font-size: 8pt; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+  margin-top: 0.2em; }
+.source-status-active { background: #d1fae5; color: #065f46; }
+.source-status-quiet { background: #dbeafe; color: #1e40af; }
+.source-status-hint { background: #fef3c7; color: #92400e; }
+.source-status-warn { background: #fed7aa; color: #9a3412; }
+.source-status-disconnected { background: #f1f5f9; color: #64748b; }
+.source-status-pro { background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; }
+.source-detail { margin-top: 0.75em; font-size: 9pt; color: var(--color-text-muted);
+  line-height: 1.5; }
+.source-detail code { font-size: 8.5pt; background: #e0f2fe; color: #0369a1;
+  padding: 0.15em 0.4em; border-radius: 3px; }
+.source-hint-cmd { margin-top: 0.5em; }
+.source-doc-link { color: var(--color-secondary); font-weight: 600; text-decoration: none;
+  font-size: 9pt; }
+.source-doc-link:hover { text-decoration: underline; }
+/* ─── Adapters Section ─── */
+.adapters-section { margin-top: 2em; }
+.adapters-intro { padding: 1em 1.5em; background: var(--color-bg-subtle);
+  border-left: 4px solid var(--color-secondary); border-radius: 0 8px 8px 0;
+  margin-bottom: 1.5em; }
+.adapters-intro p { margin: 0; }
+.adapters-subtitle { color: var(--color-text-muted); margin-bottom: 1em; }
+.adapter-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1em; margin: 1em 0 1.5em; }
+.adapter-card { border: 1px solid var(--color-border); border-radius: 8px;
+  padding: 1.2em; background: var(--color-bg); position: relative;
+  transition: box-shadow 0.2s; }
+.adapter-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.adapter-active { border-left: 3px solid var(--color-success); }
+.adapter-available { border-left: 3px solid var(--color-info); }
+.adapter-icon { font-size: 20pt; margin-bottom: 0.3em; }
+.adapter-name { font-weight: 600; font-size: 11pt; color: var(--color-primary); }
+.adapter-family { font-size: 9pt; color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5em; }
+.adapter-desc { font-size: 9pt; color: var(--color-text-muted); line-height: 1.4;
+  margin-bottom: 0.5em; }
+.adapter-hint { font-size: 9pt; color: var(--color-info); }
+.adapter-hint code { font-size: 8.5pt; background: #e0f2fe; color: #0369a1;
+  padding: 0.15em 0.4em; border-radius: 3px; }
+.adapter-status-badge { font-size: 8pt; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.05em; padding: 0.2em 0.6em; border-radius: 12px;
+  position: absolute; top: 1em; right: 1em; }
+.adapter-status-badge.active { background: #d1fae5; color: #065f46; }
+.adapter-status-badge.pro { background: linear-gradient(135deg, #7c3aed, #a855f7); color: white;
+  position: static; display: inline-block; margin-top: 0.3em; }
+.adapter-setup-guide { background: var(--color-bg-subtle); border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 1.5em; margin: 1.5em 0; }
+.adapter-setup-guide h4 { margin-top: 0; margin-bottom: 0.75em;
+  color: var(--color-primary); font-size: 12pt; }
+.adapter-setup-guide ol { padding-left: 1.5em; }
+.adapter-setup-guide li { margin-bottom: 0.75em; line-height: 1.5; }
+.adapters-planned { padding: 1em 1.5em; background: var(--color-bg-subtle);
+  border-radius: 8px; color: var(--color-text-muted); font-size: 10pt;
+  margin-top: 1em; }
+@media print {
+  body { font-size: 10pt; padding: 0; }
+  .btn, .toggle-btn, .action-buttons { display: none !important; }
+  .prompt-full { display: block !important; }
+  details.pattern-overflow > summary { display: none !important; }
+  details.pattern-overflow > summary ~ * { display: block !important; }
+  details[open] summary ~ * { display: block; }
+  .no-print { display: none; }
+  .cover-page { min-height: auto; padding: 4em 0; }
+}
+</style>
+<script>
+// Clipboard helper — works on file:// URLs where navigator.clipboard is blocked
+function _copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text);
+  }
+  // Fallback for file:// protocol
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  return Promise.resolve();
+}
+function _flashBtn(btn, label, duration) {
+  var orig = btn.textContent;
+  btn.textContent = label;
+  btn.style.background = 'var(--color-success)';
+  btn.style.color = 'white';
+  btn.style.borderColor = 'var(--color-success)';
+  setTimeout(function() {
+    btn.textContent = orig;
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }, duration || 2000);
+}
+function copyPrompt() {
+  var el = document.getElementById('fullPrompt');
+  if (!el) return;
+  _copyText(el.textContent).then(function() {
+    _flashBtn(document.getElementById('copyBtn'), 'Copied!');
+  });
+}
+function savePromptToFile() {
+  var el = document.getElementById('fullPrompt');
+  if (!el) return;
+  var blob = new Blob([el.textContent], { type: 'text/plain' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'investigation_prompt.txt';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+function togglePrompt() {
+  var f = document.getElementById('fullPrompt');
+  var b = document.getElementById('togglePromptBtn');
+  if (!f || !b) return;
+  f.classList.toggle('show'); b.classList.toggle('active');
+  b.textContent = f.classList.contains('show') ? 'Hide Full Prompt' : 'Show Full Prompt';
+}
+function toggleTableRows(id, btn) {
+  var el = document.getElementById(id);
+  if (!el || !btn) return;
+  el.classList.toggle('show');
+  btn.classList.toggle('active');
+  if (el.classList.contains('show')) {
+    btn.textContent = 'Collapse';
+  } else {
+    btn.textContent = btn.getAttribute('data-label') || 'Show all';
+  }
+}
+function copyCommand(btn, cmd) {
+  var text = cmd.replace(/&quot;/g, '"');
+  _copyText(text).then(function() { _flashBtn(btn, 'Copied!'); });
+}
+function toggleAcceptMenu(idx) {
+  var menu = document.getElementById('accept-menu-' + idx);
+  if (!menu) return;
+  document.querySelectorAll('.accept-menu.show').forEach(function(m) {
+    if (m !== menu) m.classList.remove('show');
+  });
+  menu.classList.toggle('show');
+}
+function _markAccepted(idx) {
+  var menu = document.getElementById('accept-menu-' + idx);
+  if (menu) menu.classList.remove('show');
+  var actions = document.getElementById('actions-' + idx);
+  if (actions) {
+    var btn = actions.querySelector('.btn-accept');
+    if (btn) {
+      btn.textContent = 'Accepted ✓';
+      btn.classList.add('accepted');
+    }
+  }
+  updateProgress();
+}
+function _showToast(msg) {
+  var existing = document.getElementById('report-toast');
+  if (existing) existing.remove();
+  var t = document.createElement('div');
+  t.id = 'report-toast';
+  t.style.cssText = 'position:fixed;bottom:2em;right:2em;background:#0A4D4A;color:white;padding:0.75em 1.5em;border-radius:8px;font-weight:500;z-index:1000;opacity:0;transition:opacity 0.3s;';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { t.style.opacity = '1'; }, 10);
+  setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 2500);
+}
+function acceptFinding(idx, scope, cmd) {
+  var changeIndex = idx + 1;
+  fetch('/api/accept', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({index: changeIndex, scope: scope, reason: 'Expected behavior'})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) { _markAccepted(idx); _showToast('Accepted'); })
+  .catch(function() {
+    var text = cmd.replace(/&quot;/g, '"');
+    _copyText(text).then(function() {
+      _markAccepted(idx);
+      _showToast('Command copied — paste in terminal to accept');
+    });
+  });
+}
+function updateProgress() {
+  var total = document.querySelectorAll('.btn-accept').length;
+  var resolved = document.querySelectorAll('.btn-accept.accepted').length;
+  var counter = document.getElementById('resolvedCount');
+  var fill = document.getElementById('progressFill');
+  if (counter) counter.textContent = resolved;
+  if (fill) fill.style.width = (total > 0 ? (resolved / total * 100) : 0) + '%';
+}
+function toggleFixPrompt(idx) {
+  var panel = document.getElementById('fix-prompt-' + idx);
+  if (panel) panel.classList.toggle('show');
+}
+function copyFixPrompt(idx) {
+  var el = document.getElementById('fix-prompt-text-' + idx);
+  if (!el) return;
+  var text = el.textContent.replace(/\\n/g, '\n');
+  _copyText(text).then(function() {
+    var btn = el.parentElement.querySelector('.btn-copy-sm');
+    if (btn) {
+      btn.textContent = 'Copied!';
+      setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+    }
+  });
+}
+function filterChanges(level, btn) {
+  var cards = document.querySelectorAll('.change-card');
+  var buttons = document.querySelectorAll('.btn-filter');
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].classList.remove('active');
+  }
+  btn.classList.add('active');
+  for (var j = 0; j < cards.length; j++) {
+    if (level === 'all') {
+      cards[j].classList.remove('filter-hidden');
+    } else {
+      if (cards[j].classList.contains(level)) {
+        cards[j].classList.remove('filter-hidden');
+      } else {
+        cards[j].classList.add('filter-hidden');
+      }
+    }
+  }
+}
+document.addEventListener('DOMContentLoaded', function() {
+  var btns = document.querySelectorAll('button[onclick^="toggleTableRows"]');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].setAttribute('data-label', btns[i].textContent);
+  }
+  // Close accept menus when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.accept-group')) {
+      document.querySelectorAll('.accept-menu.show').forEach(function(m) {
+        m.classList.remove('show');
+      });
+    }
+  });
+  // Mark already-accepted items on page load (server mode only, silent fail on file://)
+  fetch('/api/accepted')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var accepted = data.accepted || [];
+      var cards = document.querySelectorAll('.change-card');
+      cards.forEach(function(card, idx) {
+        var id = card.id || '';
+        for (var i = 0; i < accepted.length; i++) {
+          var key = accepted[i].key || '';
+          var parts = key.split(':');
+          if (parts.length === 2 && id === 'change-' + parts[0] + '-' + parts[1]) {
+            _markAccepted(idx);
+            break;
+          }
+        }
+      });
+    })
+    .catch(function() { /* file:// mode — ignore */ });
+});
+</script>
+</head>
+<body>
+<div class="cover-page page-break-after">
+  <svg class="logo" viewBox="0 0 48 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M24 0C24 0 0 6 0 14V32C0 44 10 54 24 56C38 54 48 44 48 32V14C48 6 24 0 24 0Z" fill="#0A4D4A"/>
+    <path d="M24 4C24 4 4 9 4 16V31C4 41 12 49 24 51C36 49 44 41 44 31V16C44 9 24 4 24 4Z" fill="none" stroke="#2CA58D" stroke-width="2"/>
+    <path d="M15 20L10 28L15 36" stroke="#F8F9FA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M18 28L22 32L30 22" stroke="#2CA58D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M33 20L38 28L33 36" stroke="#F8F9FA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div class="cover-brand">CodeQual</div>
+  <h1>Evolution Advisory</h1>
+  <div class="cover-metadata">
+    <p><strong>Project:</strong> brexhq/substation</p>
+    <p><strong>Period:</strong> Jul 18, 2022 at 04:04 AM to Jan 20, 2026 at 06:53 PM</p>
+    <p><strong>Advisory ID:</strong> <code>16d3008c360466e0</code></p>
+    <p><strong>Generated:</strong> Mar 18, 2026 at 12:10 AM</p>
+  </div>
+</div>
+<section class="executive-summary">
+  <h2>Executive Summary</h2>
+  <div class="summary-cards">
+    <div class="summary-card"><div class="summary-value">7</div><div class="summary-label">Significant Changes</div></div>
+    <div class="summary-card"><div class="summary-value">4</div><div class="summary-label">Areas Affected</div></div>
+    <div class="summary-card"><div class="summary-value">30</div><div class="summary-label">Patterns Matched</div></div>
+    <div class="summary-card"><div class="summary-value">0</div><div class="summary-label">New Observations</div></div>
+  </div>
+  <p class="summary-families"><strong>Affected areas:</strong> ⚙️ CI / Build 📦 Dependencies 🚀 Deployment 📝 Version Control</p>
+  <p class="confidence-note">Based on 20 prior commits</p>
+</section>
+<section class="sources-section">
+  <h2>What EE Can See</h2>
+  <p class="sources-subtitle">6 connected</p>
+  <div class="sources-grid">
+    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #f59e0b">⚙️</span><div><div class="source-name">CI / Build</div><div class="source-adapter">via GitHub Actions</div><div class="source-status source-status-active">Active</div></div></div></div>
+    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #8b5cf6">📦</span><div><div class="source-name">Dependencies</div><div class="source-adapter">via Go Modules</div><div class="source-status source-status-active">Active</div></div></div></div>
+    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #3b82f6">📝</span><div><div class="source-name">Version Control</div><div class="source-adapter">via Git</div><div class="source-status source-status-active">Active</div></div></div></div>
+    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #06b6d4">🚀</span><div><div class="source-name">Deployment</div><div class="source-adapter">via GitHub Releases</div><div class="source-status source-status-active">Active</div></div></div></div>
+    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #ef4444">🔒</span><div><div class="source-name">Security</div><div class="source-adapter">via GitHub Security</div><div class="source-status source-status-warn">Platform Mismatch</div></div></div><div class="source-detail">GITLAB_TOKEN is set but remote points to github. <a href="https://codequal.dev/docs/integrations" class="source-doc-link">Setup guide →</a></div></div>
+    <div class="source-card"><div class="source-card-header"><span class="source-icon" style="color: #10b981">🧪</span><div><div class="source-name">Testing</div><div class="source-adapter">via Jest</div><div class="source-status source-status-quiet">Connected</div></div></div><div class="source-detail">Token set. This data is analyzed automatically when running via GitHub Action or GitLab CI. <a href="https://codequal.dev/docs/integrations" class="source-doc-link">Setup guide →</a></div></div>
+  </div>
+</section>
+
+<section class="key-findings">
+  <h2>Key Findings</h2>
+  <ul class="findings-list">
+    <li><strong>CI / Build</strong> showed significant deviations in Build Duration.</li>
+    <li><strong>Version Control</strong> showed significant deviations in Files Changed, Co-change Novelty, Change Locality, Change Dispersion.</li>
+    <li><strong>Dependencies</strong> showed significant deviations in Total Dependencies.</li>
+    <li><strong>Deployment</strong> showed significant deviations in Release Cadence.</li>
+    <li>30 known patterns detected.</li>
+  </ul>
+</section>
+<section class="changes-detected page-break-before">
+  <h2>What Changed in Your Codebase</h2>
+  <p style="color: var(--color-text-muted); margin-bottom: 1.5em;">
+    We've detected 7 changes that differ from your project's normal patterns. Each change shows what typically happens versus what we observed this time.
+  </p>
+  <div class="progress-tracker no-print" id="progressTracker">
+    <span id="resolvedCount">0</span> of 7 resolved
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%;" data-total="7"></div></div>
+  </div>
+  <div class="severity-filters no-print">
+    <button class="btn btn-filter active" onclick="filterChanges('all', this)">All</button>
+    <button class="btn btn-filter" onclick="filterChanges('deviation-high', this)">Critical</button>
+    <button class="btn btn-filter" onclick="filterChanges('deviation-medium', this)">Medium</button>
+    <button class="btn btn-filter" onclick="filterChanges('deviation-low', this)">Low</button>
+  </div>
+  <div class="change-card deviation-high" id="change-ci-run_duration">
+  <div class="change-card-header">
+    <span class="family-icon">⚙️</span>
+    <div>
+      <div class="metric-name">Build Duration</div>
+      <div class="family-label">CI / Build</div>
+    </div>
+  </div>
+  <div class="user-friendly-summary"><strong>What this means:</strong> Build completed faster than usual.</div>
+  <div class="bar-chart">
+    <div class="bar-chart-row">
+      <div class="bar-label">Typical:</div>
+      <div class="bar-container"><div class="bar-fill normal" style="width: 100%"></div></div>
+      <div class="bar-value">34,619,109.5</div>
+    </div>
+    <div class="bar-chart-row">
+      <div class="bar-label">This Time:</div>
+      <div class="bar-container"><div class="bar-fill" style="width: 0%"></div></div>
+      <div class="bar-value">183.0</div>
+    </div>
+  </div>
+  <div class="deviation-badge">1586.8x below typical range</div>
+  <div class="commit-attribution">Trigger: <a href="https://github.com/brexhq/substation/commit/4156385edf3605005245da83c35ff385ccdde847" target="_blank" class="commit-link"><code>4156385e</code></a> </div>
+  <div class="trend-subtitle trend-returning">↘ Returned to baseline</div>
+  <div class="inline-patterns">
+    <div class="inline-patterns-header">Supporting Evidence</div>
+    <div class="inline-pattern severity-border-critical">
+  <span class="severity-badge severity-critical">⚠️ Action Required</span>
+  <p class="inline-pattern-desc">when CI builds and code changes happen together, change focus and build time tend to move together.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> Changes span files that don&#x27;t normally change together, suggesting cross-cutting concerns that may be harder to test. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Review whether these cross-cutting changes have adequate test coverage.</div>
+</div>
+<div class="inline-pattern severity-border-critical">
+  <span class="severity-badge severity-critical">⚠️ Action Required</span>
+  <p class="inline-pattern-desc">when CI builds and code changes happen together, file count and build time tend to move together.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> Builds are running faster than usual. Verify this isn&#x27;t due to skipped tests or simplified steps. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Confirm test coverage hasn&#x27;t decreased alongside faster builds.</div>
+</div>
+<div class="inline-pattern severity-border-critical">
+  <span class="severity-badge severity-critical">⚠️ Action Required</span>
+  <p class="inline-pattern-desc">when CI builds and code changes happen together, novelty of file pairings and build time tend to move together.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> File co-change novelty is unusually low. While familiar patterns reduce risk, this could indicate repetitive or mechanical changes rather than normal development. Escalated from Needs Attention — multiple correlated patterns converge on the same signal families.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Review whether recent commits are routine maintenance or a sign of narrow, repetitive modifications that lack expected variety.</div>
+</div>
+    <details class="inline-patterns-overflow">
+      <summary>Show 1 more supporting evidence</summary>
+      <div class="inline-pattern severity-border-info">
+  <span class="severity-badge severity-info">ℹ️ Informational</span>
+  <p class="inline-pattern-desc">when CI builds and dependency changes happen together, dependency count and build time tend to move in opposite directions.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> Builds are running faster than usual. Verify this isn&#x27;t due to skipped tests or simplified steps.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Confirm test coverage hasn&#x27;t decreased alongside faster builds.</div>
+</div>
+    </details>
+  </div>
+  <div class="change-actions no-print" id="actions-0">
+    <div class="accept-group">
+      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(0)">Accept — Expected</button>
+      <div class="accept-menu" id="accept-menu-0">
+        <button onclick="acceptFinding(0, 'permanent', 'evo accept . 1 --reason &quot;Expected behavior&quot;')">Accept permanently<span class="accept-hint">Never flag this signal again</span></button>
+        <button onclick="acceptFinding(0, 'this-run', 'evo accept . 1 --scope this-run --reason &quot;Expected behavior&quot;')">Accept for this run only<span class="accept-hint">Dismiss now, flag again next analysis</span></button>
+      </div>
+    </div>
+    <button class="btn btn-action btn-fix" onclick="toggleFixPrompt(0)">Fix with AI</button>
+  </div>
+  <div class="fix-prompt-panel no-print" id="fix-prompt-0">
+    <div class="fix-prompt-header">
+      <strong>Drift Investigation Prompt</strong>
+      <button class="btn btn-copy-sm" onclick="copyFixPrompt(0)">Copy</button>
+    </div>
+    <pre class="fix-prompt-text" id="fix-prompt-text-0">Development pattern shift detected in CI / Build.\n\nSIGNAL: Build Duration is 1586.8x below the typical baseline (observed: 183.0, typical: 34,619,109.5).\nTRIGGER COMMIT: 4156385e — \n\nRECENT COMMITS (20 total, showing top 5):\n  f0aabce1 — feat!: Migrate to Meta Processors (#7)
+
+* feat: add JSON sup (53 files)\n  6cab3f75 — feat: Data Aggregation (#10)
+
+* feat: add aggregate, split p (20 files)\n  9507c832 — fix: Process Jsonnet Errors (#11)
+
+* fix: foreach &amp; process  (3 files)\n  fa7a8f7e — feat: PrettyPrint Processor (#12)
+
+* feat: add prettyprint p (5 files)\n  5cc9648d — refactor: Update Configs (#13)
+
+* refactor: config changes
+ (155 files)\n  ... and 15 more commits\n\nCORRELATED PATTERNS:\n  [CRITICAL] when CI builds and code changes happen together, change focus and build time tend to move together.\n    → Profile the build pipeline to identify bottlenecks. Check for newly added expensive tests or build steps.\n    → Review whether these cross-cutting changes have adequate test coverage.\n  [CRITICAL] when CI builds and code changes happen together, file count and build time tend to move together.\n    → Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.\n  [CRITICAL] when CI builds and code changes happen together, novelty of file pairings and build time tend to move together.\n    → Investigate which files are being combined unexpectedly. Prioritize testing these changes.\n  [INFO] when CI builds and dependency changes happen together, dependency count and build time tend to move in opposite directions.\n    → Confirm test coverage hasn&#x27;t decreased alongside faster builds.\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit 4156385e — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
+    <div class="fix-prompt-guide">
+      <strong>Use with:</strong>
+      <span>Cursor — paste in chat</span>
+      <span>Claude Code — paste in terminal</span>
+      <span>Copilot — paste in chat panel</span>
+    </div>
+    <div class="fix-next-steps">
+      <strong>After investigation:</strong>
+      <ol>
+        <li>AI suggests fixes → apply the changes to your code</li>
+        <li>Run <code>evo analyze . --verify</code> to re-analyze and compare against this run</li>
+        <li>If the change was intentional, click <strong>Accept</strong> above to dismiss it</li>
+      </ol>
+    </div>
+  </div>
+  <details class="technical-detail">
+    <summary>Show technical details</summary>
+    <p>The run duration for this change was 183.0. Historically, similar changes had a value of 34,619,109.5 &plusmn; 14,715.0.</p>
+  </details>
+</div>
+<div class="change-card deviation-high" id="change-git-files_touched">
+  <div class="change-card-header">
+    <span class="family-icon">📝</span>
+    <div>
+      <div class="metric-name">Files Changed</div>
+      <div class="family-label">Version Control</div>
+    </div>
+  </div>
+  <div class="user-friendly-summary"><strong>What this means:</strong> More files changed than usual in this commit.</div>
+  <div class="bar-chart">
+    <div class="bar-chart-row">
+      <div class="bar-label">Typical:</div>
+      <div class="bar-container"><div class="bar-fill normal" style="width: 0%"></div></div>
+      <div class="bar-value">2.00</div>
+    </div>
+    <div class="bar-chart-row">
+      <div class="bar-label">This Time:</div>
+      <div class="bar-container"><div class="bar-fill" style="width: 100%"></div></div>
+      <div class="bar-value">657</div>
+    </div>
+  </div>
+  <div class="deviation-badge">441.8x above typical range</div>
+  <div class="commit-attribution">Trigger: <a href="https://github.com/brexhq/substation/commit/d8bb4c5c94ee5f519a3833adecbf05b5f154d1e3" target="_blank" class="commit-link"><code>d8bb4c5c</code></a> feat!: Release v1.0.0 (#133)</div>
+  <div class="trend-subtitle trend-returning">↘ Returned to baseline</div>
+  <div class="inline-patterns">
+    <div class="inline-patterns-header">Supporting Evidence</div>
+    <div class="inline-pattern severity-border-critical">
+  <span class="severity-badge severity-critical">⚠️ Action Required</span>
+  <p class="inline-pattern-desc">when CI builds and code changes happen together, file count and build time tend to move together.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> Commits are touching more files than usual, increasing review burden and risk of regressions. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.</div>
+</div>
+<div class="inline-pattern severity-border-critical">
+  <span class="severity-badge severity-critical">⚠️ Action Required</span>
+  <p class="inline-pattern-desc">when deployments and code changes happen together, file count and release frequency tend to move together.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> Commits are touching more files than usual, increasing review burden and risk of regressions. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.</div>
+</div>
+<div class="inline-pattern severity-border-watch">
+  <span class="severity-badge severity-watch">👁️ Worth Monitoring</span>
+  <p class="inline-pattern-desc">when code changes occur, file count tends to increase.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> Commits are touching more files than usual, increasing review burden and risk of regressions.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.</div>
+</div>
+  </div>
+  <div class="change-actions no-print" id="actions-1">
+    <div class="accept-group">
+      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(1)">Accept — Expected</button>
+      <div class="accept-menu" id="accept-menu-1">
+        <button onclick="acceptFinding(1, 'permanent', 'evo accept . 2 --reason &quot;Expected behavior&quot;')">Accept permanently<span class="accept-hint">Never flag this signal again</span></button>
+        <button onclick="acceptFinding(1, 'this-run', 'evo accept . 2 --scope this-run --reason &quot;Expected behavior&quot;')">Accept for this run only<span class="accept-hint">Dismiss now, flag again next analysis</span></button>
+      </div>
+    </div>
+    <button class="btn btn-action btn-fix" onclick="toggleFixPrompt(1)">Fix with AI</button>
+  </div>
+  <div class="fix-prompt-panel no-print" id="fix-prompt-1">
+    <div class="fix-prompt-header">
+      <strong>Drift Investigation Prompt</strong>
+      <button class="btn btn-copy-sm" onclick="copyFixPrompt(1)">Copy</button>
+    </div>
+    <pre class="fix-prompt-text" id="fix-prompt-text-1">Development pattern shift detected in Version Control.\n\nSIGNAL: Files Changed is 441.8x above the typical baseline (observed: 657, typical: 2.00).\nTRIGGER COMMIT: d8bb4c5c — feat!: Release v1.0.0 (#133)\n\nFILES CHANGED IN TRIGGER (657):\n  - .devcontainer/Dockerfile\n  - .devcontainer/devcontainer.json\n  - .devcontainer/install-dev-tools.sh\n  - .github/media/substation_architecture.png\n  - .github/media/substation_logo.png\n  - .github/workflows/code.yml\n  - .github/workflows/release_please.yml\n  - .gitignore\n  - CONTRIBUTING.md\n  - README.md\n  - VERSIONING.md\n  - build/README.md\n  - build/config/substation.libsonnet\n  - build/config/substation_test.jsonnet\n  - build/container/README.md\n  ... and 642 more\n\nRECENT COMMITS (20 total, showing top 5):\n  f0aabce1 — feat!: Migrate to Meta Processors (#7)
+
+* feat: add JSON sup (53 files)\n  6cab3f75 — feat: Data Aggregation (#10)
+
+* feat: add aggregate, split p (20 files)\n  9507c832 — fix: Process Jsonnet Errors (#11)
+
+* fix: foreach &amp; process  (3 files)\n  fa7a8f7e — feat: PrettyPrint Processor (#12)
+
+* feat: add prettyprint p (5 files)\n  5cc9648d — refactor: Update Configs (#13)
+
+* refactor: config changes
+ (155 files)\n  ... and 15 more commits\n\nCORRELATED PATTERNS:\n  [CRITICAL] when CI builds and code changes happen together, file count and build time tend to move together.\n    → Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.\n  [CRITICAL] when deployments and code changes happen together, file count and release frequency tend to move together.\n    → Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.\n  [WATCH] when code changes occur, file count tends to increase.\n    → Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit d8bb4c5c — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
+    <div class="fix-prompt-guide">
+      <strong>Use with:</strong>
+      <span>Cursor — paste in chat</span>
+      <span>Claude Code — paste in terminal</span>
+      <span>Copilot — paste in chat panel</span>
+    </div>
+    <div class="fix-next-steps">
+      <strong>After investigation:</strong>
+      <ol>
+        <li>AI suggests fixes → apply the changes to your code</li>
+        <li>Run <code>evo analyze . --verify</code> to re-analyze and compare against this run</li>
+        <li>If the change was intentional, click <strong>Accept</strong> above to dismiss it</li>
+      </ol>
+    </div>
+  </div>
+  <details class="technical-detail">
+    <summary>Show technical details</summary>
+    <p>The files touched for this change was 657. Historically, similar changes had a value of 2.00 &plusmn; 1.00.</p>
+  </details>
+</div>
+<div class="change-card deviation-high" id="change-git-cochange_novelty_ratio">
+  <div class="change-card-header">
+    <span class="family-icon">📝</span>
+    <div>
+      <div class="metric-name">Co-change Novelty</div>
+      <div class="family-label">Version Control</div>
+    </div>
+  </div>
+  <div class="user-friendly-summary"><strong>What this means:</strong> Unusually low novelty — changes are more repetitive than normal, touching only well-known file combinations.</div>
+  <div class="bar-chart">
+    <div class="bar-chart-row">
+      <div class="bar-label">Typical:</div>
+      <div class="bar-container"><div class="bar-fill normal" style="width: 100%"></div></div>
+      <div class="bar-value">0.9935</div>
+    </div>
+    <div class="bar-chart-row">
+      <div class="bar-label">This Time:</div>
+      <div class="bar-container"><div class="bar-fill" style="width: 0%"></div></div>
+      <div class="bar-value">0.0000</div>
+    </div>
+  </div>
+  <div class="deviation-badge">102.5x below typical range</div>
+  <div class="commit-attribution">Trigger: <a href="https://github.com/brexhq/substation/commit/b47ec36059c36ad891d972ae4e32d9e71ac87249" target="_blank" class="commit-link"><code>b47ec360</code></a> refactor: add micro delay (#26)</div>
+  <div class="trend-subtitle trend-returning">↘ Returned to baseline</div>
+  <div class="inline-patterns">
+    <div class="inline-patterns-header">Supporting Evidence</div>
+    <div class="inline-pattern severity-border-critical">
+  <span class="severity-badge severity-critical">⚠️ Action Required</span>
+  <p class="inline-pattern-desc">when CI builds and code changes happen together, novelty of file pairings and build time tend to move together.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> File co-change novelty is unusually low. While familiar patterns reduce risk, this could indicate repetitive or mechanical changes rather than normal development. Escalated from Needs Attention — multiple correlated patterns converge on the same signal families.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Review whether recent commits are routine maintenance or a sign of narrow, repetitive modifications that lack expected variety.</div>
+</div>
+<div class="inline-pattern severity-border-info">
+  <span class="severity-badge severity-info">ℹ️ Informational</span>
+  <p class="inline-pattern-desc">when deployments and code changes happen together, novelty of file pairings tends to move in opposite directions.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> File co-change novelty is unusually low. While familiar patterns reduce risk, this could indicate repetitive or mechanical changes rather than normal development.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Review whether recent commits are routine maintenance or a sign of narrow, repetitive modifications that lack expected variety.</div>
+</div>
+<div class="inline-pattern severity-border-info">
+  <span class="severity-badge severity-info">ℹ️ Informational</span>
+  <p class="inline-pattern-desc">when dependency changes and code changes happen together, novelty of file pairings tends to move in opposite directions.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> File co-change novelty is unusually low. While familiar patterns reduce risk, this could indicate repetitive or mechanical changes rather than normal development.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Review whether recent commits are routine maintenance or a sign of narrow, repetitive modifications that lack expected variety.</div>
+</div>
+  </div>
+  <div class="change-actions no-print" id="actions-2">
+    <div class="accept-group">
+      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(2)">Accept — Expected</button>
+      <div class="accept-menu" id="accept-menu-2">
+        <button onclick="acceptFinding(2, 'permanent', 'evo accept . 3 --reason &quot;Expected behavior&quot;')">Accept permanently<span class="accept-hint">Never flag this signal again</span></button>
+        <button onclick="acceptFinding(2, 'this-run', 'evo accept . 3 --scope this-run --reason &quot;Expected behavior&quot;')">Accept for this run only<span class="accept-hint">Dismiss now, flag again next analysis</span></button>
+      </div>
+    </div>
+    <button class="btn btn-action btn-fix" onclick="toggleFixPrompt(2)">Fix with AI</button>
+  </div>
+  <div class="fix-prompt-panel no-print" id="fix-prompt-2">
+    <div class="fix-prompt-header">
+      <strong>Drift Investigation Prompt</strong>
+      <button class="btn btn-copy-sm" onclick="copyFixPrompt(2)">Copy</button>
+    </div>
+    <pre class="fix-prompt-text" id="fix-prompt-text-2">Development pattern shift detected in Version Control.\n\nSIGNAL: Co-change Novelty is 102.5x below the typical baseline (observed: 0.0000, typical: 0.9935).\nTRIGGER COMMIT: b47ec360 — refactor: add micro delay (#26)\n\nFILES CHANGED IN TRIGGER (2):\n  - internal/transform/batch.go\n  - internal/transform/transfer.go\n\nRECENT COMMITS (19 total, showing top 5):\n  f0aabce1 — feat!: Migrate to Meta Processors (#7)
+
+* feat: add JSON sup (53 files)\n  6cab3f75 — feat: Data Aggregation (#10)
+
+* feat: add aggregate, split p (20 files)\n  9507c832 — fix: Process Jsonnet Errors (#11)
+
+* fix: foreach &amp; process  (3 files)\n  fa7a8f7e — feat: PrettyPrint Processor (#12)
+
+* feat: add prettyprint p (5 files)\n  5cc9648d — refactor: Update Configs (#13)
+
+* refactor: config changes
+ (155 files)\n  ... and 14 more commits\n\nCORRELATED PATTERNS:\n  [CRITICAL] when CI builds and code changes happen together, novelty of file pairings and build time tend to move together.\n    → Investigate which files are being combined unexpectedly. Prioritize testing these changes.\n  [INFO] when deployments and code changes happen together, novelty of file pairings tends to move in opposite directions.\n    → Review whether recent commits are routine maintenance or a sign of narrow, repetitive modifications that lack expected variety.\n  [INFO] when dependency changes and code changes happen together, novelty of file pairings tends to move in opposite directions.\n    → Review whether recent commits are routine maintenance or a sign of narrow, repetitive modifications that lack expected variety.\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit b47ec360 — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
+    <div class="fix-prompt-guide">
+      <strong>Use with:</strong>
+      <span>Cursor — paste in chat</span>
+      <span>Claude Code — paste in terminal</span>
+      <span>Copilot — paste in chat panel</span>
+    </div>
+    <div class="fix-next-steps">
+      <strong>After investigation:</strong>
+      <ol>
+        <li>AI suggests fixes → apply the changes to your code</li>
+        <li>Run <code>evo analyze . --verify</code> to re-analyze and compare against this run</li>
+        <li>If the change was intentional, click <strong>Accept</strong> above to dismiss it</li>
+      </ol>
+    </div>
+  </div>
+  <details class="technical-detail">
+    <summary>Show technical details</summary>
+    <p>The cochange novelty ratio for this change was 0.0000. Historically, similar changes had a value of 0.9935 &plusmn; 0.0065.</p>
+  </details>
+</div>
+<div class="change-card deviation-high" id="change-git-change_locality">
+  <div class="change-card-header">
+    <span class="family-icon">📝</span>
+    <div>
+      <div class="metric-name">Change Locality</div>
+      <div class="family-label">Version Control</div>
+    </div>
+  </div>
+  <div class="user-friendly-summary"><strong>What this means:</strong> The changed files don't usually change together, suggesting a cross-cutting modification.</div>
+  <div class="bar-chart">
+    <div class="bar-chart-row">
+      <div class="bar-label">Typical:</div>
+      <div class="bar-container"><div class="bar-fill normal" style="width: 100%"></div></div>
+      <div class="bar-value">1.00</div>
+    </div>
+    <div class="bar-chart-row">
+      <div class="bar-label">This Time:</div>
+      <div class="bar-container"><div class="bar-fill" style="width: 33%"></div></div>
+      <div class="bar-value">0.3333</div>
+    </div>
+  </div>
+  <div class="deviation-badge">84.6x below typical range</div>
+  <div class="commit-attribution">Trigger: <a href="https://github.com/brexhq/substation/commit/ee1e551cefdb162ee496204acd19253720654854" target="_blank" class="commit-link"><code>ee1e551c</code></a> feat(cmd): Add S3-SQS Handler (#301)</div>
+  <div class="trend-subtitle trend-returning">↘ Returned to baseline</div>
+  <div class="inline-patterns">
+    <div class="inline-patterns-header">Supporting Evidence</div>
+    <div class="inline-pattern severity-border-critical">
+  <span class="severity-badge severity-critical">⚠️ Action Required</span>
+  <p class="inline-pattern-desc">when CI builds and code changes happen together, change focus and build time tend to move together.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> Changes span files that don&#x27;t normally change together, suggesting cross-cutting concerns that may be harder to test. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Review whether these cross-cutting changes have adequate test coverage.</div>
+</div>
+<div class="inline-pattern severity-border-concern">
+  <span class="severity-badge severity-concern">🔍 Needs Attention</span>
+  <p class="inline-pattern-desc">when dependency changes and code changes happen together, change focus and dependency count tend to move in opposite directions.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> Changes span files that don&#x27;t normally change together, suggesting cross-cutting concerns that may be harder to test. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families. Changes are spreading across unrelated parts of the codebase. This makes reviews harder and increases the chance of unexpected side effects. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Review whether these cross-cutting changes have adequate test coverage. Review recent PRs for scope creep. Consider breaking large changes into focused commits.</div>
+</div>
+  </div>
+  <div class="change-actions no-print" id="actions-3">
+    <div class="accept-group">
+      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(3)">Accept — Expected</button>
+      <div class="accept-menu" id="accept-menu-3">
+        <button onclick="acceptFinding(3, 'permanent', 'evo accept . 4 --reason &quot;Expected behavior&quot;')">Accept permanently<span class="accept-hint">Never flag this signal again</span></button>
+        <button onclick="acceptFinding(3, 'this-run', 'evo accept . 4 --scope this-run --reason &quot;Expected behavior&quot;')">Accept for this run only<span class="accept-hint">Dismiss now, flag again next analysis</span></button>
+      </div>
+    </div>
+    <button class="btn btn-action btn-fix" onclick="toggleFixPrompt(3)">Fix with AI</button>
+  </div>
+  <div class="fix-prompt-panel no-print" id="fix-prompt-3">
+    <div class="fix-prompt-header">
+      <strong>Drift Investigation Prompt</strong>
+      <button class="btn btn-copy-sm" onclick="copyFixPrompt(3)">Copy</button>
+    </div>
+    <pre class="fix-prompt-text" id="fix-prompt-text-3">Development pattern shift detected in Version Control.\n\nSIGNAL: Change Locality is 84.6x below the typical baseline (observed: 0.3333, typical: 1.00).\nTRIGGER COMMIT: ee1e551c — feat(cmd): Add S3-SQS Handler (#301)\n\nFILES CHANGED IN TRIGGER (3):\n  - cmd/aws/lambda/README.md\n  - cmd/aws/lambda/substation/main.go\n  - cmd/aws/lambda/substation/s3.go\n\nRECENT COMMITS (20 total, showing top 5):\n  f0aabce1 — feat!: Migrate to Meta Processors (#7)
+
+* feat: add JSON sup (53 files)\n  6cab3f75 — feat: Data Aggregation (#10)
+
+* feat: add aggregate, split p (20 files)\n  9507c832 — fix: Process Jsonnet Errors (#11)
+
+* fix: foreach &amp; process  (3 files)\n  fa7a8f7e — feat: PrettyPrint Processor (#12)
+
+* feat: add prettyprint p (5 files)\n  5cc9648d — refactor: Update Configs (#13)
+
+* refactor: config changes
+ (155 files)\n  ... and 15 more commits\n\nCORRELATED PATTERNS:\n  [CRITICAL] when CI builds and code changes happen together, change focus and build time tend to move together.\n    → Profile the build pipeline to identify bottlenecks. Check for newly added expensive tests or build steps.\n    → Review whether these cross-cutting changes have adequate test coverage.\n  [CONCERN] when dependency changes and code changes happen together, change focus and dependency count tend to move in opposite directions.\n    → Review whether these cross-cutting changes have adequate test coverage.\n    → Review recent PRs for scope creep. Consider breaking large changes into focused commits.\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit ee1e551c — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
+    <div class="fix-prompt-guide">
+      <strong>Use with:</strong>
+      <span>Cursor — paste in chat</span>
+      <span>Claude Code — paste in terminal</span>
+      <span>Copilot — paste in chat panel</span>
+    </div>
+    <div class="fix-next-steps">
+      <strong>After investigation:</strong>
+      <ol>
+        <li>AI suggests fixes → apply the changes to your code</li>
+        <li>Run <code>evo analyze . --verify</code> to re-analyze and compare against this run</li>
+        <li>If the change was intentional, click <strong>Accept</strong> above to dismiss it</li>
+      </ol>
+    </div>
+  </div>
+</div>
+<div class="change-card deviation-high" id="change-dependency-dependency_count">
+  <div class="change-card-header">
+    <span class="family-icon">📦</span>
+    <div>
+      <div class="metric-name">Total Dependencies</div>
+      <div class="family-label">Dependencies</div>
+    </div>
+  </div>
+  <div class="user-friendly-summary"><strong>What this means:</strong> Dependency count increased.</div>
+  <div class="bar-chart">
+    <div class="bar-chart-row">
+      <div class="bar-label">Typical:</div>
+      <div class="bar-container"><div class="bar-fill normal" style="width: 58%"></div></div>
+      <div class="bar-value">85.00</div>
+    </div>
+    <div class="bar-chart-row">
+      <div class="bar-label">This Time:</div>
+      <div class="bar-container"><div class="bar-fill" style="width: 100%"></div></div>
+      <div class="bar-value">147</div>
+    </div>
+  </div>
+  <div class="deviation-badge">41.8x above typical range</div>
+  <div class="commit-attribution">Trigger: <a href="https://github.com/brexhq/substation/commit/64928e102a3d34fa534ecd1e29b6709553e19406" target="_blank" class="commit-link"><code>64928e10</code></a> </div>
+  <div class="trend-subtitle trend-elevated">→ Still elevated (latest deviation: 41.1σ)</div>
+  <div class="inline-patterns">
+    <div class="inline-patterns-header">Supporting Evidence</div>
+    <div class="inline-pattern severity-border-concern">
+  <span class="severity-badge severity-concern">🔍 Needs Attention</span>
+  <p class="inline-pattern-desc">when dependency changes and code changes happen together, change focus and dependency count tend to move in opposite directions.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> The dependency count is growing, expanding the supply-chain attack surface and potential for version conflicts. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families. Changes are spreading across unrelated parts of the codebase. This makes reviews harder and increases the chance of unexpected side effects. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Audit new dependencies for necessity, maintenance status, and known vulnerabilities. Review recent PRs for scope creep. Consider breaking large changes into focused commits.</div>
+</div>
+<div class="inline-pattern severity-border-watch">
+  <span class="severity-badge severity-watch">👁️ Worth Monitoring</span>
+  <p class="inline-pattern-desc">when dependency changes and deployments happen together, dependency count and release frequency tend to move together.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> The dependency count is growing, expanding the supply-chain attack surface and potential for version conflicts.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Audit new dependencies for necessity, maintenance status, and known vulnerabilities.</div>
+</div>
+<div class="inline-pattern severity-border-watch">
+  <span class="severity-badge severity-watch">👁️ Worth Monitoring</span>
+  <p class="inline-pattern-desc">when CI builds and dependency changes happen together, dependency count and build time tend to move in opposite directions.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> The dependency count is growing, expanding the supply-chain attack surface and potential for version conflicts.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Audit new dependencies for necessity, maintenance status, and known vulnerabilities.</div>
+</div>
+  </div>
+  <div class="change-actions no-print" id="actions-4">
+    <div class="accept-group">
+      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(4)">Accept — Expected</button>
+      <div class="accept-menu" id="accept-menu-4">
+        <button onclick="acceptFinding(4, 'permanent', 'evo accept . 5 --reason &quot;Expected behavior&quot;')">Accept permanently<span class="accept-hint">Never flag this signal again</span></button>
+        <button onclick="acceptFinding(4, 'this-run', 'evo accept . 5 --scope this-run --reason &quot;Expected behavior&quot;')">Accept for this run only<span class="accept-hint">Dismiss now, flag again next analysis</span></button>
+      </div>
+    </div>
+    <button class="btn btn-action btn-fix" onclick="toggleFixPrompt(4)">Fix with AI</button>
+  </div>
+  <div class="fix-prompt-panel no-print" id="fix-prompt-4">
+    <div class="fix-prompt-header">
+      <strong>Drift Investigation Prompt</strong>
+      <button class="btn btn-copy-sm" onclick="copyFixPrompt(4)">Copy</button>
+    </div>
+    <pre class="fix-prompt-text" id="fix-prompt-text-4">Development pattern shift detected in Dependencies.\n\nSIGNAL: Total Dependencies is 41.8x above the typical baseline (observed: 147, typical: 85.00).\nTRIGGER COMMIT: 64928e10 — \n\nRECENT COMMITS (20 total, showing top 5):\n  f0aabce1 — feat!: Migrate to Meta Processors (#7)
+
+* feat: add JSON sup (53 files)\n  6cab3f75 — feat: Data Aggregation (#10)
+
+* feat: add aggregate, split p (20 files)\n  9507c832 — fix: Process Jsonnet Errors (#11)
+
+* fix: foreach &amp; process  (3 files)\n  fa7a8f7e — feat: PrettyPrint Processor (#12)
+
+* feat: add prettyprint p (5 files)\n  5cc9648d — refactor: Update Configs (#13)
+
+* refactor: config changes
+ (155 files)\n  ... and 15 more commits\n\nCORRELATED PATTERNS:\n  [CONCERN] when dependency changes and code changes happen together, change focus and dependency count tend to move in opposite directions.\n    → Review whether these cross-cutting changes have adequate test coverage.\n    → Review recent PRs for scope creep. Consider breaking large changes into focused commits.\n  [WATCH] when dependency changes and deployments happen together, dependency count and release frequency tend to move together.\n    → Audit new dependencies for necessity, maintenance status, and known vulnerabilities.\n  [INFO] when CI builds and dependency changes happen together, dependency count and build time tend to move in opposite directions.\n    → Confirm test coverage hasn&#x27;t decreased alongside faster builds.\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit 64928e10 — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
+    <div class="fix-prompt-guide">
+      <strong>Use with:</strong>
+      <span>Cursor — paste in chat</span>
+      <span>Claude Code — paste in terminal</span>
+      <span>Copilot — paste in chat panel</span>
+    </div>
+    <div class="fix-next-steps">
+      <strong>After investigation:</strong>
+      <ol>
+        <li>AI suggests fixes → apply the changes to your code</li>
+        <li>Run <code>evo analyze . --verify</code> to re-analyze and compare against this run</li>
+        <li>If the change was intentional, click <strong>Accept</strong> above to dismiss it</li>
+      </ol>
+    </div>
+  </div>
+  <details class="technical-detail">
+    <summary>Show technical details</summary>
+    <p>The dependency count for this change was 147. Historically, similar changes had a value of 85.00 &plusmn; 1.00.</p>
+  </details>
+</div>
+<div class="change-card deviation-high" id="change-git-dispersion">
+  <div class="change-card-header">
+    <span class="family-icon">📝</span>
+    <div>
+      <div class="metric-name">Change Dispersion</div>
+      <div class="family-label">Version Control</div>
+    </div>
+  </div>
+  <div class="user-friendly-summary"><strong>What this means:</strong> Changes spread across unrelated areas of the codebase.</div>
+  <div class="bar-chart">
+    <div class="bar-chart-row">
+      <div class="bar-label">Typical:</div>
+      <div class="bar-container"><div class="bar-fill normal" style="width: 4%"></div></div>
+      <div class="bar-value">0.0896</div>
+    </div>
+    <div class="bar-chart-row">
+      <div class="bar-label">This Time:</div>
+      <div class="bar-container"><div class="bar-fill" style="width: 100%"></div></div>
+      <div class="bar-value">2.14</div>
+    </div>
+  </div>
+  <div class="deviation-badge">15.5x above typical range</div>
+  <div class="commit-attribution">Trigger: <a href="https://github.com/brexhq/substation/commit/c4d88491e1d9eee302a49c427e7d9e52b6a31fde" target="_blank" class="commit-link"><code>c4d88491</code></a> feat!: Release v2.0.0 (#228)</div>
+  <div class="trend-subtitle trend-returning">↘ Returned to baseline</div>
+  <div class="inline-patterns">
+    <div class="inline-patterns-header">Supporting Evidence</div>
+    <div class="inline-pattern severity-border-critical">
+  <span class="severity-badge severity-critical">⚠️ Action Required</span>
+  <p class="inline-pattern-desc">when deployments and code changes happen together, code spread and release frequency tend to move together.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> Changes are spreading across unrelated parts of the codebase. This makes reviews harder and increases the chance of unexpected side effects. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Review recent PRs for scope creep. Consider breaking large changes into focused commits.</div>
+</div>
+  </div>
+  <div class="change-actions no-print" id="actions-5">
+    <div class="accept-group">
+      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(5)">Accept — Expected</button>
+      <div class="accept-menu" id="accept-menu-5">
+        <button onclick="acceptFinding(5, 'permanent', 'evo accept . 6 --reason &quot;Expected behavior&quot;')">Accept permanently<span class="accept-hint">Never flag this signal again</span></button>
+        <button onclick="acceptFinding(5, 'this-run', 'evo accept . 6 --scope this-run --reason &quot;Expected behavior&quot;')">Accept for this run only<span class="accept-hint">Dismiss now, flag again next analysis</span></button>
+      </div>
+    </div>
+    <button class="btn btn-action btn-fix" onclick="toggleFixPrompt(5)">Fix with AI</button>
+  </div>
+  <div class="fix-prompt-panel no-print" id="fix-prompt-5">
+    <div class="fix-prompt-header">
+      <strong>Drift Investigation Prompt</strong>
+      <button class="btn btn-copy-sm" onclick="copyFixPrompt(5)">Copy</button>
+    </div>
+    <pre class="fix-prompt-text" id="fix-prompt-text-5">Development pattern shift detected in Version Control.\n\nSIGNAL: Change Dispersion is 15.5x above the typical baseline (observed: 2.14, typical: 0.0896).\nTRIGGER COMMIT: c4d88491 — feat!: Release v2.0.0 (#228)\n\nFILES CHANGED IN TRIGGER (619):\n  - .devcontainer/Dockerfile\n  - .dockerignore\n  - .github/ISSUE_TEMPLATE/adopters.yaml\n  - .github/workflows/code.yml\n  - ADOPTERS.md\n  - MIGRATION.md\n  - README.md\n  - VERSIONING.md\n  - build/config/README.md\n  - build/config/substation.libsonnet\n  - build/config/substation_test.jsonnet\n  - build/container/README.md\n  - build/container/aws/lambda/autoscale/Dockerfile\n  - build/container/aws/lambda/substation/Dockerfile\n  - build/container/aws/lambda/validate/Dockerfile\n  ... and 604 more\n\nRECENT COMMITS (20 total, showing top 5):\n  f0aabce1 — feat!: Migrate to Meta Processors (#7)
+
+* feat: add JSON sup (53 files)\n  6cab3f75 — feat: Data Aggregation (#10)
+
+* feat: add aggregate, split p (20 files)\n  9507c832 — fix: Process Jsonnet Errors (#11)
+
+* fix: foreach &amp; process  (3 files)\n  fa7a8f7e — feat: PrettyPrint Processor (#12)
+
+* feat: add prettyprint p (5 files)\n  5cc9648d — refactor: Update Configs (#13)
+
+* refactor: config changes
+ (155 files)\n  ... and 15 more commits\n\nCORRELATED PATTERNS:\n  [CRITICAL] when deployments and code changes happen together, code spread and release frequency tend to move together.\n    → Review recent PRs for scope creep. Consider breaking large changes into focused commits.\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit c4d88491 — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
+    <div class="fix-prompt-guide">
+      <strong>Use with:</strong>
+      <span>Cursor — paste in chat</span>
+      <span>Claude Code — paste in terminal</span>
+      <span>Copilot — paste in chat panel</span>
+    </div>
+    <div class="fix-next-steps">
+      <strong>After investigation:</strong>
+      <ol>
+        <li>AI suggests fixes → apply the changes to your code</li>
+        <li>Run <code>evo analyze . --verify</code> to re-analyze and compare against this run</li>
+        <li>If the change was intentional, click <strong>Accept</strong> above to dismiss it</li>
+      </ol>
+    </div>
+  </div>
+  <details class="technical-detail">
+    <summary>Show technical details</summary>
+    <p>The dispersion for this change was 2.14. Historically, similar changes had a value of 0.0896 &plusmn; 0.0896.</p>
+  </details>
+</div>
+<div class="change-card deviation-high" id="change-deployment-release_cadence_hours">
+  <div class="change-card-header">
+    <span class="family-icon">🚀</span>
+    <div>
+      <div class="metric-name">Release Cadence</div>
+      <div class="family-label">Deployment</div>
+    </div>
+  </div>
+  <div class="user-friendly-summary"><strong>What this means:</strong> Longer time between releases than usual.</div>
+  <div class="bar-chart">
+    <div class="bar-chart-row">
+      <div class="bar-label">Typical:</div>
+      <div class="bar-container"><div class="bar-fill normal" style="width: 9%"></div></div>
+      <div class="bar-value">352.3</div>
+    </div>
+    <div class="bar-chart-row">
+      <div class="bar-label">This Time:</div>
+      <div class="bar-container"><div class="bar-fill" style="width: 100%"></div></div>
+      <div class="bar-value">4,035.9</div>
+    </div>
+  </div>
+  <div class="deviation-badge">11.0x above typical range</div>
+  <div class="commit-attribution">Trigger: <a href="https://github.com/brexhq/substation/commit/28f1b349b4da090a4cf04af91adf1821ca7fd687" target="_blank" class="commit-link"><code>28f1b349</code></a> </div>
+  <div class="inline-patterns">
+    <div class="inline-patterns-header">Supporting Evidence</div>
+    <div class="inline-pattern severity-border-critical">
+  <span class="severity-badge severity-critical">⚠️ Action Required</span>
+  <p class="inline-pattern-desc">when deployments and code changes happen together, code spread and release frequency tend to move together.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> Changes are spreading across unrelated parts of the codebase. This makes reviews harder and increases the chance of unexpected side effects. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Review recent PRs for scope creep. Consider breaking large changes into focused commits.</div>
+</div>
+<div class="inline-pattern severity-border-critical">
+  <span class="severity-badge severity-critical">⚠️ Action Required</span>
+  <p class="inline-pattern-desc">when deployments and code changes happen together, file count and release frequency tend to move together.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> Commits are touching more files than usual, increasing review burden and risk of regressions. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.</div>
+</div>
+<div class="inline-pattern severity-border-watch">
+  <span class="severity-badge severity-watch">👁️ Worth Monitoring</span>
+  <p class="inline-pattern-desc">when dependency changes and deployments happen together, dependency count and release frequency tend to move together.</p>
+  <div class="pattern-impact"><strong>What this means:</strong> The dependency count is growing, expanding the supply-chain attack surface and potential for version conflicts.</div>
+  <div class="pattern-recommendation"><strong>Recommendation:</strong> Audit new dependencies for necessity, maintenance status, and known vulnerabilities.</div>
+</div>
+  </div>
+  <div class="change-actions no-print" id="actions-6">
+    <div class="accept-group">
+      <button class="btn btn-action btn-accept" onclick="toggleAcceptMenu(6)">Accept — Expected</button>
+      <div class="accept-menu" id="accept-menu-6">
+        <button onclick="acceptFinding(6, 'permanent', 'evo accept . 7 --reason &quot;Expected behavior&quot;')">Accept permanently<span class="accept-hint">Never flag this signal again</span></button>
+        <button onclick="acceptFinding(6, 'this-run', 'evo accept . 7 --scope this-run --reason &quot;Expected behavior&quot;')">Accept for this run only<span class="accept-hint">Dismiss now, flag again next analysis</span></button>
+      </div>
+    </div>
+    <button class="btn btn-action btn-fix" onclick="toggleFixPrompt(6)">Fix with AI</button>
+  </div>
+  <div class="fix-prompt-panel no-print" id="fix-prompt-6">
+    <div class="fix-prompt-header">
+      <strong>Drift Investigation Prompt</strong>
+      <button class="btn btn-copy-sm" onclick="copyFixPrompt(6)">Copy</button>
+    </div>
+    <pre class="fix-prompt-text" id="fix-prompt-text-6">Development pattern shift detected in Deployment.\n\nSIGNAL: Release Cadence is 11.0x above the typical baseline (observed: 4,035.9, typical: 352.3).\nTRIGGER COMMIT: 28f1b349 — \n\nRECENT COMMITS (20 total, showing top 5):\n  f0aabce1 — feat!: Migrate to Meta Processors (#7)
+
+* feat: add JSON sup (53 files)\n  6cab3f75 — feat: Data Aggregation (#10)
+
+* feat: add aggregate, split p (20 files)\n  9507c832 — fix: Process Jsonnet Errors (#11)
+
+* fix: foreach &amp; process  (3 files)\n  fa7a8f7e — feat: PrettyPrint Processor (#12)
+
+* feat: add prettyprint p (5 files)\n  5cc9648d — refactor: Update Configs (#13)
+
+* refactor: config changes
+ (155 files)\n  ... and 15 more commits\n\nCORRELATED PATTERNS:\n  [CRITICAL] when deployments and code changes happen together, code spread and release frequency tend to move together.\n    → Review recent PRs for scope creep. Consider breaking large changes into focused commits.\n  [CRITICAL] when deployments and code changes happen together, file count and release frequency tend to move together.\n    → Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.\n  [WATCH] when dependency changes and deployments happen together, dependency count and release frequency tend to move together.\n    → Audit new dependencies for necessity, maintenance status, and known vulnerabilities.\n\nINVESTIGATE:\n1. Was this change intentional or did the AI drift from goals?\n2. Review commit 28f1b349 — what specifically caused the deviation?\n3. Suggest a course correction (not a bug fix — a realignment).\n\nAFTER FIX:\nRun `evo analyze . --verify` to re-analyze and compare against this run.\nIf the change was intentional, no fix needed — accept it in the report.</pre>
+    <div class="fix-prompt-guide">
+      <strong>Use with:</strong>
+      <span>Cursor — paste in chat</span>
+      <span>Claude Code — paste in terminal</span>
+      <span>Copilot — paste in chat panel</span>
+    </div>
+    <div class="fix-next-steps">
+      <strong>After investigation:</strong>
+      <ol>
+        <li>AI suggests fixes → apply the changes to your code</li>
+        <li>Run <code>evo analyze . --verify</code> to re-analyze and compare against this run</li>
+        <li>If the change was intentional, click <strong>Accept</strong> above to dismiss it</li>
+      </ol>
+    </div>
+  </div>
+  <details class="technical-detail">
+    <summary>Show technical details</summary>
+    <p>The release cadence hours for this change was 4,035.9. Historically, similar changes had a value of 352.3 &plusmn; 226.3.</p>
+  </details>
+</div>
+</section>
+
+<section class="investigation-section page-break-before">
+  <div class="next-steps-header">
+    <h2 style="margin: 0;">Next Steps</h2>
+  </div>
+  <div class="next-steps-flow">
+    <div class="step-card">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <div class="step-title">Investigate</div>
+        <p>Copy the prompt below and paste it into your AI assistant (Claude Code, Cursor, Copilot, ChatGPT). It will identify root causes and suggest fixes.</p>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <div class="step-title">Fix</div>
+        <p>Apply the suggested changes. If a deviation was intentional, click <strong>Accept</strong> on its card above instead.</p>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <div class="step-title">Verify</div>
+        <p>Run <code>evo analyze . --verify</code> to re-analyze and compare. A verification banner will show which deviations resolved, improved, or persist.</p>
+      </div>
+    </div>
+  </div>
+  <h3 style="margin-top: 1.5em;">Investigation Prompt</h3>
+  <div class="prompt-preview">Development drift analysis for brexhq/substation (Jul 18, 2022 at 04:04 AM to Jan 20, 2026 at 06:53 PM).
+
+DEVIATIONS FROM BASELINE:
+
+- CI / Build: Build Duration — 34,619,109.5 -&gt; 183.0
+- Version Control: Files Changed — 2.00 -&gt; 657
+- Version Control: Co-change Novelty — 0.9935 -&gt; 0.0000
+- Version Control: Change Locality — 1.00 -&gt; 0.3333
+- Dependencies: Total Dependencies — 85.00 -&gt; 147
+- Version Control: Change Dispersion — 0.0896 -&gt; 2.14
+- Deployment: Release Cadence — 352.3 -&gt; 4,035.9
+
+Click &quot;Show Full Prompt&quot; to see the complete investigation prompt with evidence...</div>
+  <div class="action-buttons no-print">
+    <button class="btn btn-primary" onclick="copyPrompt()" id="copyBtn">Copy Prompt to Clipboard</button>
+    <button class="btn btn-secondary" onclick="savePromptToFile()">Save Prompt to File</button>
+    <button class="toggle-btn" onclick="togglePrompt()" id="togglePromptBtn">Show Full Prompt</button>
+  </div>
+  <pre class="prompt-full" id="fullPrompt">Development drift analysis for brexhq/substation (Jul 18, 2022 at 04:04 AM to Jan 20, 2026 at 06:53 PM).
+
+DEVIATIONS FROM BASELINE:
+
+- CI / Build / Build Duration: 183.0 (typical: 34,619,109.5, 1586.8x below)
+- Version Control / Files Changed: 657 (typical: 2.00, 441.8x above)
+- Version Control / Co-change Novelty: 0.0000 (typical: 0.9935, 102.5x below)
+- Version Control / Change Locality: 0.3333 (typical: 1.00, 84.6x below)
+- Dependencies / Total Dependencies: 147 (typical: 85.00, 41.8x above)
+- Version Control / Change Dispersion: 2.14 (typical: 0.0896, 15.5x above)
+- Deployment / Release Cadence: 4,035.9 (typical: 352.3, 11.0x above)
+
+RISK PATTERNS (actionable only):
+
+- [Action Required] when CI builds and code changes happen together, change focus tends to move in opposite directions.
+  Impact: Changes span files that don&#x27;t normally change together, suggesting cross-cutting concerns that may be harder to test. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.
+  Action: Review whether these cross-cutting changes have adequate test coverage.
+
+- [Action Required] 3 patterns:
+    * when CI builds and code changes happen together, novelty of file pairings tends to move together.
+    * when deployments and code changes happen together, novelty of file pairings tends to move together.
+    * when CI builds and code changes happen together, novelty of file pairings and build time tend to move together.
+  Impact: Files that don&#x27;t normally change together are being modified in the same commits. This indicates novel, untested interactions that may introduce bugs. Escalated from Needs Attention — multiple correlated patterns converge on the same signal families.
+  Action: Investigate which files are being combined unexpectedly. Prioritize testing these changes.
+
+- [Action Required] when deployments and code changes happen together, change focus and release frequency tend to move together.
+  Impact: Time between releases is increasing. This could indicate a bottleneck in the release process or accumulating risk in larger releases. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.
+  Action: Check if process changes or staffing issues are delaying releases.
+
+- [Action Required] when CI builds and code changes happen together, change focus and build time tend to move together.
+  (2 independent confirmations)
+  Impact: Builds are taking longer. Slower CI feedback loops reduce developer productivity and delay catching issues. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.
+  Action: Profile the build pipeline to identify bottlenecks. Check for newly added expensive tests or build steps.
+
+- [Action Required] 4 patterns:
+    * when deployments and code changes happen together, code spread and release frequency tend to move together.
+    * when CI builds and code changes happen together, code spread and build time tend to move together.
+    * when deployments and code changes happen together, code spread tends to move together.
+    * when CI builds and code changes happen together, code spread tends to move together.
+  Impact: Changes are spreading across unrelated parts of the codebase. This makes reviews harder and increases the chance of unexpected side effects. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.
+  Action: Review recent PRs for scope creep. Consider breaking large changes into focused commits.
+
+- [Action Required] 4 patterns:
+    * when deployments and code changes happen together, file count tends to move together.
+    * when CI builds and code changes happen together, file count and build time tend to move together.
+    * when deployments and code changes happen together, file count and release frequency tend to move together.
+    * when CI builds and code changes happen together, file count tends to move together.
+  Impact: Commits are touching more files than usual, increasing review burden and risk of regressions. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.
+  Action: Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.
+
+- [Needs Attention] 2 patterns:
+    * when dependency changes and code changes happen together, change focus tends to move in opposite directions.
+    * when dependency changes and code changes happen together, change focus and dependency count tend to move in opposite directions.
+  Impact: Changes span files that don&#x27;t normally change together, suggesting cross-cutting concerns that may be harder to test. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.
+  Action: Review whether these cross-cutting changes have adequate test coverage.
+
+- [Needs Attention] when dependency changes and code changes happen together, code spread tends to move together.
+  Impact: Changes are spreading across unrelated parts of the codebase. This makes reviews harder and increases the chance of unexpected side effects. Escalated from Worth Monitoring — multiple correlated patterns converge on the same signal families.
+  Action: Review recent PRs for scope creep. Consider breaking large changes into focused commits.
+
+- [Worth Monitoring] when dependency changes and deployments happen together, dependency count and release frequency tend to move together.
+  (2 independent confirmations)
+  Impact: The dependency count is growing, expanding the supply-chain attack surface and potential for version conflicts.
+  Action: Audit new dependencies for necessity, maintenance status, and known vulnerabilities.
+
+- [Worth Monitoring] when code changes occur, file count tends to increase.
+  Impact: Commits are touching more files than usual, increasing review burden and risk of regressions.
+  Action: Monitor PR sizes. If this persists, investigate whether large refactors need better decomposition.
+
+
+COMMITS (20):
+
+  f0aabce1 — feat!: Migrate to Meta Processors (#7) (53 files)
+  6cab3f75 — feat: Data Aggregation (#10) (20 files)
+  9507c832 — fix: Process Jsonnet Errors (#11) (3 files)
+  fa7a8f7e — feat: PrettyPrint Processor (#12) (5 files)
+  5cc9648d — refactor: Update Configs (#13) (155 files)
+  e46e780a — feat!: Encapsulation (#15) (161 files)
+  67dd5943 — refactor: Update Public Errors (#17) (69 files)
+  2791b912 — fix: Handling Large S3 Files (#20) (3 files)
+  e310cb5a — feat: Improvements to Reading and Decoding Files (#24) (4 files)
+  30f103d4 — feat: Add Initial Support for Application Metrics (#25) (18 files)
+  ... and 10 more
+
+SOURCE FILES CHANGED (50):
+
+  - config/process.libsonnet (modified)
+  - internal/base64/base64.go (modified)
+  - internal/base64/base64_test.go (modified)
+  - internal/json/json.go (modified)
+  - internal/json/json_test.go (modified)
+  - process/base64.go (modified)
+  - process/base64_test.go (modified)
+  - process/capture.go (modified)
+  - process/capture_test.go (modified)
+  - process/case.go (modified)
+  - process/case_test.go (modified)
+  - process/concat.go (modified)
+  - process/concat_test.go (modified)
+  - process/convert.go (modified)
+  - process/convert_test.go (modified)
+  - process/copy.go (modified)
+  - process/copy_test.go (modified)
+  - process/count.go (modified)
+  - process/count_test.go (modified)
+  - process/delete.go (modified)
+  ... and 30 more
+
+TASKS:
+
+1. ROOT CAUSE: For each deviation, identify the commit(s) that caused it.
+   Focus on [Action Required] and [Needs Attention] items first.
+
+2. FIXES: Provide concrete fixes with file paths and code changes.
+   Goal: bring metrics back toward baseline without disrupting velocity.
+
+3. PRIORITY: Rank fixes by urgency (immediate vs. next sprint).
+
+4. AFTER FIXING: Run `evo analyze . --verify` to confirm deviations decreased.
+   If a change was intentional, accept it: `evo accept . &lt;N&gt;`.
+
+5. FINDING SUMMARIES: At the end, include a section like this:
+   ## Finding Summaries
+   - [family/metric]: One plain-English sentence for a non-technical reader.
+   (This lets the user run `evo enrich . --from response.txt` to store friendly descriptions.)</pre>
+</section>
+<section class="adapters-section page-break-before">
+  <h2>Expand Your Coverage</h2>
+  <div class="adapters-intro">    <p>Evolution Engine has <strong>44 universal patterns</strong> learned from 200+ open-source repositories. The more signal families you connect, the more cross-family patterns can be detected.</p>  </div>
+  <h3>Available Adapters</h3>
+  <p class="adapters-subtitle">Enable these adapters to unlock additional signal families and cross-family pattern detection.</p>
+  <div class="adapter-grid">
+    <div class="adapter-card adapter-available"><div class="adapter-icon" style="color: #059669">📊</div><div class="adapter-name">cobertura</div><div class="adapter-family">Code Coverage</div><div class="adapter-desc">Code coverage from Cobertura XML reports — line rate, branch rate</div><div class="adapter-hint">Auto-detected from files <a href="https://codequal.dev/docs/integrations" class="source-doc-link">Setup guide →</a></div></div>
+    <div class="adapter-card adapter-available"><div class="adapter-icon" style="color: #dc2626">🚨</div><div class="adapter-name">sentry</div><div class="adapter-family">Error Tracking</div><div class="adapter-desc">Error tracking and release health from Sentry — event count, user impact, unhandled errors</div><div class="adapter-hint">Set <code>SENTRY_AUTH_TOKEN</code> <a href="https://codequal.dev/docs/integrations" class="source-doc-link">Setup guide →</a></div></div>
+  </div>
+  <div class="adapter-setup-guide">
+    <h4>How to Connect an Adapter</h4>
+    <ol>
+      <li><strong>Set the environment variable</strong> shown on the adapter card. For example: <code>export GITHUB_TOKEN=$(gh auth token)</code></li>
+      <li><strong>For file-based adapters</strong> (Testing, Coverage): generate reports in your project first. For example, <code>pytest --junitxml=junit.xml</code> or <code>pytest --cov --cov-report=xml</code></li>
+      <li><strong>Run analysis</strong>: <code>evo analyze .</code> — new adapters are detected automatically</li>
+      <li><strong>Verify</strong>: <code>evo sources</code> to confirm which adapters are active</li>
+    </ol>
+  </div>
+  <div class="adapters-planned">    <strong>Coming soon:</strong> CI / Build, Deployment, Feature Flags, Incidents, Monitoring, Quality Gate, Security Scan, Work Items  </div>
+</section>
+<footer>
+  <p>Generated by <strong>CodeQual</strong> Evolution Engine</p>
+  <p style="margin-top: 0.5em;">Advisory ID: 16d3008c360466e0 • Mar 18, 2026 at 12:10 AM</p>
+  <p style="margin-top: 0.5em;">This investigation was generated with the assistance of artificial intelligence (Claude by Anthropic). AI-generated content should be reviewed by a developer before acting upon recommendations.</p>
+</footer>
+</body>
+</html>
