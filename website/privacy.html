@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Privacy Policy | evo by CodeQual</title>
+  <title>Privacy Policy | Evolution Engine by CodeQual</title>
   <link rel="canonical" href="https://codequal.dev/privacy" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -71,8 +71,8 @@
 <nav>
   <div class="nav-inner">
     <a href="/" class="nav-brand">
-      <img src="assets/codequal-logo.svg" alt="CodeQual" width="28" height="32">
-      evo <span>by CodeQual</span>
+      <img src="assets/codequal-logo.svg" alt="Evolution Engine" width="28" height="32">
+      Evolution Engine
     </a>
     <ul class="nav-links">
       <li><a href="/#features">Features</a></li>
@@ -96,7 +96,11 @@
   <p>Evolution Engine is <strong>local-first</strong>. All analysis — git history, dependency graphs, CI data, pattern matching — runs entirely on your machine. No code, file contents, or repository data is ever transmitted anywhere.</p>
 
   <div class="callout">
-    <p>Telemetry is <strong>opt-in only</strong>. It is disabled by default. EE asks once on your first <code>evo analyze</code> run, and "No" is the default — pressing Enter without typing anything means no data is collected.</p>
+    <p>Telemetry is <strong>opt-in only</strong>. It is disabled by default. Evolution Engine asks once on your first <code>evo analyze</code> run, and "No" is the default — pressing Enter without typing anything means no data is collected.</p>
+  </div>
+
+  <div class="callout">
+    <p>Evolution Engine is <strong>source-available on GitHub</strong>. You can audit exactly what data is collected by reviewing the source code at <a href="https://github.com/alpsla/evolution-engine" target="_blank" rel="noopener noreferrer">github.com/alpsla/evolution-engine</a>.</p>
   </div>
 
   <!-- What We Collect -->
@@ -144,7 +148,7 @@
         <td>Fix bugs proactively</td>
       </tr>
       <tr>
-        <td>EE version</td>
+        <td>Evolution Engine version</td>
         <td><code>"0.1.0"</code></td>
         <td>Understand version distribution</td>
       </tr>
@@ -234,10 +238,10 @@
   <!-- Open Source -->
   <h2>Verify It Yourself</h2>
 
-  <p>The telemetry implementation is in the EE source code:</p>
+  <p>The telemetry implementation is in the Evolution Engine source code:</p>
   <ul>
-    <li><code>evolution/telemetry.py</code> — Client-side: what data is collected and how it's sent</li>
-    <li><code>website/api/telemetry.py</code> — Server-side: what happens when data is received</li>
+    <li><a href="https://github.com/alpsla/evolution-engine/blob/main/evolution/telemetry.py" target="_blank" rel="noopener noreferrer"><code>evolution/telemetry.py</code></a> — Client-side: what data is collected and how it's sent</li>
+    <li><a href="https://github.com/alpsla/evolution-engine/blob/main/website/api/telemetry.py" target="_blank" rel="noopener noreferrer"><code>website/api/telemetry.py</code></a> — Server-side: what happens when data is received</li>
   </ul>
   <p>Both files are short and readable. You can inspect exactly what is sent before enabling telemetry.</p>
 

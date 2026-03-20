@@ -230,6 +230,87 @@ nav {
 .terminal-body .highlight { color: var(--accent); }
 .terminal-body .success { color: var(--success); }
 
+/* ─── Trust Model ─── */
+.trust-model {
+  padding: 80px 0;
+  background: linear-gradient(180deg, var(--bg) 0%, rgba(10, 77, 74, 0.08) 50%, var(--bg) 100%);
+}
+
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.trust-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.trust-card:hover {
+  border-color: var(--secondary);
+  transform: translateY(-2px);
+}
+
+.trust-icon {
+  font-size: 2rem;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.trust-card h3 {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+
+.trust-card p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.trust-link {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--secondary);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.trust-list {
+  list-style: none;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trust-list li {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding-left: 20px;
+  position: relative;
+  line-height: 1.5;
+}
+
+.trust-list li::before {
+  content: "\2022";
+  color: var(--secondary);
+  font-weight: 700;
+  position: absolute;
+  left: 4px;
+}
+
+.trust-list li strong {
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .trust-grid { grid-template-columns: 1fr; }
+}
+
 /* ─── Features ─── */
 .features { padding: 80px 0; }
 

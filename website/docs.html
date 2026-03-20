@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Documentation — CLI Reference, Adapters &amp; Integration Guides | evo by CodeQual</title>
-  <meta name="description" content="Full documentation for evo: quickstart, CLI commands, git hooks, GitHub Action setup, adapter building guide, and community pattern sharing.">
+  <title>Documentation — CLI Reference, Adapters &amp; Integration Guides | Evolution Engine by CodeQual</title>
+  <meta name="description" content="Full documentation for Evolution Engine: quickstart, CLI commands, git hooks, GitHub Action setup, adapter building guide, and community pattern sharing.">
   <link rel="canonical" href="https://codequal.dev/docs" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -61,8 +61,8 @@
 <nav>
   <div class="nav-inner">
     <a href="/" class="nav-brand">
-      <img src="assets/codequal-logo.svg" alt="CodeQual" width="28" height="32">
-      evo <span>by CodeQual</span>
+      <img src="assets/codequal-logo.svg" alt="Evolution Engine" width="28" height="32">
+      Evolution Engine
     </a>
     <ul class="nav-links">
       <li><a href="/#features" data-i18n="nav.features">Features</a></li>
@@ -100,7 +100,7 @@
 
   <!-- No AI callout -->
   <div class="callout" style="border-left: 4px solid var(--color-primary, #2563eb); padding: 1em 1.2em; border-radius: 6px; margin-bottom: 2em;">
-    <p data-i18n="docs_page.no_ai_callout" style="margin: 0;"><strong>No AI APIs, no keys, no data leaves your machine.</strong> EE is a purely statistical drift detector. It analyzes your git history, CI logs, and dependency changes locally — no LLM calls, no cloud APIs, no telemetry by default. When you want AI-powered investigation, you copy the prompt into your own AI tool (ChatGPT, Claude, Cursor, Copilot) — at your own pace and comfort level. EE never sends your code or data anywhere.</p>
+    <p data-i18n="docs_page.no_ai_callout" style="margin: 0;"><strong>No AI APIs, no keys, no data leaves your machine.</strong> Evolution Engine is a purely statistical drift detector. It analyzes your git history, CI logs, and dependency changes locally — no LLM calls, no cloud APIs, no telemetry by default. When you want AI-powered investigation, you copy the prompt into your own AI tool (ChatGPT, Claude, Cursor, Copilot) — at your own pace and comfort level. Evolution Engine never sends your code or data anywhere.</p>
   </div>
 
   <!-- Quickstart -->
@@ -112,7 +112,7 @@
   <h3 data-i18n="docs_page.quickstart_analyze">Analyze a repository</h3>
   <pre><code>cd your-repo
 evo analyze .</code></pre>
-  <p data-i18n="docs_page.quickstart_analyze_desc">EE auto-detects your tools (git history, lockfiles, CI configs) and runs the full 5-phase pipeline: events, signals, explanations, patterns, and advisory.</p>
+  <p data-i18n="docs_page.quickstart_analyze_desc">Evolution Engine auto-detects your tools (git history, lockfiles, CI configs) and runs the full 5-phase pipeline: events, signals, explanations, patterns, and advisory.</p>
 
   <h3 data-i18n="docs_page.quickstart_sources">See what data sources are available</h3>
   <pre><code>evo sources .</code></pre>
@@ -124,7 +124,7 @@ evo analyze .</code></pre>
   <!-- Integration Paths -->
   <h2 id="integration-paths" data-i18n="docs_page.integration_title">Integration Paths</h2>
 
-  <p data-i18n="docs_page.integration_desc">EE supports three integration paths. Start with the CLI, graduate to hooks when you trust the output, and add the GitHub Action for team-wide coverage.</p>
+  <p data-i18n="docs_page.integration_desc">Evolution Engine supports three integration paths. Start with the CLI, graduate to hooks when you trust the output, and add the GitHub Action for team-wide coverage.</p>
 
   <pre><code>Path 1: CLI             Path 2: Git Hooks          Path 3: GitHub Action
   evo analyze .    -->    evo init --path hooks  -->  evo init --path action
@@ -237,11 +237,11 @@ evo init . --path action</code></pre>
   </ul>
 
   <h3 data-i18n="docs_page.commands_investigate">AI Investigation</h3>
-  <p data-i18n="docs_page.investigate_intro">EE doesn't call AI directly — you use your own AI tool. When EE discovers a new pattern or flags a deviation, use this 3-step flow to investigate and enrich the findings:</p>
+  <p data-i18n="docs_page.investigate_intro">Evolution Engine doesn't call AI directly — you use your own AI tool. When Evolution Engine discovers a new pattern or flags a deviation, use this 3-step flow to investigate and enrich the findings:</p>
   <ol>
     <li data-i18n="docs_page.investigate_step1"><strong>Get the prompt:</strong> <code>evo analyze . --show-prompt</code> — Copy the investigation prompt into ChatGPT, Claude, Cursor, or Copilot.</li>
     <li data-i18n="docs_page.investigate_step2"><strong>Save your AI's response</strong> to a file (e.g. <code>response.txt</code>). Make sure it includes the Finding Summaries section at the end.</li>
-    <li data-i18n="docs_page.investigate_step3"><strong>Feed it back:</strong> <code>evo enrich . --from response.txt</code> — EE stores friendly descriptions on the findings. Future reports and shared patterns use the enriched text.</li>
+    <li data-i18n="docs_page.investigate_step3"><strong>Feed it back:</strong> <code>evo enrich . --from response.txt</code> — Evolution Engine stores friendly descriptions on the findings. Future reports and shared patterns use the enriched text.</li>
   </ol>
   <p data-i18n="docs_page.investigate_also">You can also copy per-finding prompts directly from the HTML report's "Fix with AI" button.</p>
   <ul>
@@ -302,7 +302,7 @@ evo init . --path action</code></pre>
   <p data-i18n="docs_page.safety_desc">Every adapter is assigned a trust badge automatically:</p>
   <ul>
     <li data-i18n="docs_page.safety_builtin"><strong>[built-in]</strong> — Ships with Evolution Engine, maintained by the core team</li>
-    <li data-i18n="docs_page.safety_verified"><strong>[verified]</strong> — Published on PyPI and reviewed by EE maintainers</li>
+    <li data-i18n="docs_page.safety_verified"><strong>[verified]</strong> — Published on PyPI and reviewed by Evolution Engine maintainers</li>
     <li data-i18n="docs_page.safety_community"><strong>[community]</strong> — Published on PyPI, not yet reviewed</li>
     <li data-i18n="docs_page.safety_local"><strong>[local]</strong> — Development mode, editable install only</li>
   </ul>
@@ -332,10 +332,10 @@ evo init . --path action</code></pre>
   <!-- Discovery & Updates -->
   <h2 id="discovery-updates" data-i18n="docs_page.discovery_title">Discovery & Updates</h2>
 
-  <p data-i18n="docs_page.discovery_desc">EE includes a lightweight notification system that keeps you informed about available adapters, updates, and community patterns. All checks are privacy-respecting — they only read public PyPI metadata and never send data from your machine.</p>
+  <p data-i18n="docs_page.discovery_desc">Evolution Engine includes a lightweight notification system that keeps you informed about available adapters, updates, and community patterns. All checks are privacy-respecting — they only read public PyPI metadata and never send data from your machine.</p>
 
   <h3 data-i18n="docs_page.discovery_adapter_title">Adapter Discovery</h3>
-  <p data-i18n="docs_page.discovery_adapter_desc">EE scans your repo for known tools (via config files, lockfiles, and import statements) and checks PyPI for matching adapter packages:</p>
+  <p data-i18n="docs_page.discovery_adapter_desc">Evolution Engine scans your repo for known tools (via config files, lockfiles, and import statements) and checks PyPI for matching adapter packages:</p>
   <pre><code>evo adapter discover .
 # Available adapters (install via pip):
 #   evo-adapter-datadog       v1.0.0   ← Datadog (monitoring)
@@ -346,7 +346,7 @@ evo init . --path action</code></pre>
 #     Scaffold: evo adapter new pagerduty --family incidents</code></pre>
 
   <h3 data-i18n="docs_page.discovery_notif_title">Automatic Notifications</h3>
-  <p data-i18n="docs_page.discovery_notif_desc">After <code>evo analyze</code> completes, EE checks for adapter updates and new adapters matching detected tools. Notifications appear at the end of the output:</p>
+  <p data-i18n="docs_page.discovery_notif_desc">After <code>evo analyze</code> completes, Evolution Engine checks for adapter updates and new adapters matching detected tools. Notifications appear at the end of the output:</p>
   <pre><code># After evo analyze output:
 Notifications:
   Update available: evo-adapter-jenkins 0.1.0 → 0.2.0
@@ -358,7 +358,7 @@ evo notifications dismiss            # Clear all
 evo notifications check .            # Force check now</code></pre>
 
   <h3 data-i18n="docs_page.discovery_patterns_title">Community Patterns</h3>
-  <p data-i18n="docs_page.discovery_patterns_desc">Patterns accumulate organically as users analyze repos and share discoveries. EE distributes community patterns through two redundant channels:</p>
+  <p data-i18n="docs_page.discovery_patterns_desc">Patterns accumulate organically as users analyze repos and share discoveries. Evolution Engine distributes community patterns through two redundant channels:</p>
   <ul>
     <li data-i18n="docs_page.discovery_patterns_registry"><strong>Registry</strong> (real-time) — patterns pushed by users are immediately available to all other users on their next <code>evo analyze</code></li>
     <li data-i18n="docs_page.discovery_patterns_pypi"><strong>PyPI packages</strong> (durable) — periodic snapshots published as pip packages, auto-fetched without <code>pip install</code></li>
@@ -369,7 +369,7 @@ evo notifications check .            # Force check now</code></pre>
   <p data-i18n="docs_page.discovery_default_pkg_desc">The canonical community pattern package is <a href="https://pypi.org/project/evo-patterns-community/">evo-patterns-community</a>, published using CalVer (e.g. <code>2026.2.15</code>). It contains aggregated patterns from the community registry and is auto-fetched on every <code>evo analyze</code>.</p>
 
   <h4 data-i18n="docs_page.discovery_autofetch_title">Pattern Packages (auto-fetch from PyPI)</h4>
-  <p data-i18n="docs_page.discovery_autofetch_desc">Pattern packages are pip packages on PyPI containing pure data (no executable code). EE downloads the wheel directly, extracts <code>patterns.json</code>, validates it, and imports relevant patterns automatically — no <code>pip install</code> required.</p>
+  <p data-i18n="docs_page.discovery_autofetch_desc">Pattern packages are pip packages on PyPI containing pure data (no executable code). Evolution Engine downloads the wheel directly, extracts <code>patterns.json</code>, validates it, and imports relevant patterns automatically — no <code>pip install</code> required.</p>
   <pre><code># Auto-fetch happens on every evo analyze
 evo analyze .
 #   Imported 25 pattern(s) from community registry
@@ -401,7 +401,7 @@ evo patterns block evo-patterns-untrusted
 
 # Unblock
 evo patterns unblock evo-patterns-untrusted</code></pre>
-  <p data-i18n="docs_page.discovery_blocklist_storage">Blocked packages are stored at <code>~/.evo/pattern_blocklist.json</code>. A bundled blocklist ships with EE for known-bad packages.</p>
+  <p data-i18n="docs_page.discovery_blocklist_storage">Blocked packages are stored at <code>~/.evo/pattern_blocklist.json</code>. A bundled blocklist ships with Evolution Engine for known-bad packages.</p>
 
   <h3 data-i18n="docs_page.discovery_config_title">Configuration</h3>
   <p data-i18n="docs_page.discovery_config_desc">All update and notification behavior is configurable:</p>
@@ -414,16 +414,16 @@ evo patterns unblock evo-patterns-untrusted</code></pre>
   <p data-i18n="docs_page.discovery_config_dnt">Set <code>DO_NOT_TRACK=1</code> in your environment to disable all network checks.</p>
 
   <div class="callout">
-    <p data-i18n="docs_page.callout_pypi"><strong>How PyPI discovery works:</strong> EE queries the public PyPI JSON API (<code>https://pypi.org/pypi/{package}/json</code>) using Python's stdlib <code>urllib.request</code>. No API keys or authentication needed. Results are cached for 24 hours at <code>~/.evo/version_cache.json</code>.</p>
+    <p data-i18n="docs_page.callout_pypi"><strong>How PyPI discovery works:</strong> Evolution Engine queries the public PyPI JSON API (<code>https://pypi.org/pypi/{package}/json</code>) using Python's stdlib <code>urllib.request</code>. No API keys or authentication needed. Results are cached for 24 hours at <code>~/.evo/version_cache.json</code>.</p>
   </div>
 
   <!-- Build Your Own Adapter -->
   <h2 id="build-adapter" data-i18n="docs_page.build_adapter_title">Build Your Own Adapter</h2>
 
-  <p data-i18n="docs_page.build_adapter_desc">Adapters read from external data sources and feed events into the Evolution Engine pipeline. Each adapter produces <strong>events</strong> that EE processes through its 5-phase analysis. You can build an adapter for any tool — CI systems, monitoring platforms, issue trackers, deployment tools, etc.</p>
+  <p data-i18n="docs_page.build_adapter_desc">Adapters read from external data sources and feed events into the Evolution Engine pipeline. Each adapter produces <strong>events</strong> that Evolution Engine processes through its 5-phase analysis. You can build an adapter for any tool — CI systems, monitoring platforms, issue trackers, deployment tools, etc.</p>
 
   <div class="callout">
-    <p data-i18n="docs_page.callout_review">Adapters you build and submit are reviewed by the EE team and, if approved, bundled for all users in future releases.</p>
+    <p data-i18n="docs_page.callout_review">Adapters you build and submit are reviewed by the Evolution Engine team and, if approved, bundled for all users in future releases.</p>
   </div>
 
   <h3 data-i18n="docs_page.build_step1_title">Step 1: Scaffold</h3>
@@ -432,7 +432,7 @@ evo patterns unblock evo-patterns-untrusted</code></pre>
   <p data-i18n="docs_page.build_step1_creates">This creates a package directory with:</p>
   <ul>
     <li data-i18n="docs_page.build_step1_adapter"><code>evo_jenkins/adapter.py</code> — Your adapter class (fill in the logic)</li>
-    <li data-i18n="docs_page.build_step1_toml"><code>pyproject.toml</code> — Package metadata with the EE plugin entry point</li>
+    <li data-i18n="docs_page.build_step1_toml"><code>pyproject.toml</code> — Package metadata with the Evolution Engine plugin entry point</li>
     <li data-i18n="docs_page.build_step1_tests"><code>tests/</code> — Test scaffolding</li>
     <li data-i18n="docs_page.build_step1_readme"><code>README.md</code> — Documentation template</li>
   </ul>
@@ -480,7 +480,7 @@ evo adapter validate evo_jenkins.JenkinsAdapter --security
 # Or run security scan separately
 evo adapter security-check evo_jenkins
 
-# Run EE — your adapter will be auto-detected
+# Run Evolution Engine — your adapter will be auto-detected
 evo analyze /path/to/repo-with-jenkinsfile</code></pre>
 
   <h3 data-i18n="docs_page.build_step4_title">Step 4: Publish</h3>
@@ -491,7 +491,7 @@ python -m build
 # Upload to PyPI
 pip install twine
 twine upload dist/*</code></pre>
-  <p data-i18n="docs_page.build_step4_desc">Once published, anyone can install it with <code>pip install evo-adapter-jenkins</code> and EE will auto-detect it via the plugin entry point.</p>
+  <p data-i18n="docs_page.build_step4_desc">Once published, anyone can install it with <code>pip install evo-adapter-jenkins</code> and Evolution Engine will auto-detect it via the plugin entry point.</p>
 
   <h3 data-i18n="docs_page.build_ai_title">Need help? Use AI</h3>
   <p data-i18n="docs_page.build_ai_desc">Generate a complete prompt for your AI coding assistant:</p>
@@ -530,7 +530,7 @@ twine upload dist/*</code></pre>
 }</code></pre>
 
   <h3 data-i18n="docs_page.contract_entrypoint_title">Plugin entry point</h3>
-  <p data-i18n="docs_page.contract_entrypoint_desc">In your <code>pyproject.toml</code>, register the entry point so EE can auto-discover your adapter:</p>
+  <p data-i18n="docs_page.contract_entrypoint_desc">In your <code>pyproject.toml</code>, register the entry point so Evolution Engine can auto-discover your adapter:</p>
   <pre><code>[project.entry-points."evolution.adapters"]
 jenkins = "evo_jenkins.adapter:JenkinsAdapter"</code></pre>
 
@@ -542,7 +542,7 @@ jenkins = "evo_jenkins.adapter:JenkinsAdapter"</code></pre>
     <li data-i18n="docs_page.submit_step1">Test it on at least one real repository</li>
     <li data-i18n="docs_page.submit_step2">Ensure <code>evo adapter validate</code> passes with no errors</li>
     <li data-i18n="docs_page.submit_step3">Email us at <strong>info@codequal.dev</strong> with: your PyPI package name, a brief description, and which family it belongs to</li>
-    <li data-i18n="docs_page.submit_step4">We review the adapter, run our test suite against it, and if approved, bundle it in a future EE release for all users</li>
+    <li data-i18n="docs_page.submit_step4">We review the adapter, run our test suite against it, and if approved, bundle it in a future Evolution Engine release for all users</li>
   </ol>
 
   <div class="callout">

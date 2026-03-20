@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Data Sources &amp; Integration Levels — Git to Full-Stack Observability | evo by CodeQual</title>
-  <meta name="description" content="See how evo scales from git-only analysis to full-stack observability. Each data source multiplies the pattern space — git, CI, dependencies, deployments, monitoring, and more.">
+  <title>Data Sources &amp; Integration Levels — Git to Full-Stack Observability | Evolution Engine by CodeQual</title>
+  <meta name="description" content="See how Evolution Engine scales from git-only analysis to full-stack observability. Each data source multiplies the pattern space — git, CI, dependencies, deployments, monitoring, and more.">
   <link rel="canonical" href="https://codequal.dev/docs/integrations" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -91,8 +91,8 @@
 <nav>
   <div class="nav-inner">
     <a href="/" class="nav-brand">
-      <img src="/assets/codequal-logo.svg" alt="CodeQual" width="28" height="32">
-      evo <span>by CodeQual</span>
+      <img src="/assets/codequal-logo.svg" alt="Evolution Engine" width="28" height="32">
+      Evolution Engine
     </a>
     <ul class="nav-links">
       <li><a href="/#features" data-i18n="nav.features">Features</a></li>
@@ -241,7 +241,7 @@ evo sources</code></pre>
 
   <h3 data-i18n="datasources.troubleshooting_ci_title">CI / Build (GitHub Actions, GitLab CI, CircleCI)</h3>
   <ul>
-    <li data-i18n="datasources.troubleshooting_ci_item1"><strong>Need pipeline runs.</strong> EE reads the last 90 days of CI runs. If the repo has no workflow runs in that window, there's nothing to analyze.</li>
+    <li data-i18n="datasources.troubleshooting_ci_item1"><strong>Need pipeline runs.</strong> Evolution Engine reads the last 90 days of CI runs. If the repo has no workflow runs in that window, there's nothing to analyze.</li>
     <li data-i18n="datasources.troubleshooting_ci_item2"><strong>Check:</strong> Go to your repo's Actions tab (GitHub) or CI/CD &rarr; Pipelines (GitLab) and confirm runs exist.</li>
     <li data-i18n="datasources.troubleshooting_ci_item3"><strong>Token scopes:</strong> GitHub needs <code>actions:read</code>. GitLab needs <code>read_api</code>.</li>
     <li data-i18n="datasources.troubleshooting_ci_item4"><strong>Requires Pro</strong> for API-based CI adapters. <a href="/#pricing">See pricing</a>.</li>
@@ -263,7 +263,7 @@ evo sources</code></pre>
 
   <h3 data-i18n="datasources.troubleshooting_sentry_title">Error Tracking (Sentry)</h3>
   <ul>
-    <li data-i18n="datasources.troubleshooting_sentry_item1"><strong>Need events in the project.</strong> EE queries the last 90 days of Sentry issues.</li>
+    <li data-i18n="datasources.troubleshooting_sentry_item1"><strong>Need events in the project.</strong> Evolution Engine queries the last 90 days of Sentry issues.</li>
     <li data-i18n="datasources.troubleshooting_sentry_item2"><strong>Check env vars:</strong> All three are required: <code>SENTRY_AUTH_TOKEN</code>, <code>SENTRY_ORG</code>, <code>SENTRY_PROJECT</code>.</li>
     <li data-i18n="datasources.troubleshooting_sentry_item3"><strong>Requires Pro.</strong></li>
   </ul>
@@ -308,7 +308,7 @@ evo sources</code></pre>
 
   <div class="faq-item">
     <p><strong data-i18n="datasources.faq_q4">How is this different from Snyk / SonarQube / Datadog?</strong></p>
-    <p data-i18n="datasources.faq_a4">Those tools analyze individual events at a point in time. Evolution Engine analyzes the <strong>process over time</strong> &mdash; detecting gradual drift, cross-family correlations, and patterns that only emerge across hundreds of commits. Their output can feed into EE as additional signal families.</p>
+    <p data-i18n="datasources.faq_a4">Those tools analyze individual events at a point in time. Evolution Engine analyzes the <strong>process over time</strong> &mdash; detecting gradual drift, cross-family correlations, and patterns that only emerge across hundreds of commits. Their output can feed into Evolution Engine as additional signal families.</p>
   </div>
 </div>
 

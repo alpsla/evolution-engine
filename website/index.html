@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Codebase Drift Detection CLI — Correlate Git, CI &amp; Dependency Signals | evo by CodeQual</title>
-  <meta name="description" content="Detect structural drift in your codebase before it breaks. evo correlates signals from git, CI, dependencies, and deployments. Local-first CLI, zero-config, calibrated across 48 open-source repos.">
+  <title>Codebase Drift Detection CLI — Correlate Git, CI &amp; Dependency Signals | Evolution Engine by CodeQual</title>
+  <meta name="description" content="Detect structural drift in your codebase before it breaks. Evolution Engine correlates signals from git, CI, dependencies, and deployments. Local-first CLI, zero-config, calibrated across 48 open-source repos.">
   <link rel="canonical" href="https://codequal.dev/" />
   <link rel="alternate" hreflang="en" href="https://codequal.dev/" />
   <link rel="alternate" hreflang="de" href="https://codequal.dev/de/" />
@@ -14,11 +14,11 @@
   {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "evo by CodeQual",
-    "alternateName": "Evolution Engine",
+    "name": "Evolution Engine",
+    "alternateName": "evo by CodeQual",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "macOS, Linux, Windows",
-    "description": "Codebase drift detection CLI. Correlates signals from git, CI, dependencies, and deployments to detect structural drift before it breaks.",
+    "description": "Evolution Engine — codebase drift detection CLI. Correlates signals from git, CI, dependencies, and deployments to detect structural drift before it breaks.",
     "url": "https://codequal.dev",
     "offers": [
       {
@@ -54,8 +54,8 @@
 <nav>
   <div class="nav-inner">
     <a href="#" class="nav-brand">
-      <img src="assets/codequal-logo.svg" alt="CodeQual" width="28" height="32">
-      evo <span>by CodeQual</span>
+      <img src="assets/codequal-logo.svg" alt="Evolution Engine" width="28" height="32">
+      Evolution Engine
     </a>
     <ul class="nav-links">
       <li><a href="#features" data-i18n="nav.features">Features</a></li>
@@ -95,6 +95,42 @@
   </div>
 </section>
 
+<!-- ─── Trust Model ─── -->
+<section id="trust" class="trust-model">
+  <div class="container">
+    <h2 class="section-title" data-i18n="trust.title">Your code never leaves your machine</h2>
+    <p class="section-subtitle" data-i18n="trust.subtitle">100% local analysis. No uploads, no repo access needed. Here is exactly what happens.</p>
+    <div class="trust-grid">
+      <div class="trust-card">
+        <span class="trust-icon">&#128274;</span>
+        <h3 data-i18n="trust.local_title">Runs entirely on your machine</h3>
+        <p data-i18n="trust.local_desc">All analysis runs 100% locally. No code is uploaded, no repository access is needed by us. Your source code, git history, and signals never leave your machine.</p>
+      </div>
+      <div class="trust-card">
+        <span class="trust-icon">&#128269;</span>
+        <h3 data-i18n="trust.source_title">Source-available on GitHub</h3>
+        <p data-i18n="trust.source_desc">Don't take our word for it. The code is public and auditable.</p>
+        <a href="https://github.com/alpsla/evolution-engine" target="_blank" rel="noopener noreferrer" class="trust-link" data-i18n="trust.source_link">View on GitHub &rarr;</a>
+      </div>
+      <div class="trust-card">
+        <span class="trust-icon">&#128225;</span>
+        <h3 data-i18n="trust.data_title">Minimal data, your control</h3>
+        <p data-i18n="trust.data_desc">The only outbound data, all opt-out or non-sensitive:</p>
+        <ul class="trust-list">
+          <li data-i18n="trust.data_telemetry"><strong>Telemetry (opt-out):</strong> anonymous usage stats (command name, duration). No code, no file paths, no repo names.</li>
+          <li data-i18n="trust.data_license"><strong>License check:</strong> SHA-256 hash of your email (not the email itself).</li>
+          <li data-i18n="trust.data_patterns"><strong>Pattern sync:</strong> downloads public community patterns from PyPI.</li>
+        </ul>
+      </div>
+      <div class="trust-card">
+        <span class="trust-icon">&#128683;</span>
+        <h3 data-i18n="trust.pipeline_title">No access to your pipelines required</h3>
+        <p data-i18n="trust.pipeline_desc">The free tier needs only git history (already local). CI and deployment adapters use tokens YOU provide, scoped to read-only, and never stored by us.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ─── Features ─── -->
 <section id="features" class="features">
   <div class="container">
@@ -124,7 +160,7 @@
       <div class="feature-card">
         <span class="feature-icon">&#128268;</span>
         <h3 data-i18n="features.extensible_title">Extensible</h3>
-        <p data-i18n="features.extensible_desc">Open adapter ecosystem. EE discovers available adapters for your tools, notifies you about updates, and auto-pulls community patterns.</p>
+        <p data-i18n="features.extensible_desc">Open adapter ecosystem. Evolution Engine discovers available adapters for your tools, notifies you about updates, and auto-pulls community patterns.</p>
       </div>
     </div>
   </div>
@@ -145,7 +181,7 @@
       <div class="step">
         <div class="step-number">2</div>
         <h3 data-i18n="how_it_works.step2_title">Analyze</h3>
-        <p data-i18n="how_it_works.step2_desc">Run in any git repo. EE auto-detects your tools and computes signals.</p>
+        <p data-i18n="how_it_works.step2_desc">Run in any git repo. Evolution Engine auto-detects your tools and computes signals.</p>
         <code data-copy="evo analyze .">evo analyze .<span class="copy-tooltip">Copied!</span></code>
       </div>
       <div class="step">
@@ -184,7 +220,7 @@
 <section id="signals" class="signals">
   <div class="container">
     <h2 class="section-title" data-i18n="signals.title">Signal Families</h2>
-    <p class="section-subtitle" data-i18n="signals.subtitle">EE ingests events from multiple data sources and computes deviation metrics for each.</p>
+    <p class="section-subtitle" data-i18n="signals.subtitle">Evolution Engine ingests events from multiple data sources and computes deviation metrics for each.</p>
     <table class="signals-table">
       <thead>
         <tr>
@@ -270,7 +306,7 @@
 <section id="adapters" class="adapters">
   <div class="container">
     <h2 class="section-title" data-i18n="adapters.title">Adapter Catalog</h2>
-    <p class="section-subtitle" data-i18n="adapters.subtitle">Built-in adapters plus a growing plugin ecosystem. Each adapter reads from a data source and feeds it into the EE pipeline.</p>
+    <p class="section-subtitle" data-i18n="adapters.subtitle">Built-in adapters plus a growing plugin ecosystem. Each adapter reads from a data source and feeds it into the Evolution Engine pipeline.</p>
     <div class="adapter-grid">
       <!-- Built-in (Available) -->
       <div class="adapter-card">
