@@ -63,3 +63,7 @@ demo-repo/
 
 # Claude project memory
 .claude/
+
+# Local AI workspace (never publish)
+CLAUDE.md
+.claude/
