@@ -71,6 +71,10 @@
       "use": "@vercel/static"
     },
     {
+      "src": "demo/**",
+      "use": "@vercel/static"
+    },
+    {
       "src": "robots.txt",
       "use": "@vercel/static"
     },
