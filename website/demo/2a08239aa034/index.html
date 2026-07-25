@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>AI-era drift cohort — private preview</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; font-family: 'Inter', -apple-system, system-ui, sans-serif; background: #0d1117; color: #e6edf3; line-height: 1.6; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.2em; }
+  .sub { color: #8b949e; margin-bottom: 2.2em; }
+  h2 { font-size: 1.05rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.06em; margin: 2.2em 0 0.6em; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li { padding: 10px 0; border-bottom: 1px solid #21262d; }
+  a { color: #58a6ff; text-decoration: none; font-weight: 600; }
+  a:hover { text-decoration: underline; }
+  .meta { color: #8b949e; font-size: 0.9rem; }
+  .note { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 16px 20px; font-size: 0.92rem; color: #b6bfc9; margin-top: 2.5em; }
+  footer { margin-top: 3em; color: #8b949e; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>AI-era drift cohort — private preview</h1>
+  <p class="sub">15 repositories analyzed against their own historical baselines. July 2026. Every finding names its trigger commit — please verify them. This page is unlisted; sharing the URL shares the page.</p>
+
+  <h2>AI-domain repos, born 2023+ (fresh analyses)</h2>
+  <ul>
+    <li><a href="vllm.html">vLLM</a> <span class="meta">— born Feb 2023 · commit-size spike 1,016x · still 14.2σ off baseline</span></li>
+    <li><a href="aider.html">aider</a> <span class="meta">— born Apr 2023 · novelty collapsed at ~18 months of age</span></li>
+    <li><a href="dify.html">Dify</a> <span class="meta">— born May 2023 · commit-size spike 4,477x ("Introduce Plugins")</span></li>
+    <li><a href="ollama.html">Ollama</a> <span class="meta">— born Jun 2023 · commit-size spike 910x</span></li>
+    <li><a href="litellm.html">LiteLLM</a> <span class="meta">— born Jul 2023 · novelty still 5.0σ off baseline</span></li>
+    <li><a href="langgraph.html">LangGraph</a> <span class="meta">— born Aug 2023 · dual signal still elevated (commit size + novelty)</span></li>
+    <li><a href="open-webui.html">Open WebUI</a> <span class="meta">— born Oct 2023 · currently 143.1σ off baseline — the record in this set</span></li>
+    <li><a href="crewai.html">CrewAI</a> <span class="meta">— born Nov 2023 · 16,859-file restructure event, returned to baseline</span></li>
+  </ul>
+
+  <h2>Non-AI controls, born the same window</h2>
+  <ul>
+    <li><a href="shadcn-ui.html">shadcn/ui</a> <span class="meta">— born Jan 2023 · same fingerprint, no AI in the product</span></li>
+    <li><a href="marimo.html">marimo</a> <span class="meta">— born Aug 2023 · commit-size spike 742x, still 3.0σ</span></li>
+    <li><a href="uv.html">uv</a> <span class="meta">— born Oct 2023 · currently 100.5σ off baseline — second-most-drifted repo in the set</span></li>
+  </ul>
+
+  <h2>Managed contrast</h2>
+  <ul>
+    <li><a href="plaid-node.html">plaid/plaid-node</a> <span class="meta">— born 2013, generator-driven · every deviation returns to baseline; baseline novelty is 0.00 by design</span></li>
+  </ul>
+
+  <h2>March 2026 analyses (public)</h2>
+  <ul>
+    <li><a href="https://codequal.dev/reports/langchain">LangChain</a> <span class="meta">— born Jan 2023 · build duration 889x, still 27.6σ at last measurement</span></li>
+    <li><a href="https://codequal.dev/reports/goose">Block goose</a> <span class="meta">— born Nov 2024</span></li>
+    <li><a href="https://codequal.dev/reports/onchainkit">Coinbase OnchainKit</a> <span class="meta">— born Jan 2024</span></li>
+  </ul>
+
+  <div class="note">
+    <strong>How to read these:</strong> every "typical" value is computed from the repository's own history (median-based statistics, compared against a window of 20 prior commits) — no cross-repo standards. σ measures how far outside its own normal a repo moved, in units of its own normal variation. Deviation is not a defect: several spikes are healthy restructures, which is why each finding names the commit that triggered it. The fresh analyses cover git and dependency signals; build-duration and release-cadence comparisons exist only for the March set.
+  </div>
+
+  <footer>Measured with <a href="https://codequal.dev">Evolution Engine</a>, a drift detector by CodeQual · Rostislav Alpin, July 2026</footer>
+</main>
+</body>
+</html>

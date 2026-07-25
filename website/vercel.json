@@ -121,6 +121,8 @@
     { "src": "/reports/onchainkit", "dest": "/report-onchainkit.html" },
     { "src": "/reports/supabase", "dest": "/report-supabase.html" },
     { "src": "/reports/goose", "dest": "/report-goose.html" },
+    { "src": "/demo/([0-9a-f]+)/?$", "dest": "/demo/$1/index.html" },
+    { "src": "/demo/(.*)", "dest": "/demo/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
