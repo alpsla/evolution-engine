@@ -47,8 +47,12 @@
 
   <h2>Managed contrast</h2>
   <ul>
-    <li><a href="plaid-node.html">plaid/plaid-node</a> <span class="meta">— born 2013, generator-driven · every deviation returns to baseline; baseline novelty is 0.00 by design</span></li>
+    <li><a href="plaid-node.html">plaid/plaid-node</a> <span class="meta">— born 2013, generator-driven · every deviation returns to baseline; baseline novelty is 0.00 by design · see known-limitation note below</span></li>
   </ul>
+
+  <div class="note">
+    <strong>Known instrument limitation (disclosed, not hidden):</strong> in the Plaid report, the <em>Change Dispersion</em> card shows an observed value of exactly 1.50. That is the tool's internal ceiling, not a true measurement — identifiable because the identical value appears in unrelated repositories' reports, which real measurements essentially never do. Please disregard that one card; Plaid's other findings stand. Our QC caught this while screening every report on this page — flagging our own instrument's artifacts is part of the same discipline as naming every trigger commit.
+  </div>
 
   <h2>March 2026 analyses (public)</h2>
   <ul>
