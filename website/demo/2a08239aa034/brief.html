@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>AI-era drift cohort — research brief</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; font-family: 'Inter', -apple-system, system-ui, sans-serif; background: #0d1117; color: #e6edf3; line-height: 1.65; }
+  main { max-width: 820px; margin: 0 auto; padding: 48px 24px 80px; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.2em; }
+  .sub { color: #8b949e; margin-bottom: 2em; }
+  h2 { font-size: 1.15rem; margin: 2em 0 0.5em; border-bottom: 1px solid #21262d; padding-bottom: 6px; }
+  a { color: #58a6ff; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; margin: 1em 0; }
+  th, td { border: 1px solid #21262d; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #161b22; }
+  .wrap { overflow-x: auto; }
+  .note { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 14px 18px; font-size: 0.92rem; color: #b6bfc9; margin: 1.2em 0; }
+  .thesis { border-left: 3px solid #58a6ff; padding-left: 16px; font-size: 1.02rem; }
+  footer { margin-top: 3em; color: #8b949e; font-size: 0.85rem; }
+  strong { color: #fff; }
+</style>
+</head>
+<body>
+<main>
+  <h1>AI-era drift cohort — research brief</h1>
+  <p class="sub">15 repositories measured against their own historical baselines · July 2026 · Rostislav Alpin, <a href="https://codequal.dev">CodeQual</a> · <a href="index.html">all full reports</a></p>
+
+  <h2>How to read the numbers</h2>
+  <p><strong>Drift</strong> means deviation from the repository's <em>own</em> baseline, in either direction — not "amount of activity." A flatline can be the largest deviation in a dataset, the way a resting heart rate falling from 70 to 30 is "less activity" and a massive departure from normal. Baselines are per-repo, median-based statistics compared against a window of ~20 prior commits. No cross-repo standards.</p>
+  <p><strong>σ (sigma)</strong> is surprise measured in units of the repo's own normal variation: 1σ is a Tuesday, 3σ is where the tool starts caring, 5σ is the bar physics used for the Higgs. Past ~20–30σ the number stops meaning "rare" and starts meaning "different process." We deliberately don't convert large σ into probabilities — that math assumes a distribution these datasets don't have.</p>
+  <p><strong>Novelty</strong> asks whether the codebase's map grows — not how much code is written. Per commit, every <em>pair</em> of files changed together is compared against the previous ~20 commits: has this pairing been seen? Volume is invisible to it (800 generated lines into the same two files = zero novelty; one new file = guaranteed novelty). Lines of code are traffic; novelty is new roads. The window slides, so this is not an aging artifact; and commits over 30 files are excluded from pair-tracking, so the signal comes from routine daily work, not the occasional mega-commit.</p>
+
+  <h2>The finding in one paragraph</h2>
+  <p class="thesis">Young repositories across domains share one lifecycle: born structurally exuberant (novelty ≈ 0.99 — nearly every commit connects files in new ways), they freeze at 1.5–2.75 years old while shipping volume keeps climbing — and in nearly half this cohort, the frozen state (or an exploded commit-size regime) has persisted for months to years with no recovery and no record of anyone choosing it. The one immune repo is the one whose architecture ratifies every change by construction. The gap this exposes is not detection of bad code — it is the missing step between "our rhythm changed" and "we meant it."</p>
+
+  <h2>The data</h2>
+  <div class="wrap">
+  <table>
+    <tr><th>Repo (link = full report)</th><th>First commit</th><th>Group</th><th>Biggest deviation (typical → observed)</th><th>Novelty (typical → observed)</th><th>Still elevated now?</th></tr>
+    <tr><td><a href="https://codequal.dev/reports/langchain">LangChain</a>*</td><td>Jan 2023</td><td>AI-domain</td><td>build 9.5s → 3,306s (889x)</td><td>0.99 → 0.00</td><td>build, 27.6σ</td></tr>
+    <tr><td><a href="https://codequal.dev/reports/goose">goose</a>*</td><td>Nov 2024</td><td>AI-domain</td><td>build 2s → 15,182s</td><td>1.00 → 0.00</td><td>files, 3.4σ</td></tr>
+    <tr><td><a href="https://codequal.dev/reports/onchainkit">onchainkit</a>*</td><td>Jan 2024</td><td>AI-domain</td><td>files 3 → 2,084</td><td>0.998 → 0.72 (recovered)</td><td>—</td></tr>
+    <tr><td><a href="aider.html">aider</a></td><td>Apr 2023</td><td>AI-domain</td><td>files 1 → 326 (439x)</td><td>0.999 → 0.00</td><td>dispersion, 2.1σ</td></tr>
+    <tr><td><a href="crewai.html">crewAI</a></td><td>Nov 2023</td><td>AI-domain</td><td>files 6 → 16,859 (3,248x)</td><td>0.995 → 0.00</td><td>—</td></tr>
+    <tr><td><a href="dify.html">Dify</a></td><td>May 2023</td><td>AI-domain</td><td>files 1.5 → 3,320 (4,477x)</td><td>1.00 → 0.00</td><td>locality, 3.4σ (~3 mo)</td></tr>
+    <tr><td><a href="langgraph.html">LangGraph</a></td><td>Aug 2023</td><td>AI-domain</td><td>files 2 → 647 (435x)</td><td>0.998 → 0.33</td><td>files 2.7σ (~22 mo) + novelty 3.8σ (~18 mo)</td></tr>
+    <tr><td><a href="litellm.html">LiteLLM</a></td><td>Jul 2023</td><td>AI-domain</td><td>files 2 → 5,461 (3,682x)</td><td>0.999 → 0.00</td><td>novelty, 5.0σ (~3 mo)</td></tr>
+    <tr><td><a href="ollama.html">Ollama</a></td><td>Jun 2023</td><td>AI-domain</td><td>files 1 → 675 (910x)</td><td>0.996 → 0.00</td><td>locality, 1.9σ</td></tr>
+    <tr><td><a href="open-webui.html">Open WebUI</a></td><td>Oct 2023</td><td>AI-domain</td><td>files 1 → 3,928 (2,651x)</td><td>0.999 → 0.00</td><td><strong>files 143.1σ (~19 mo)</strong> + novelty 2.0σ</td></tr>
+    <tr><td><a href="vllm.html">vLLM</a></td><td>Feb 2023</td><td>AI-domain</td><td>files 2 → 1,508 (1,016x)</td><td>1.00 → 0.00</td><td>files, 14.2σ (~9 mo)</td></tr>
+    <tr><td><a href="marimo.html">marimo</a></td><td>Aug 2023</td><td>non-AI control</td><td>files 3 → 2,203 (742x)</td><td>1.00 → 0.00</td><td>files, 3.0σ (~7 mo)</td></tr>
+    <tr><td><a href="shadcn-ui.html">shadcn/ui</a></td><td>Jan 2023</td><td>non-AI control</td><td>files 2 → 9,110 (6,143x)</td><td>0.998 → 0.40</td><td>—</td></tr>
+    <tr><td><a href="uv.html">uv</a></td><td>Oct 2023</td><td>non-AI control</td><td>files 2 → 456 (306x)</td><td>0.999 → 0.00</td><td><strong>files 100.5σ (~21 mo)</strong> + novelty 16.2σ (~15 mo)</td></tr>
+    <tr><td><a href="plaid-node.html">plaid-node</a></td><td>Mar 2013</td><td>managed contrast</td><td>files 1 → 49 (65x)</td><td><strong>0.00 → 0.105 (inverted)</strong></td><td>— (everything returns)</td></tr>
+  </table>
+  </div>
+  <p class="sub">* March 2026 analyses (public). Data scope: fresh July runs cover git + dependency signals — the complete, intrinsic record every clone carries. Build/release telemetry ages out of platform APIs (~90-day horizon), so build-time findings exist only for the March set and are claimed only there.</p>
+
+  <h2>Findings</h2>
+  <p><strong>1. The fingerprint is universal — including the non-AI controls.</strong> All 14 young repos show commit-size spike events, novelty collapse to at or near zero, and locality/dispersion swings. Every headline spike has a verified mechanical explanation (crewAI's 16,859 files = a directory restructure; uv's 456 = a mass rename; vLLM's 1,508 = a formatting conversion). Deviation is not defect — the finding is how often these events now come, and what stays abnormal after they pass.</p>
+  <p><strong>2. The freeze is young.</strong> Novelty collapsed at repository age 17–33 months (aider 18, LangGraph 17, uv 18, Open WebUI 21, vLLM 32, LiteLLM 33) — during peak shipping velocity, not maturity. Honest limit: no pre-AI benchmark for time-to-freeze exists yet; we claim the ages, not "faster than before." That benchmark is the follow-up study we'd most like to run.</p>
+  <p><strong>3. For six repos, the deviation became a state.</strong> Persistence to July 2026: LangGraph ~22 months, uv ~21, Open WebUI ~19 (at 143σ), vLLM ~9, marimo ~7, LiteLLM and Dify ~3 (those two may yet recover). A deviation that returns in days is an absorbed event; one that persists for two years is an operating regime nobody ratified. Important: any of these may be a deliberate choice by healthy, successful teams — uv's release process plausibly explains theirs. Nothing here says these projects are broken. The point is that nothing on the record distinguishes a chosen regime change from unnoticed drift — for outsiders or, often, for the team a year later.</p>
+  <p><strong>4. Domain doesn't matter; era does.</strong> The controls are non-AI in <em>product</em> only — their 2023–26 teams almost certainly use AI assistants like everyone else, which no one can verify from the outside. So the fingerprint is not an AI-industry quirk; and AI assistance is neither convicted nor exonerated. Every repo here was built with the AI era's whole toolchain — assistants, bots, generated code, extreme velocity — and no one can decompose AI's share from git history. We distrust anyone who claims they can.</p>
+  <p><strong>5. The managed contrast inverts everything.</strong> Plaid's node library is generator-driven: baseline novelty 0.00 by architecture, its one novelty deviation was a rare <em>novel</em> change, and every deviation returns to baseline immediately. Drift is deviation that persists; managed change is deviation that recovers.</p>
+
+  <h2>Quality control</h2>
+  <p>Earlier versions of these reports (March 2026) contained display artifacts, so every July report was regenerated fresh and screened against the eight defect types we've caught in this tool's output (filler values printed as measurements, dead commit links, missing units, and similar). Of ~60 finding-cards, 59 passed. One known instrument limitation remains and is disclosed rather than patched: the Plaid report's dispersion card shows the tool's internal ceiling (exactly 1.50) instead of a true measurement — identifiable because the identical value appears in unrelated repositories' reports. Disregard that card; Plaid's other findings stand. Separately, the seven most dramatic trigger commits were verified by hand on GitHub — all exist, all match. Please check them yourself; that's why they're named.</p>
+
+  <div class="note"><strong>What this analysis cannot tell you:</strong> which commits were AI-written (nobody can, from the outside — that's why we measure structure instead of guessing authorship); whether any individual change was a mistake; whether a persistent regime was chosen or accidental. It measures structural rhythm against a repo's own history — the questions it surfaces are for the teams to answer. And n=15 is a fingerprint, not a law.</p></div>
+
+  <footer>Measured with <a href="https://codequal.dev">Evolution Engine</a>, a drift detector by CodeQual · Rostislav Alpin · July 2026 · <a href="index.html">Full reports index</a></footer>
+</main>
+</body>
+</html>
